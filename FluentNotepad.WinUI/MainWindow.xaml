@@ -182,8 +182,9 @@
             </StackPanel>
         </Grid>
 
-        <!-- ===== EDITOR (sfondo coprente come Notepad, Mica solo su striscia/menu) ===== -->
-        <Grid Grid.Row="2" x:Name="EditorHost" AllowDrop="True" Drop="Root_Drop" DragOver="Root_DragOver">
+        <!-- ===== EDITOR (host contenuto + overlay fissi: non vengono mai rimossi) ===== -->
+        <Grid Grid.Row="2" AllowDrop="True" Drop="Root_Drop" DragOver="Root_DragOver">
+            <Grid x:Name="EditorHost"/>
             <WebView2 x:Name="PreviewView" Visibility="Collapsed"/>
             <Border x:Name="FindBar" Visibility="Collapsed" HorizontalAlignment="Right" VerticalAlignment="Top"
                     Margin="0,12,16,0" Padding="8" CornerRadius="8" BorderThickness="1"
@@ -195,6 +196,16 @@
                     <Button Content="&#xE70D;" FontFamily="Segoe Fluent Icons" Width="32" Click="FindPrev_Click" ToolTipService.ToolTip="Precedente"/>
                     <Button Content="&#xE70E;" FontFamily="Segoe Fluent Icons" Width="32" Click="FindNext_Click" ToolTipService.ToolTip="Successivo"/>
                     <Button Content="&#xE8BB;" FontFamily="Segoe Fluent Icons" Width="32" Click="FindClose_Click"/>
+                </StackPanel>
+            </Border>
+            <!-- Errore anteprima (mai rimosso: fuori da EditorHost) -->
+            <Border x:Name="PreviewError" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center"
+                    Padding="20" CornerRadius="8" BorderThickness="1" MaxWidth="420"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}">
+                <StackPanel Spacing="8">
+                    <TextBlock x:Name="PreviewErrorText" TextWrapping="WrapWholeWords"/>
+                    <Button Content="Riprova" Click="PreviewRetry_Click" HorizontalAlignment="Left"/>
                 </StackPanel>
             </Border>
         </Grid>

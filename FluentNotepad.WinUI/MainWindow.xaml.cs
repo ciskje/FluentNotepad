@@ -203,28 +203,62 @@ public sealed partial class MainWindow : Window
     }
 
     // ================= ANTEPRIMA MARKDOWN (WebView2) =================
+    private readonly SemaphoreSlim _webLock = new(1, 1);
+    private string _lastWebError = "";
+
     private async void RenderPreview(DocumentInfo doc)
     {
         if (!doc.IsMarkdown || !doc.PreviewVisible) return;
+        PreviewError.Visibility = Visibility.Collapsed;
+        for (int attempt = 0; attempt < 3; attempt++)
+        {
+            if (await TryRenderAsync(doc)) return;
+            if (!doc.PreviewVisible) return;
+            if (attempt < 2) await Task.Delay(1500);
+        }
+        PreviewView.Visibility = Visibility.Collapsed;
+        PreviewErrorText.Text = "Anteprima non disponibile (WebView2). " + _lastWebError;
+        PreviewError.Visibility = Visibility.Visible;
+    }
+
+    private async Task<bool> TryRenderAsync(DocumentInfo doc)
+    {
+        await _webLock.WaitAsync();
         try
         {
             if (!_webReady) { await PreviewView.EnsureCoreWebView2Async(); _webReady = true; }
             string? baseDir = doc.Path != null ? Path.GetDirectoryName(doc.Path) : null;
             double size = (FontSlider?.Value ?? 15) * _zoom;
-            PreviewView.NavigateToString(MarkdownHtml.Build(doc.Editor.Text, baseDir, _dark, size));
+            string html = MarkdownHtml.Build(doc.Editor.Text, baseDir, _dark, size);
+            if (html.Length > 1500000)
+            {
+                // NavigateToString ha un limite ~2MB: file grandi via temp file
+                string tmp = Path.Combine(Path.GetTempPath(), "fluent_preview.html");
+                File.WriteAllText(tmp, html);
+                PreviewView.Source = new Uri(tmp);
+            }
+            else PreviewView.NavigateToString(html);
+            PreviewView.Visibility = Visibility.Visible;
+            return true;
         }
-        catch { }
+        catch (Exception ex) { _webReady = false; _lastWebError = ex.Message; return false; }
+        finally { _webLock.Release(); }
+    }
+
+    private void PreviewRetry_Click(object s, RoutedEventArgs e)
+    {
+        if (GetActiveDoc() is { } d) RenderPreview(d);
     }
 
     private void ShowActiveContent()
     {
         EditorHost.Children.Clear();
+        PreviewError.Visibility = Visibility.Collapsed;
         var d = GetActiveDoc();
-        if (d == null) return;
+        if (d == null) { PreviewView.Visibility = Visibility.Collapsed; return; }
         if (d.PreviewVisible && d.IsMarkdown)
         {
             PreviewView.Visibility = Visibility.Visible;
-            EditorHost.Children.Add(PreviewView);
         }
         else
         {

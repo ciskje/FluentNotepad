@@ -18,7 +18,9 @@ public static class MarkdownHtml
 
     public static string Build(string markdown, string? baseDir, bool dark, double fontSize)
     {
-        string body = Markdig.Markdown.ToHtml(markdown, _pipeline);
+        string body = string.IsNullOrWhiteSpace(markdown)
+            ? "<p class='empty-hint'>Niente da visualizzare — scrivi Markdown in modalita Modifica.</p>"
+            : Markdig.Markdown.ToHtml(markdown, _pipeline);
         body = ProcessImages(body, baseDir);
         string css = dark ? DarkCss(fontSize) : LightCss(fontSize);
         return "<!DOCTYPE html><html><head><meta charset='utf-8'>" +
@@ -90,6 +92,7 @@ blockquote{{margin:0 0 8px;padding:4px 4px 4px 12px;border-left:3px solid}}
 ul,ol{{margin:0 0 8px;padding-left:24px}}li{{margin:2px 0}}li input[type=checkbox]{{margin-right:6px}}
 table{{border-collapse:collapse;margin:0 0 12px}}th,td{{border:1px solid;padding:4px 10px}}th{{font-weight:700}}
 img{{max-width:100%;margin:6px 0}}.img-missing{{font-style:italic;opacity:.7}}
+.empty-hint{{opacity:.6;font-style:italic;text-align:center;margin-top:40px}}
 hr{{border:none;border-top:1px solid;margin:14px 0}}";
 
     private static string LightCss(double fs) => BaseCss(fs) + @"
