@@ -139,11 +139,6 @@ public sealed partial class MainWindow : Window
         RefreshMdUi();
     }
 
-    private void EnsureTab()
-    {
-        if (Tabs.TabItems.Count == 0) NewTab(null);
-    }
-
     private enum SaveAction { Cancel, Save, Discard }
 
     private async Task<SaveAction> AskSaveAsync(DocumentInfo doc)
@@ -170,7 +165,6 @@ public sealed partial class MainWindow : Window
         if (e.Tab is not TabViewItem item || item.Tag is not DocumentInfo doc) return;
         if (doc.Dirty && await AskSaveAsync(doc) == SaveAction.Cancel) return;
         sender.TabItems.Remove(item);
-        EnsureTab();
     }
 
     private bool _closeConfirmed = false;
@@ -391,7 +385,6 @@ public sealed partial class MainWindow : Window
         if (Tabs.SelectedItem is not TabViewItem item || item.Tag is not DocumentInfo doc) return;
         if (doc.Dirty && await AskSaveAsync(doc) == SaveAction.Cancel) return;
         Tabs.TabItems.Remove(item);
-        EnsureTab();
     }
 
     private void Exit_Click(object s, RoutedEventArgs e) => Close();
@@ -401,7 +394,6 @@ public sealed partial class MainWindow : Window
         ShowActiveContent();
         UpdateStatus();
         RefreshMdUi();
-        EnsureTab();
     }
 
     // ================= MODIFICA =================
@@ -510,7 +502,12 @@ public sealed partial class MainWindow : Window
     private void UpdateStatus()
     {
         var b = GetActiveBox();
-        if (b == null) return;
+        if (b == null)
+        {
+            LnCol.Text = "Riga 1, col. 1";
+            CharCount.Text = "0 caratteri";
+            return;
+        }
         var text = b.Text ?? "";
         CharCount.Text = $"{text.Length} caratteri";
         int caret = Math.Clamp(b.SelectionStart, 0, text.Length);
