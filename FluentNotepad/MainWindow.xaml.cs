@@ -200,10 +200,6 @@ public partial class MainWindow : Window
 
     private int _renderSeq = 0;
     private bool _micaEnabled;
-    private readonly System.Windows.Media.Effects.DropShadowEffect _fallbackShadow = new()
-    {
-        BlurRadius = 24, ShadowDepth = 0, Opacity = 0.25
-    };
 
     private void RenderPreview(DocumentInfo doc)
     {
@@ -594,6 +590,7 @@ public partial class MainWindow : Window
     protected override void OnSourceInitialized(EventArgs e)
     {
         base.OnSourceInitialized(e);
+        DwmBackdrop.EnableDropShadow(this);
         RefreshBackdrop();
     }
 
@@ -601,8 +598,8 @@ public partial class MainWindow : Window
     private void RefreshBackdrop()
     {
         _micaEnabled = DwmBackdrop.IsSupported() && DwmBackdrop.TryEnable(this, _dark);
-        // Ombra disegnata sempre (con finestra layered DWM non ne mette una)
-        if (OuterBorder.Effect == null) OuterBorder.Effect = _fallbackShadow;
+        // Ombra di sistema (CS_DROPSHADOW): niente più ombra finta né margine
+        OuterBorder.Effect = null;
         if (_micaEnabled)
         {
             // Mica vivo: striscia e cornice trasparenti, il resto resta coprente per leggibilità
@@ -646,8 +643,7 @@ public partial class MainWindow : Window
         bool max = WindowState != WindowState.Maximized;
         WindowState = max ? WindowState.Maximized : WindowState.Normal;
         MaxButton.Content = max ? "\uE923;" : "\uE922;";
-        // massimizzata: niente margine/ombra/angoli (occupa l'area di lavoro)
-        OuterBorder.Margin = max ? new Thickness(0) : new Thickness(16);
+        // massimizzata: angoli squadrati (occupa l'area di lavoro)
         OuterBorder.CornerRadius = max ? new CornerRadius(0) : new CornerRadius(8);
     }
     private void CloseButton_Click(object s, RoutedEventArgs e) => Close();

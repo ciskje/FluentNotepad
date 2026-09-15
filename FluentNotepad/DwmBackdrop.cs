@@ -32,6 +32,32 @@ public static class DwmBackdrop
     [DllImport("dwmapi.dll", PreserveSig = true)]
     private static extern int DwmExtendFrameIntoClientArea(IntPtr hwnd, ref MARGINS pMarInset);
 
+    private const int GCL_STYLE = -26;
+    private const int CS_DROPSHADOW = 0x00020000;
+    private const uint SWP_NOSIZE = 0x0001, SWP_NOMOVE = 0x0002, SWP_NOZORDER = 0x0004, SWP_FRAMECHANGED = 0x0020;
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern int GetClassLong(IntPtr hWnd, int nIndex);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern int SetClassLong(IntPtr hWnd, int nIndex, int dwNewLong);
+
+    [DllImport("user32.dll")]
+    private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int x, int y, int cx, int cy, uint uFlags);
+
+    /// <summary>Ombra OS anche su finestra layered (dove DWM non la mette da solo).</summary>
+    public static void EnableDropShadow(Window window)
+    {
+        try
+        {
+            var hwnd = new WindowInteropHelper(window).Handle;
+            if (hwnd == IntPtr.Zero) return;
+            SetClassLong(hwnd, GCL_STYLE, GetClassLong(hwnd, GCL_STYLE) | CS_DROPSHADOW);
+            SetWindowPos(hwnd, IntPtr.Zero, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
+        }
+        catch { }
+    }
+
     public static bool IsSupported()
     {
         if (Environment.GetEnvironmentVariable("FLUENTNOTEPAD_NO_MICA") == "1") return false;

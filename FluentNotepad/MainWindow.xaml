@@ -14,7 +14,7 @@
                         UseAeroCaptionButtons="False"/>
     </WindowChrome.WindowChrome>
     <Border x:Name="OuterBorder" Background="{DynamicResource AppBgBrush}" CornerRadius="8"
-            BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}" Margin="16">
+            BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="40"/>
