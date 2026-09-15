@@ -1,5 +1,16 @@
 # FluentNotepad — demo Fluent Design in C# / WPF
 
+## Versionamento (X.Y.Z)
+
+La versione sta in `<Version>` nel `.csproj` ed è mostrata nel pannello Impostazioni.
+Si aggiorna **solo** per modifiche al codice, così:
+
+- **Z** (es. 1.0.0 → 1.0.1) — piccole modifiche: bugfix, ritocchi grafici, testi
+- **Y** (es. 1.0.0 → 1.1.0) — modifiche importanti: nuove funzioni, cambi di comportamento
+- **X** (es. 1.0.0 → 2.0.0) — stravolgimenti: architettura, riscritture, rotture di compatibilità
+
+Per qualunque altra ragione (docs, refactor interni, build) la versione **non** si tocca.
+
 Clone basilare del **Notepad di Windows 11**, scritto in C# con WPF (.NET 8), per mostrare:
 finestra con angoli arrotondati + ombra, tab in stile Mica, flyout acrilici, temi chiaro/scuro, status bar.
 

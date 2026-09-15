@@ -176,7 +176,7 @@
                         <TextBlock Text="Dimensione carattere" Foreground="{DynamicResource SubtleForeBrush}" FontSize="12" Margin="0,10,0,0"/>
                         <Slider x:Name="FontSlider" Minimum="12" Maximum="24" Value="15" Margin="0,6,0,0" ValueChanged="FontSlider_Changed"/>
                         <TextBlock Text="Informazioni" FontSize="13" FontWeight="SemiBold" Margin="0,20,0,8" Foreground="{DynamicResource ForeBrush}"/>
-                        <TextBlock Text="FluentNotepad 1.0 — demo Fluent Design in WPF (Mica, tab, acrylic flyout, temi)." TextWrapping="Wrap" Foreground="{DynamicResource SubtleForeBrush}" FontSize="12"/>
+                        <TextBlock x:Name="VersionInfo" Text="FluentNotepad" TextWrapping="Wrap" Foreground="{DynamicResource SubtleForeBrush}" FontSize="12"/>
                         <Button Content="Chiudi" Margin="0,24,0,0" Padding="0,8" Click="SettingsButton_Click"/>
                     </StackPanel>
                 </Border>

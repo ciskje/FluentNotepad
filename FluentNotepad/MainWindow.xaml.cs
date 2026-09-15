@@ -40,6 +40,8 @@ public partial class MainWindow : Window
         _previewTimer.Tick += PreviewTimer_Tick;
         DetectWindowsTheme();
         ApplyTheme(_dark);
+        var v = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+        VersionInfo.Text = $"FluentNotepad {v?.ToString(3) ?? "?"} — demo Fluent Design in WPF (tab, Markdown, temi).";
         NewTab(null);
         Loaded += MainWindow_Loaded;
     }
