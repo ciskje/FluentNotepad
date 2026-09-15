@@ -24,7 +24,6 @@ public sealed partial class MainWindow : Window
     private double _zoom = 1.0;
     private bool _dark = false;
     private bool _loading = true;
-    private bool _closeInFlight = false;
     private bool _webReady = false;
     private readonly Microsoft.UI.Dispatching.DispatcherQueueTimer _previewTimer;
     private readonly SolidColorBrush _accentSoft =
@@ -142,7 +141,7 @@ public sealed partial class MainWindow : Window
 
     private void EnsureTab()
     {
-        if (!_closeInFlight && Tabs.TabItems.Count == 0) NewTab(null);
+        if (Tabs.TabItems.Count == 0) NewTab(null);
     }
 
     private enum SaveAction { Cancel, Save, Discard }
@@ -165,23 +164,13 @@ public sealed partial class MainWindow : Window
         return SaveAction.Cancel;
     }
 
+    // NOTA: TabView NON rimuove la tab da solo: bisogna farlo qui (vale anche per Annulla = non rimuovere)
     private async void Tabs_Close(TabView sender, TabViewTabCloseRequestedEventArgs e)
     {
         if (e.Tab is not TabViewItem item || item.Tag is not DocumentInfo doc) return;
-        if (!doc.Dirty) { DispatcherQueue.TryEnqueue(EnsureTab); return; }
-        _closeInFlight = true;
-        try
-        {
-            var a = await AskSaveAsync(doc);
-            if (a == SaveAction.Cancel)
-            {
-                int idx = sender.TabItems.IndexOf(item);
-                if (idx < 0) sender.TabItems.Add(item);
-                else sender.TabItems.Insert(idx, item);
-                sender.SelectedItem = item;
-            }
-        }
-        finally { _closeInFlight = false; EnsureTab(); }
+        if (doc.Dirty && await AskSaveAsync(doc) == SaveAction.Cancel) return;
+        sender.TabItems.Remove(item);
+        EnsureTab();
     }
 
     private bool _closeConfirmed = false;
@@ -397,34 +386,12 @@ public sealed partial class MainWindow : Window
     {
         if (GetActiveDoc() is { } d) { d.Path = null; await SaveTabAsync(d); }
     }
-    private void CloseTab_Click(object s, RoutedEventArgs e)
+    private async void CloseTab_Click(object s, RoutedEventArgs e)
     {
-        if (Tabs.SelectedItem is TabViewItem item)
-        {
-            int idx = Tabs.TabItems.IndexOf(item);
-            Tabs.TabItems.Remove(item);
-            var tag = item.Tag as DocumentInfo;
-            if (tag?.Dirty == true)
-            {
-                _closeInFlight = true;
-                _ = HandleCloseAsync(item, tag, idx);
-            }
-            else EnsureTab();
-        }
-    }
-
-    private async Task HandleCloseAsync(TabViewItem item, DocumentInfo doc, int idx)
-    {
-        try
-        {
-            var a = await AskSaveAsync(doc);
-            if (a == SaveAction.Cancel)
-            {
-                Tabs.TabItems.Insert(Math.Min(idx, Tabs.TabItems.Count), item);
-                Tabs.SelectedItem = item;
-            }
-        }
-        finally { _closeInFlight = false; EnsureTab(); }
+        if (Tabs.SelectedItem is not TabViewItem item || item.Tag is not DocumentInfo doc) return;
+        if (doc.Dirty && await AskSaveAsync(doc) == SaveAction.Cancel) return;
+        Tabs.TabItems.Remove(item);
+        EnsureTab();
     }
 
     private void Exit_Click(object s, RoutedEventArgs e) => Close();
@@ -575,6 +542,12 @@ public sealed partial class MainWindow : Window
         EditorHost.Background = new SolidColorBrush(dark
             ? Windows.UI.Color.FromArgb(255, 40, 40, 40)
             : Windows.UI.Color.FromArgb(255, 249, 249, 249));
+        // Velo coprente su Mica per menu e status (come Notepad: quasi bianchi ma con tinta)
+        var veil = new SolidColorBrush(dark
+            ? Windows.UI.Color.FromArgb(0x99, 0, 0, 0)
+            : Windows.UI.Color.FromArgb(0xB8, 255, 255, 255));
+        MenuRow.Background = veil;
+        StatusRow.Background = veil;
         ThemeIcon.Glyph = dark ? "\uE706" : "\uE708";
         var tb = AppWindow.TitleBar;
         tb.ButtonBackgroundColor = Colors.Transparent;

@@ -29,8 +29,8 @@
             </controls:TabView>
         </Grid>
 
-        <!-- ===== MENU + FORMATTAZIONE ===== -->
-        <Grid Grid.Row="1" Padding="8,2,4,2" BorderThickness="0,0,0,1"
+        <!-- ===== MENU + FORMATTAZIONE (velo bianco/nero su Mica come Notepad) ===== -->
+        <Grid x:Name="MenuRow" Grid.Row="1" Padding="8,2,4,2" BorderThickness="0,0,0,1"
               BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto"/>
@@ -211,7 +211,7 @@
         </Grid>
 
         <!-- ===== STATUS BAR ===== -->
-        <Grid Grid.Row="3" Padding="12,4,8,4" BorderThickness="0,1,0,0"
+        <Grid x:Name="StatusRow" Grid.Row="3" Padding="12,4,8,4" BorderThickness="0,1,0,0"
               BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto"/>
