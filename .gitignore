@@ -1,0 +1,12 @@
+# Build
+bin/
+obj/
+out/
+# VS / Rider
+.vs/
+.idea/
+*.user
+*.suo
+# OS
+Thumbs.db
+Desktop.ini
