@@ -14,6 +14,16 @@ Per qualunque altra ragione (docs, refactor interni, build) la versione **non** 
 Clone basilare del **Notepad di Windows 11**, scritto in C# con WPF (.NET 8), per mostrare:
 finestra con angoli arrotondati + ombra, tab in stile Mica, flyout acrilici, temi chiaro/scuro, status bar.
 
+## Mica reale (Windows 11 22H2+)
+
+La striscia delle tab usa il Mica di sistema via DWM (`DwmBackdrop.cs`):
+`DWMWA_SYSTEMBACKDROP_TYPE` + frame esteso a tutta la finestra.
+Requisito scoperto sul campo: la finestra deve restare layered
+(`AllowsTransparency`), altrimenti DWM disegna nero.
+Su Windows 10 / 11 21H2 — o con `FLUENTNOTEPAD_NO_MICA=1` — fallback
+automatico ai colori statici campionati dal Notepad originale.
+Il tema scuro imposta anche `DWMWA_USE_IMMERSIVE_DARK_MODE`.
+
 ## Avvio
 
 ```bash

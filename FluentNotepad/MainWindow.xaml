@@ -15,9 +15,6 @@
     </WindowChrome.WindowChrome>
     <Border x:Name="OuterBorder" Background="{DynamicResource AppBgBrush}" CornerRadius="8"
             BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}" Margin="16">
-        <Border.Effect>
-            <DropShadowEffect BlurRadius="24" ShadowDepth="0" Opacity="0.25"/>
-        </Border.Effect>
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="40"/>

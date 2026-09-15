@@ -199,6 +199,11 @@ public partial class MainWindow : Window
     }
 
     private int _renderSeq = 0;
+    private bool _micaEnabled;
+    private readonly System.Windows.Media.Effects.DropShadowEffect _fallbackShadow = new()
+    {
+        BlurRadius = 24, ShadowDepth = 0, Opacity = 0.25
+    };
 
     private void RenderPreview(DocumentInfo doc)
     {
@@ -574,6 +579,7 @@ public partial class MainWindow : Window
             ThemeButton.Content = "\uE708;";
         }
         RefreshVisiblePreviews();
+        RefreshBackdrop();
     }
 
     private void ThemeButton_Click(object s, RoutedEventArgs e) => ApplyTheme(!_dark);
@@ -583,6 +589,31 @@ public partial class MainWindow : Window
         else if (ThemeCombo.SelectedIndex == 1) ApplyTheme(true);
         else DetectWindowsTheme();
         if (IsLoaded) ApplyTheme(_dark);
+    }
+
+    protected override void OnSourceInitialized(EventArgs e)
+    {
+        base.OnSourceInitialized(e);
+        RefreshBackdrop();
+    }
+
+    /// <summary>Attiva Mica se supportato, altrimenti sfondi opachi + ombra finta.</summary>
+    private void RefreshBackdrop()
+    {
+        _micaEnabled = DwmBackdrop.IsSupported() && DwmBackdrop.TryEnable(this, _dark);
+        // Ombra disegnata sempre (con finestra layered DWM non ne mette una)
+        if (OuterBorder.Effect == null) OuterBorder.Effect = _fallbackShadow;
+        if (_micaEnabled)
+        {
+            // Mica vivo: striscia e cornice trasparenti, il resto resta coprente per leggibilità
+            OuterBorder.Background = Brushes.Transparent;
+            TitleBar.Background = Brushes.Transparent;
+        }
+        else
+        {
+            OuterBorder.SetResourceReference(Border.BackgroundProperty, "AppBgBrush");
+            TitleBar.SetResourceReference(Border.BackgroundProperty, "TitleBarBrush");
+        }
     }
 
     // ================= IMPOSTAZIONI / WRAP / FONT =================
