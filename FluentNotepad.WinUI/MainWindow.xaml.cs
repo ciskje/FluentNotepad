@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using Microsoft.UI;
@@ -20,8 +21,9 @@ namespace FluentNotepad;
 
 public sealed partial class MainWindow : Window
 {
-    private int _untitled = 0;
     private double _zoom = 1.0;
+    private int _selStart;
+    private int _selLen;
     private bool _dark = false;
     private bool _loading = true;
     private bool _webReady = false;
@@ -37,6 +39,8 @@ public sealed partial class MainWindow : Window
         public bool IsMarkdown;
         public bool PreviewVisible;
         public bool Dirty;
+        public string LineEnding = "Windows (CRLF)";
+        public string FileEncoding = "UTF-8";
     }
 
     public MainWindow()
@@ -50,6 +54,11 @@ public sealed partial class MainWindow : Window
         AppWindow.Resize(new SizeInt32(1000, 650));
         AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "AppIcon.ico"));
         AppWindow.Closing += App_Closing;
+        AppWindow.Destroying += (_, _) =>
+        {
+            try { if (_previewTmp != null && File.Exists(_previewTmp)) File.Delete(_previewTmp); }
+            catch (Exception ex) { Debug.WriteLine($"PreviewTmp cleanup: {ex.Message}"); }
+        };
 
         _previewTimer = DispatcherQueue.CreateTimer();
         _previewTimer.Interval = TimeSpan.FromMilliseconds(400);
@@ -86,12 +95,21 @@ public sealed partial class MainWindow : Window
             var d = GetActiveDoc();
             if (d?.IsMarkdown == true) ShowPreview(d, true);
         }
-        catch { }
+        catch (Exception ex) { Debug.WriteLine($"OpenFileFromArgs: {ex.Message}"); }
     }
 
     // ================= DOCUMENTI / TAB =================
     private DocumentInfo? GetActiveDoc() => Tabs.SelectedItem as TabViewItem is { Tag: DocumentInfo d } ? d : null;
     private TextBox? GetActiveBox() => GetActiveDoc()?.Editor;
+
+    // Selezione "ricordata": il click su un pulsante/menu sposta il focus e lo stato
+    // live del TextBox nel gestore non e' affidabile — la cache e' aggiornata a ogni SelectionChanged.
+    private (int Start, int Length) CachedSelection(TextBox b)
+    {
+        int textLen = b.Text.Length;
+        int start = Math.Clamp(_selStart, 0, textLen);
+        return (start, Math.Clamp(_selLen, 0, textLen - start));
+    }
 
     public static bool IsMarkdownFile(string? path) =>
         path != null && (path.EndsWith(".md", StringComparison.OrdinalIgnoreCase) ||
@@ -102,13 +120,37 @@ public sealed partial class MainWindow : Window
 
     private void RefreshHeader(DocumentInfo d) => d.Tab.Header = DisplayName(d);
 
+    private static string DetectLineEnding(string text) =>
+        text.Contains("\r\n") ? "Windows (CRLF)" : text.Contains('\n') ? "Unix (LF)" : "Windows (CRLF)";
+
+    private static string DetectEncoding(string path)
+    {
+        try
+        {
+            using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            int b0 = fs.ReadByte(), b1 = fs.ReadByte(), b2 = fs.ReadByte();
+            if (b0 == 0xEF && b1 == 0xBB && b2 == 0xBF) return "UTF-8 con BOM";
+            if (b0 == 0xFF && b1 == 0xFE) return "UTF-16 LE";
+            if (b0 == 0xFE && b1 == 0xFF) return "UTF-16 BE";
+        }
+        catch (Exception ex) { Debug.WriteLine($"DetectEncoding: {ex.Message}"); }
+        return "UTF-8";
+    }
+
+    private void RefreshFileLabels()
+    {
+        var d = GetActiveDoc();
+        if (LineEndLabel != null) LineEndLabel.Text = d?.LineEnding ?? "Windows (CRLF)";
+        if (EncodingLabel != null) EncodingLabel.Text = d?.FileEncoding ?? "UTF-8";
+    }
+
     private void NewTab(string? path, string content = "")
     {
-        _untitled++;
         var box = new TextBox
         {
             AcceptsReturn = true,
             TextWrapping = WrapCheck?.IsChecked == true ? TextWrapping.Wrap : TextWrapping.NoWrap,
+            FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Cascadia Mono, Cascadia Code, Consolas"),
             FontSize = 15,
             Padding = new Thickness(16),
             BorderThickness = new Thickness(0),
@@ -131,11 +173,24 @@ public sealed partial class MainWindow : Window
             }
             UpdateStatus();
         };
-        box.SelectionChanged += (_, _) => UpdateStatus();
+        box.SelectionChanged += (_, _) =>
+        {
+            _selStart = box.SelectionStart;
+            _selLen = box.SelectionLength;
+            UpdateStatus();
+        };
+        // Snapshot quando il focus lascia l'editor: il Click sul pulsante/menu arriva dopo,
+        // e in quel momento lo stato live della selezione non e' piu' affidabile
+        box.LosingFocus += (_, _) =>
+        {
+            _selStart = box.SelectionStart;
+            _selLen = box.SelectionLength;
+        };
 
         Tabs.TabItems.Add(tab);
         Tabs.SelectedItem = tab;
         UpdateStatus();
+        RefreshFileLabels();
         RefreshMdUi();
     }
 
@@ -160,11 +215,16 @@ public sealed partial class MainWindow : Window
     }
 
     // NOTA: TabView NON rimuove la tab da solo: bisogna farlo qui (vale anche per Annulla = non rimuovere)
+    private async Task CloseTabAsync(TabViewItem item)
+    {
+        if (item.Tag is not DocumentInfo doc) return;
+        if (doc.Dirty && await AskSaveAsync(doc) == SaveAction.Cancel) return;
+        Tabs.TabItems.Remove(item);
+    }
+
     private async void Tabs_Close(TabView sender, TabViewTabCloseRequestedEventArgs e)
     {
-        if (e.Tab is not TabViewItem item || item.Tag is not DocumentInfo doc) return;
-        if (doc.Dirty && await AskSaveAsync(doc) == SaveAction.Cancel) return;
-        sender.TabItems.Remove(item);
+        if (e.Tab is TabViewItem item) await CloseTabAsync(item);
     }
 
     private bool _closeConfirmed = false;
@@ -188,6 +248,7 @@ public sealed partial class MainWindow : Window
     // ================= ANTEPRIMA MARKDOWN (WebView2) =================
     private readonly SemaphoreSlim _webLock = new(1, 1);
     private string _lastWebError = "";
+    private string? _previewTmp;
 
     private async void RenderPreview(DocumentInfo doc)
     {
@@ -216,9 +277,9 @@ public sealed partial class MainWindow : Window
             if (html.Length > 1500000)
             {
                 // NavigateToString ha un limite ~2MB: file grandi via temp file
-                string tmp = Path.Combine(Path.GetTempPath(), "fluent_preview.html");
-                File.WriteAllText(tmp, html);
-                PreviewView.Source = new Uri(tmp);
+                _previewTmp ??= Path.Combine(Path.GetTempPath(), $"fluent_preview_{Environment.ProcessId}.html");
+                File.WriteAllText(_previewTmp, html);
+                PreviewView.Source = new Uri(_previewTmp);
             }
             else PreviewView.NavigateToString(html);
             PreviewView.Visibility = Visibility.Visible;
@@ -235,18 +296,24 @@ public sealed partial class MainWindow : Window
 
     private void ShowActiveContent()
     {
-        EditorHost.Children.Clear();
         PreviewError.Visibility = Visibility.Collapsed;
         var d = GetActiveDoc();
         if (d == null) { PreviewView.Visibility = Visibility.Collapsed; return; }
         if (d.PreviewVisible && d.IsMarkdown)
         {
+            EditorHost.Children.Clear();
             PreviewView.Visibility = Visibility.Visible;
         }
         else
         {
             PreviewView.Visibility = Visibility.Collapsed;
-            EditorHost.Children.Add(d.Editor);
+            // Non ri-aggiungere l'editor se e' gia' ospitato: il re-parenting
+            // azzera selezione (e scroll), e i tag finivano a inizio file
+            if (EditorHost.Children.Count != 1 || !ReferenceEquals(EditorHost.Children[0], d.Editor))
+            {
+                EditorHost.Children.Clear();
+                EditorHost.Children.Add(d.Editor);
+            }
         }
     }
 
@@ -282,6 +349,7 @@ public sealed partial class MainWindow : Window
     {
         b.Background = selected ? _accentSoft : new SolidColorBrush(Colors.Transparent);
         b.FontWeight = selected ? FontWeights.SemiBold : FontWeights.Normal;
+        b.Foreground = new SolidColorBrush(_dark ? Colors.White : Windows.UI.Color.FromArgb(255, 38, 38, 38));
     }
 
     private void EditMode_Click(object s, RoutedEventArgs e)
@@ -314,7 +382,7 @@ public sealed partial class MainWindow : Window
         if (file != null)
         {
             try { OpenFile(file.Path, await FileIO.ReadTextAsync(file)); }
-            catch { }
+            catch (Exception ex) { Debug.WriteLine($"Open: {ex.Message}"); }
         }
     }
 
@@ -350,14 +418,11 @@ public sealed partial class MainWindow : Window
             File.WriteAllText(doc.Path, doc.Editor.Text);
         }
         doc.Dirty = false;
+        doc.LineEnding = DetectLineEnding(doc.Editor.Text);
+        doc.FileEncoding = "UTF-8"; // FileIO.WriteTextAsync e File.WriteAllText scrivono UTF-8 senza BOM
         RefreshHeader(doc);
+        RefreshFileLabels();
         return true;
-    }
-
-    private void OpenFile(string path)
-    {
-        try { OpenFile(path, File.ReadAllText(path)); }
-        catch { }
     }
 
     private void OpenFile(string path, string content)
@@ -366,7 +431,14 @@ public sealed partial class MainWindow : Window
             cd.Editor.Text == "" && cd.Path == null && !cd.Dirty)
             Tabs.TabItems.Remove(cur);
         NewTab(path, content);
-        if (GetActiveDoc() is { } d) { d.Dirty = false; RefreshHeader(d); }
+        if (GetActiveDoc() is { } d)
+        {
+            d.Dirty = false;
+            d.LineEnding = DetectLineEnding(content);
+            if (File.Exists(path)) d.FileEncoding = DetectEncoding(path);
+            RefreshHeader(d);
+            RefreshFileLabels();
+        }
     }
 
     private void NewTab_Click(object s, RoutedEventArgs e) => NewTab(null);
@@ -382,9 +454,7 @@ public sealed partial class MainWindow : Window
     }
     private async void CloseTab_Click(object s, RoutedEventArgs e)
     {
-        if (Tabs.SelectedItem is not TabViewItem item || item.Tag is not DocumentInfo doc) return;
-        if (doc.Dirty && await AskSaveAsync(doc) == SaveAction.Cancel) return;
-        Tabs.TabItems.Remove(item);
+        if (Tabs.SelectedItem is TabViewItem item) await CloseTabAsync(item);
     }
 
     private void Exit_Click(object s, RoutedEventArgs e) => Close();
@@ -392,7 +462,10 @@ public sealed partial class MainWindow : Window
     private void Tabs_SelectionChanged(object s, SelectionChangedEventArgs e)
     {
         ShowActiveContent();
+        var ab = GetActiveBox();
+        if (ab != null) { _selStart = ab.SelectionStart; _selLen = ab.SelectionLength; }
         UpdateStatus();
+        RefreshFileLabels();
         RefreshMdUi();
     }
 
@@ -409,17 +482,19 @@ public sealed partial class MainWindow : Window
     private void Redo_Click(object s, RoutedEventArgs e) { var b = GetActiveBox(); if (b?.CanRedo == true) b.Redo(); }
     private void CopySelection(TextBox b)
     {
-        if (!string.IsNullOrEmpty(b.SelectedText))
-        {
-            var dp = new DataPackage();
-            dp.SetText(b.SelectedText);
-            Clipboard.SetContent(dp);
-        }
+        var (start, len) = CachedSelection(b);
+        if (len == 0) return;
+        var dp = new DataPackage();
+        dp.SetText(b.Text.Substring(start, len));
+        Clipboard.SetContent(dp);
     }
     private void Cut_Click(object s, RoutedEventArgs e)
     {
         var b = GetActiveBox(); if (b == null) return;
+        var (start, len) = CachedSelection(b);
+        if (len == 0) return;
         CopySelection(b);
+        b.Select(start, len);
         b.SelectedText = "";
     }
     private void Copy_Click(object s, RoutedEventArgs e)
@@ -432,9 +507,10 @@ public sealed partial class MainWindow : Window
         var dv = Clipboard.GetContent();
         if (!dv.Contains(StandardDataFormats.Text)) return;
         string t;
-        try { t = await dv.GetTextAsync(); } catch { return; }
-        if (b.SelectionLength > 0) b.SelectedText = t;
-        else { int pos = b.SelectionStart; b.Text = b.Text.Insert(pos, t); b.Select(pos + t.Length, 0); }
+        try { t = await dv.GetTextAsync(); } catch (Exception ex) { Debug.WriteLine($"Paste: {ex.Message}"); return; }
+        var (ps, pl) = CachedSelection(b);
+        b.Select(ps, pl);
+        b.SelectedText = t;
     }
     private void SelectAll_Click(object s, RoutedEventArgs e) => GetActiveBox()?.SelectAll();
 
@@ -450,7 +526,7 @@ public sealed partial class MainWindow : Window
 
     private void Find_Click(object s, RoutedEventArgs e) => ShowFind();
     private void FindClose_Click(object s, RoutedEventArgs e) => FindBar.Visibility = Visibility.Collapsed;
-    private void FindBox_TextChanged(object s, TextChangedEventArgs e) => FindNext(false);
+    private void FindBox_TextChanged(object s, TextChangedEventArgs e) => FindNext(false, focusEditor: false);
     private void FindBox_KeyDown(object s, KeyRoutedEventArgs e)
     {
         if (e.Key == Windows.System.VirtualKey.Enter)
@@ -464,26 +540,28 @@ public sealed partial class MainWindow : Window
     private void FindNext_Click(object s, RoutedEventArgs e) => FindNext(false);
     private void FindPrev_Click(object s, RoutedEventArgs e) => FindNext(true);
 
-    private void FindNext(bool up)
+    private void FindNext(bool up, bool focusEditor = true)
     {
         var b = GetActiveBox();
         if (b == null || string.IsNullOrEmpty(FindBox.Text)) return;
         var text = b.Text; var q = FindBox.Text;
-        int start = up ? Math.Max(0, b.SelectionStart - 1) : b.SelectionStart + b.SelectionLength;
+        var (cs, cl) = CachedSelection(b);
+        int start = up ? Math.Max(0, cs - 1) : cs + cl;
         int i = up ? text.LastIndexOf(q, start, StringComparison.OrdinalIgnoreCase)
                    : text.IndexOf(q, start, StringComparison.OrdinalIgnoreCase);
         if (i < 0 && !up) i = text.IndexOf(q, 0, StringComparison.OrdinalIgnoreCase);
         if (i < 0 && up && text.Length > 0) i = text.LastIndexOf(q, text.Length - 1, StringComparison.OrdinalIgnoreCase);
-        if (i >= 0) { b.Select(i, q.Length); b.Focus(FocusState.Programmatic); }
+        if (i >= 0) { b.Select(i, q.Length); if (focusEditor) b.Focus(FocusState.Programmatic); }
     }
 
     // ================= ZOOM / STATUS =================
-    private void SetZoom(double z)
+    private void SetZoom(double z, bool renderPreview = true)
     {
         _zoom = Math.Clamp(z, 0.5, 3.0);
         var b = GetActiveBox();
         if (b != null) b.FontSize = (FontSlider?.Value ?? 15) * _zoom;
         if (ZoomLabel != null) ZoomLabel.Text = $"{(int)(_zoom * 100)}%";
+        if (!renderPreview) return;
         var d = GetActiveDoc();
         if (d is { IsMarkdown: true, PreviewVisible: true }) RenderPreview(d);
     }
@@ -536,15 +614,27 @@ public sealed partial class MainWindow : Window
     {
         _dark = dark;
         Root.RequestedTheme = dark ? ElementTheme.Dark : ElementTheme.Light;
-        EditorHost.Background = new SolidColorBrush(dark
-            ? Windows.UI.Color.FromArgb(255, 40, 40, 40)
-            : Windows.UI.Color.FromArgb(255, 249, 249, 249));
-        // Velo coprente su Mica per menu e status (come Notepad: quasi bianchi ma con tinta)
-        var veil = new SolidColorBrush(dark
-            ? Windows.UI.Color.FromArgb(0x99, 0, 0, 0)
-            : Windows.UI.Color.FromArgb(0xB8, 255, 255, 255));
-        MenuRow.Background = veil;
-        StatusRow.Background = veil;
+        // Titolo = Mica, sfondo = bianco/#282828, menu = via di mezzo.
+        var editorBg = new SolidColorBrush(dark
+            ? Windows.UI.Color.FromArgb(255, 40, 40, 40)      // #282828
+            : Windows.UI.Color.FromArgb(255, 255, 255, 255)); // bianco
+        var menuBg = new SolidColorBrush(dark
+            ? Windows.UI.Color.FromArgb(255, 36, 36, 36)      // #242424: tra #202020 e #282828
+            : Windows.UI.Color.FromArgb(255, 249, 249, 249)); // #F9F9F9: tra #F3F3F3 e bianco
+        EditorHost.Background = editorBg;
+        TitleBarGrid.Background = new SolidColorBrush(Windows.UI.Color.FromArgb(0, 0, 0, 0)); // Mica a vista
+        MenuRow.Background = menuBg;
+        StatusRow.Background = new SolidColorBrush(dark
+            ? Windows.UI.Color.FromArgb(255, 32, 32, 32)      // #202020
+            : Windows.UI.Color.FromArgb(255, 243, 243, 243)); // #F3F3F3
+        // Toggle Modifica/Anteprima: stessi toni del menu, mai bianco in dark
+        MdToggle.Background = new SolidColorBrush(dark
+            ? Windows.UI.Color.FromArgb(255, 45, 45, 45)
+            : Windows.UI.Color.FromArgb(255, 243, 243, 243));
+        MdToggle.BorderBrush = new SolidColorBrush(dark
+            ? Windows.UI.Color.FromArgb(255, 58, 58, 58)
+            : Windows.UI.Color.FromArgb(255, 225, 221, 221));
+        RefreshMdUi();
         ThemeIcon.Glyph = dark ? "\uE706" : "\uE708";
         var tb = AppWindow.TitleBar;
         tb.ButtonBackgroundColor = Colors.Transparent;
@@ -579,7 +669,14 @@ public sealed partial class MainWindow : Window
             if ((t.Tag as DocumentInfo)?.Editor is TextBox b)
                 b.TextWrapping = WrapCheck?.IsChecked == true ? TextWrapping.Wrap : TextWrapping.NoWrap;
     }
-    private void FontSlider_Changed(object s, RangeBaseValueChangedEventArgs e) => SetZoom(_zoom);
+    private void FontSlider_Changed(object s, RangeBaseValueChangedEventArgs e)
+    {
+        if (_loading) return;
+        SetZoom(_zoom, renderPreview: false);
+        // L'anteprima WebView2 e' costosa: debounce invece di un render a ogni tick del drag
+        var d = GetActiveDoc();
+        if (d is { IsMarkdown: true, PreviewVisible: true }) { _previewTimer.Stop(); _previewTimer.Start(); }
+    }
 
     private void Root_DragOver(object s, DragEventArgs e)
     {
@@ -595,7 +692,7 @@ public sealed partial class MainWindow : Window
             if (item is StorageFile f)
             {
                 try { OpenFile(f.Path, await FileIO.ReadTextAsync(f)); }
-                catch { }
+                catch (Exception ex) { Debug.WriteLine($"Drop: {ex.Message}"); }
             }
         }
     }
@@ -604,22 +701,18 @@ public sealed partial class MainWindow : Window
     private void WrapSelection(string before, string after, string placeholder = "testo")
     {
         var b = EditableBox(); if (b == null) return;
-        string sel = string.IsNullOrEmpty(b.SelectedText) ? placeholder : b.SelectedText;
-        int start = b.SelectionStart;
-        string replacement = before + sel + after;
-        if (b.SelectionLength > 0) b.SelectedText = replacement;
-        else
-        {
-            b.Text = b.Text.Insert(start, replacement);
-            b.Select(start + before.Length, sel.Length);
-        }
+        var (start, len) = CachedSelection(b);
+        string sel = len > 0 ? b.Text.Substring(start, len) : placeholder;
+        b.Select(start, len);
+        b.SelectedText = before + sel + after;
+        if (len == 0) b.Select(start + before.Length, sel.Length);
         b.Focus(FocusState.Programmatic);
     }
 
     private void PrefixLines(string prefix)
     {
         var b = EditableBox(); if (b == null) return;
-        int start = b.SelectionStart, len = b.SelectionLength;
+        var (start, len) = CachedSelection(b);
         int lineStart = start;
         while (lineStart > 0 && b.Text[lineStart - 1] != '\n') lineStart--;
         int lineEnd = start + len;
@@ -629,7 +722,8 @@ public sealed partial class MainWindow : Window
         for (int k = 0; k < lines.Length; k++)
             lines[k] = lines[k].StartsWith(prefix) ? lines[k][prefix.Length..] : prefix + lines[k];
         var joined = string.Join('\n', lines);
-        b.Text = b.Text[..lineStart] + joined + b.Text[lineEnd..];
+        b.Select(lineStart, lineEnd - lineStart);
+        b.SelectedText = joined;
         b.Select(lineStart, joined.Length);
         b.Focus(FocusState.Programmatic);
     }
@@ -637,10 +731,11 @@ public sealed partial class MainWindow : Window
     private void FormatHeading_Click(object s, RoutedEventArgs e)
     {
         var b = EditableBox(); if (b == null) return;
-        int caret = b.SelectionStart;
+        var (caret, _) = CachedSelection(b);
         int ls = caret;
         while (ls > 0 && b.Text[ls - 1] != '\n') ls--;
-        b.Text = b.Text.Insert(ls, "# ");
+        b.Select(ls, 0);
+        b.SelectedText = "# ";
         b.Select(caret + 2, 0);
         b.Focus(FocusState.Programmatic);
     }
@@ -651,11 +746,10 @@ public sealed partial class MainWindow : Window
     private void FormatLink_Click(object s, RoutedEventArgs e)
     {
         var b = EditableBox(); if (b == null) return;
-        string sel = string.IsNullOrEmpty(b.SelectedText) ? "testo" : b.SelectedText;
-        int start = b.SelectionStart;
-        string rep = $"[{sel}](https://)";
-        if (b.SelectionLength > 0) b.SelectedText = rep;
-        else b.Text = b.Text.Insert(start, rep);
+        var (start, len) = CachedSelection(b);
+        string sel = len > 0 ? b.Text.Substring(start, len) : "testo";
+        b.Select(start, len);
+        b.SelectedText = $"[{sel}](https://)";
         b.Select(start + 1, sel.Length);
         b.Focus(FocusState.Programmatic);
     }

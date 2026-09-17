@@ -33,7 +33,7 @@ Mica su Windows 11.
 - **Mica di sistema** (`MicaBackdrop` BaseAlt, zero P/Invoke), title bar estesa con tab dentro
 - Menu File/Modifica/Visualizza con shortcut, ricerca (Ctrl+F), zoom, a capo, drag & drop
 - Status bar come l'originale (riga/col, caratteri, tipo, zoom, CRLF, UTF-8)
-- Icona `icona.ico` (exe, taskbar, title bar)
+- Icona `Assets/AppIcon.ico` (exe, taskbar, title bar)
 
 ## Struttura (FluentNotepad.WinUI/)
 

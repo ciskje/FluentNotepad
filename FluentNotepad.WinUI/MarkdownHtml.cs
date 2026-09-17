@@ -80,7 +80,7 @@ public static class MarkdownHtml
     }
 
     private static string BaseCss(double fs) => $@"
-body{{font-family:'Segoe UI Variable Text','Segoe UI',sans-serif;font-size:{fs:0}px;line-height:1.55;margin:0;padding:20px 24px;word-wrap:break-word}}
+body{{font-family:'Cascadia Mono','Cascadia Code',Consolas,monospace;font-size:{fs:0}px;line-height:1.55;margin:0;padding:20px 24px;word-wrap:break-word}}
 h1{{font-size:{fs * 1.8:0}px;border-bottom:1px solid;margin:16px 0 8px;padding-bottom:4px}}
 h2{{font-size:{fs * 1.5:0}px;border-bottom:1px solid;margin:14px 0 8px;padding-bottom:4px}}
 h3{{font-size:{fs * 1.3:0}px;margin:12px 0 6px}}h4{{font-size:{fs * 1.15:0}px;margin:10px 0 6px}}
@@ -96,7 +96,7 @@ img{{max-width:100%;margin:6px 0}}.img-missing{{font-style:italic;opacity:.7}}
 hr{{border:none;border-top:1px solid;margin:14px 0}}";
 
     private static string LightCss(double fs) => BaseCss(fs) + @"
-body{background:#F9F9F9;color:#262626}h1,h2{border-color:#E1DFDD}
+body{background:#FFFFFF;color:#262626}h1,h2{border-color:#E1DFDD}
 a{color:#0078D4}code{background:#F1F0EE}pre{background:#F1F0EE;border:1px solid #E1DFDD}
 blockquote{background:#F7F7F7;border-color:#C8C6C4}th{background:#F3F3F3}th,td{border-color:#E1DFDD}hr{border-color:#E1DFDD}";
 

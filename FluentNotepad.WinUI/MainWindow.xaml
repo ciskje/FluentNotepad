@@ -18,7 +18,7 @@
         <Grid x:Name="TitleBarGrid" Grid.Row="0" Background="Transparent">
             <controls:TabView
                 xmlns:controls="using:Microsoft.UI.Xaml.Controls"
-                x:Name="Tabs" Background="Transparent" Margin="4,6,150,0"
+                x:Name="Tabs" Background="Transparent" BorderThickness="0" BorderBrush="Transparent" Margin="4,6,150,0"
                 VerticalAlignment="Stretch"
                 IsAddTabButtonVisible="True" CanReorderTabs="True" CanDragTabs="True"
                 AddTabButtonClick="Tabs_AddTab" TabCloseRequested="Tabs_Close"
@@ -30,14 +30,14 @@
         </Grid>
 
         <!-- ===== MENU + FORMATTAZIONE (velo bianco/nero su Mica come Notepad) ===== -->
-        <Grid x:Name="MenuRow" Grid.Row="1" Padding="8,2,4,2" BorderThickness="0,0,0,1"
-              BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}">
+        <Grid x:Name="MenuRow" Grid.Row="1" Padding="8,0,4,0" BorderThickness="0"
+              BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" MinHeight="0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
-            <MenuBar>
+            <MenuBar Height="32" Padding="0" VerticalAlignment="Center" FontSize="14">
                 <MenuBarItem Title="File">
                     <MenuFlyoutItem Text="Nuova scheda" Click="NewTab_Click">
                         <MenuFlyoutItem.KeyboardAccelerators>
@@ -130,51 +130,52 @@
                         </MenuFlyoutItem.KeyboardAccelerators>
                     </MenuFlyoutItem>
                     <MenuFlyoutSeparator/>
-                    <MenuFlyoutItem x:Name="WrapMenuItem" Text="A capo automatico" Click="Wrap_Click"/>
+                    <MenuFlyoutItem Text="A capo automatico" Click="Wrap_Click"/>
                 </MenuBarItem>
             </MenuBar>
 
             <CommandBar Grid.Column="1" Background="Transparent" DefaultLabelPosition="Collapsed"
-                        OverflowButtonVisibility="Collapsed" HorizontalAlignment="Center">
-                <AppBarButton Content="H" FontFamily="Segoe UI" FontWeight="Bold" ToolTipService.ToolTip="Titolo (#)" Click="FormatHeading_Click"/>
-                <AppBarButton Content="B" FontFamily="Segoe UI" FontWeight="Bold" ToolTipService.ToolTip="Grassetto (**testo**)" Click="FormatBold_Click"/>
-                <AppBarButton Content="I" FontFamily="Segoe UI" FontStyle="Italic" ToolTipService.ToolTip="Corsivo (*testo*)" Click="FormatItalic_Click"/>
-                <AppBarButton Content="S" FontFamily="Segoe UI" ToolTipService.ToolTip="Barrato (~~testo~~)" Click="FormatStrike_Click"/>
-                <AppBarButton ToolTipService.ToolTip="Link [testo](url)" Click="FormatLink_Click">
+                        OverflowButtonVisibility="Collapsed" HorizontalAlignment="Center"
+                        Height="36" Padding="0" VerticalAlignment="Center">
+                <AppBarButton Content="H" FontFamily="Segoe UI" FontWeight="Bold" Width="36" Height="36" ToolTipService.ToolTip="Titolo (#)" Click="FormatHeading_Click"/>
+                <AppBarButton Content="B" FontFamily="Segoe UI" FontWeight="Bold" Width="36" Height="36" ToolTipService.ToolTip="Grassetto (**testo**)" Click="FormatBold_Click"/>
+                <AppBarButton Content="I" FontFamily="Segoe UI" FontStyle="Italic" Width="36" Height="36" ToolTipService.ToolTip="Corsivo (*testo*)" Click="FormatItalic_Click"/>
+                <AppBarButton Content="S" FontFamily="Segoe UI" Width="36" Height="36" ToolTipService.ToolTip="Barrato (~~testo~~)" Click="FormatStrike_Click"/>
+                <AppBarButton Width="36" Height="36" ToolTipService.ToolTip="Link [testo](url)" Click="FormatLink_Click">
                     <AppBarButton.Icon>
                         <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE71B;"/>
                     </AppBarButton.Icon>
                 </AppBarButton>
-                <AppBarButton Content="&#x275D;" FontFamily="Segoe UI" ToolTipService.ToolTip="Citazione (> )" Click="FormatQuote_Click"/>
-                <AppBarButton ToolTipService.ToolTip="Elenco puntato (- )" Click="FormatBullets_Click">
+                <AppBarButton Content="&#x275D;" FontFamily="Segoe UI" Width="36" Height="36" ToolTipService.ToolTip="Citazione (> )" Click="FormatQuote_Click"/>
+                <AppBarButton Width="36" Height="36" ToolTipService.ToolTip="Elenco puntato (- )" Click="FormatBullets_Click">
                     <AppBarButton.Icon>
                         <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE8FD;"/>
                     </AppBarButton.Icon>
                 </AppBarButton>
-                <AppBarButton Content="1." FontFamily="Segoe UI" ToolTipService.ToolTip="Elenco numerato (1. )" Click="FormatNumbers_Click"/>
-                <AppBarButton Content="{}{ }" FontFamily="Consolas" ToolTipService.ToolTip="Codice (`testo`)" Click="FormatCode_Click"/>
+                <AppBarButton Content="1." FontFamily="Segoe UI" Width="36" Height="36" ToolTipService.ToolTip="Elenco numerato (1. )" Click="FormatNumbers_Click"/>
+                <AppBarButton Content="{}{ }" FontFamily="Consolas" Width="36" Height="36" ToolTipService.ToolTip="Codice (`testo`)" Click="FormatCode_Click"/>
             </CommandBar>
 
             <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                <Border x:Name="MdToggle" Visibility="Collapsed" CornerRadius="6" Padding="2" Margin="0,0,4,0"
+                <Border x:Name="MdToggle" Visibility="Collapsed" CornerRadius="4" Padding="1" Margin="0,0,4,0"
                         Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                         BorderThickness="1" BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}">
                     <StackPanel Orientation="Horizontal">
-                        <Button x:Name="EditModeBtn" Content="Modifica" Click="EditMode_Click" ToolTipService.ToolTip="Modalità modifica"/>
-                        <Button x:Name="PreviewModeBtn" Content="Anteprima" Click="PreviewMode_Click" ToolTipService.ToolTip="Anteprima Markdown (Ctrl+Maiusc+V)"/>
+                        <Button x:Name="EditModeBtn" Content="Modifica" FontSize="12" Padding="6,1" MinHeight="24" Click="EditMode_Click" ToolTipService.ToolTip="Modalità modifica"/>
+                        <Button x:Name="PreviewModeBtn" Content="Anteprima" FontSize="12" Padding="6,1" MinHeight="24" Click="PreviewMode_Click" ToolTipService.ToolTip="Anteprima Markdown (Ctrl+Maiusc+V)"/>
                     </StackPanel>
                 </Border>
-                <AppBarButton ToolTipService.ToolTip="Cerca (Ctrl+F)" Click="Find_Click" Width="40">
+                <AppBarButton ToolTipService.ToolTip="Cerca (Ctrl+F)" Click="Find_Click" Width="36" Height="36">
                     <AppBarButton.Icon>
                         <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE721;"/>
                     </AppBarButton.Icon>
                 </AppBarButton>
-                <AppBarButton x:Name="ThemeButton" ToolTipService.ToolTip="Tema chiaro/scuro" Click="ThemeButton_Click" Width="40">
+                <AppBarButton x:Name="ThemeButton" ToolTipService.ToolTip="Tema chiaro/scuro" Click="ThemeButton_Click" Width="36" Height="36">
                     <AppBarButton.Icon>
                         <FontIcon x:Name="ThemeIcon" FontFamily="Segoe Fluent Icons" Glyph="&#xE708;"/>
                     </AppBarButton.Icon>
                 </AppBarButton>
-                <AppBarButton ToolTipService.ToolTip="Impostazioni" Click="Settings_Click" Width="40">
+                <AppBarButton ToolTipService.ToolTip="Impostazioni" Click="Settings_Click" Width="36" Height="36">
                     <AppBarButton.Icon>
                         <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE713;"/>
                     </AppBarButton.Icon>
@@ -230,9 +231,9 @@
                 <TextBlock x:Name="ZoomLabel" Text="100%" VerticalAlignment="Center" Width="42" TextAlignment="Center" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                 <Button Content="&#xE948;" FontFamily="Segoe Fluent Icons" FontSize="11" Padding="6,2" Click="ZoomIn_Click" ToolTipService.ToolTip="Aumenta zoom"/>
                 <Rectangle Width="1" Height="16" Fill="{ThemeResource DividerStrokeColorDefaultBrush}"/>
-                <TextBlock Text="Windows (CRLF)" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                <TextBlock x:Name="LineEndLabel" Text="Windows (CRLF)" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                 <Rectangle Width="1" Height="16" Fill="{ThemeResource DividerStrokeColorDefaultBrush}"/>
-                <TextBlock Text="UTF-8" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                <TextBlock x:Name="EncodingLabel" Text="UTF-8" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
             </StackPanel>
         </Grid>
 
