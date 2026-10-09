@@ -20,16 +20,21 @@ Clone del Blocco note di Windows 11 in WinUI 3, con anteprima Markdown integrata
 - WebView2 evergreen (preinstallato su Windows 11)
 - Per compilare: .NET 8 SDK
 
-## Avvio rapido
+## Download
 
-Setup da [Releases](../../releases), oppure compilato dai sorgenti:
+Nel repo ci sono solo i sorgenti (build e setup **non** versionati). Due strade:
+
+- **Setup pronto**: pagina [Releases](../../releases) → `FluentNotepad-Setup-2.0.10-win-x64.exe` (installazione per tutti gli utenti in Program Files, associazione `.md` opzionale)
+- **Compilalo tu**:
 
 ```bash
 dotnet publish source\FluentNotepad.WinUI.csproj -c Release -p:Platform=x64
 iscc installer\FluentNotepad.iss
 ```
 
-Per provare senza installare:
+L'installer finisce in `installer\dist\` (richiede Inno Setup 6).
+
+## Prova senza installare
 
 ```bash
 # doppio clic su avvia-debug.bat, oppure:
