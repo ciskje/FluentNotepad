@@ -2,7 +2,7 @@
 
 A Windows 11 Notepad clone in WinUI 3, with built-in Markdown preview.
 
-![Markdown preview of BENCH.md](screenshot.png)
+![Markdown preview of BENCH.md (dark theme)](screenshot-dark.png)
 
 ## Features
 
@@ -48,7 +48,7 @@ dotnet build source\FluentNotepad.WinUI.csproj -c Debug
 - `installer/` — Inno Setup 6 script (per-machine install in Program Files, optional `.md` association)
 - `app/` — ready-to-run published build (**not versioned**, see `.gitignore`)
 - `BENCH.md`, `dati-inventati.md` — sample files to try the preview (tables included)
-- `screenshot.png` — the BENCH.md preview shown above
+- `screenshot-dark.png` — the BENCH.md preview shown above
 
 Technical details (in Italian) in [`source/README.md`](source/README.md).
 
