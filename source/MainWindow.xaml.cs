@@ -31,6 +31,39 @@ public sealed partial class MainWindow : Window
     private readonly SolidColorBrush _accentSoft =
         new(Windows.UI.Color.FromArgb(0x33, 0x00, 0x78, 0xD4));
 
+    // Stringhe da codice: lette dai .resw distribuiti accanto all'exe (Strings/<lingua>/).
+    // Niente MRT/ResourceLoader: richiede package identity, assente nelle unpackaged
+    // (FileNotFoundException al costruttore). Gli x:Uid in XAML usano MRT interno e funzionano.
+    private static System.Collections.Generic.Dictionary<string, string>? _res;
+    internal static string Str(string key)
+    {
+        try
+        {
+            if (_res == null)
+            {
+                // Stessa regola del resto dell'interfaccia: inglese solo se sistema inglese
+                var lang = Windows.Globalization.ApplicationLanguages.Languages.FirstOrDefault()?.Split('-')[0];
+                _res = LoadResw(lang == "en" ? "en-US" : "it-IT");
+            }
+            if (_res.TryGetValue(key, out var s)) return s;
+        }
+        catch (Exception ex) { Debug.WriteLine($"Str({key}): {ex.Message}"); }
+        return $"[{key}]";
+    }
+
+    private static System.Collections.Generic.Dictionary<string, string> LoadResw(string folder)
+    {
+        var d = new System.Collections.Generic.Dictionary<string, string>();
+        var xml = new System.Xml.XmlDocument();
+        xml.Load(Path.Combine(AppContext.BaseDirectory, "Strings", folder, "Resources.resw"));
+        foreach (System.Xml.XmlNode n in xml.SelectNodes("/root/data")!)
+        {
+            var name = n.Attributes?["name"]?.Value;
+            var value = n.SelectSingleNode("value")?.InnerText;
+            if (name != null && value != null) d[name] = value;
+        }
+        return d;
+    }
     private sealed class DocumentInfo
     {
         public TabViewItem Tab = null!;
@@ -45,6 +78,17 @@ public sealed partial class MainWindow : Window
 
     public MainWindow()
     {
+        // Lingua interfaccia (italiano/inglese) dalla lingua di Windows; italiano per le altre.
+        // Prima di InitializeComponent: gli x:Uid si risolvono al caricamento XAML.
+        // Protetto: il setter ha fatto failfast una volta con tag neutro, si usa qualificato.
+        try
+        {
+            var lang = Windows.Globalization.ApplicationLanguages.Languages.FirstOrDefault()?.Split('-')[0];
+            if (lang != "it" && lang != "en")
+                Windows.Globalization.ApplicationLanguages.PrimaryLanguageOverride = "it-IT";
+        }
+        catch (Exception ex) { Debug.WriteLine($"Lang override: {ex.Message}"); }
+
         // WebView2 scrive i suoi dati accanto all'exe (default): in Program Files (non scrivibile)
         // non si inizializza mai. Si punta a LocalAppData — solo per questo processo, non persistita.
         // (Letta da WebView2 alla prima inizializzazione, quindi va impostata qui prima di tutto.)
@@ -77,7 +121,7 @@ public sealed partial class MainWindow : Window
         };
 
         var v = Assembly.GetExecutingAssembly().GetName().Version;
-        VersionInfo.Text = $"FluentNotepad {v?.ToString(3) ?? "?"} — anteprima Markdown via WebView2.";
+        VersionInfo.Text = string.Format(Str("VersionInfo"), v?.ToString(3) ?? "?");
 
         // Ctrl++ / Ctrl+- sulla tastiera principale (187=OemPlus, 189=OemMinus)
         var plus = new KeyboardAccelerator { Key = (VirtualKey)187, Modifiers = VirtualKeyModifiers.Control };
@@ -87,8 +131,10 @@ public sealed partial class MainWindow : Window
         minus.Invoked += ZoomOutAccel_Invoked;
         Root.KeyboardAccelerators.Add(minus);
 
-        DetectWindowsTheme();
-        ApplyTheme(_dark);
+        // Tema salvato (chiaro/scuro/sistema): di default segue Windows
+        string mode = LoadThemeSetting();
+        ThemeCombo.SelectedIndex = mode == "light" ? 0 : mode == "dark" ? 1 : 2;
+        ApplyThemeSetting(mode);
         NewTab(null);
         _loading = false;
         GetActiveBox()?.Focus(FocusState.Programmatic);
@@ -118,7 +164,7 @@ public sealed partial class MainWindow : Window
                          path.EndsWith(".markdown", StringComparison.OrdinalIgnoreCase));
 
     private static string DisplayName(DocumentInfo d) =>
-        (d.Dirty ? "*" : "") + (d.Path != null ? System.IO.Path.GetFileName(d.Path) : "Senza titolo");
+        (d.Dirty ? "*" : "") + (d.Path != null ? System.IO.Path.GetFileName(d.Path) : Str("Untitled"));
 
     private void RefreshHeader(DocumentInfo d) => d.Tab.Header = DisplayName(d);
 
@@ -203,10 +249,10 @@ public sealed partial class MainWindow : Window
         var dlg = new ContentDialog
         {
             Title = "FluentNotepad",
-            Content = $"Salvare le modifiche a {DisplayName(doc).TrimStart('*')}?",
-            PrimaryButtonText = "Salva",
-            SecondaryButtonText = "Non salvare",
-            CloseButtonText = "Annulla",
+            Content = string.Format(Str("SaveContent"), DisplayName(doc).TrimStart('*')),
+            PrimaryButtonText = Str("SavePrimary"),
+            SecondaryButtonText = Str("SaveSecondary"),
+            CloseButtonText = Str("SaveClose"),
             XamlRoot = Content.XamlRoot
         };
         var r = await dlg.ShowAsync();
@@ -304,7 +350,7 @@ public sealed partial class MainWindow : Window
             if (attempt < 2) await Task.Delay(1500);
         }
         PreviewView.Visibility = Visibility.Collapsed;
-        PreviewErrorText.Text = "Anteprima non disponibile (WebView2). " + _lastWebError;
+        PreviewErrorText.Text = Str("PreviewError") + _lastWebError;
         PreviewError.Visibility = Visibility.Visible;
         SetBusy(false);
     }
@@ -394,7 +440,7 @@ public sealed partial class MainWindow : Window
         var d = GetActiveDoc();
         bool isMd = d?.IsMarkdown == true;
         MdToggle.Visibility = isMd ? Visibility.Visible : Visibility.Collapsed;
-        FileTypeLabel.Text = isMd ? "Markdown" : "Testo normale";
+        FileTypeLabel.Text = isMd ? "Markdown" : Str("FileTypePlain");
         if (isMd && d != null)
         {
             StyleToggle(EditModeBtn, !d.PreviewVisible);
@@ -452,14 +498,14 @@ public sealed partial class MainWindow : Window
             if (doc.IsMarkdown)
             {
                 picker.FileTypeChoices.Add("Markdown", new List<string> { ".md" });
-                picker.SuggestedFileName = "Senza titolo";
+                picker.SuggestedFileName = Str("Untitled");
                 picker.DefaultFileExtension = ".md";
             }
             else
             {
                 picker.FileTypeChoices.Add("File di testo", new List<string> { ".txt" });
                 picker.FileTypeChoices.Add("Markdown", new List<string> { ".md" });
-                picker.SuggestedFileName = "Senza titolo";
+                picker.SuggestedFileName = Str("Untitled");
                 picker.DefaultFileExtension = ".txt";
             }
             var file = await picker.PickSaveFileAsync();
@@ -642,12 +688,12 @@ public sealed partial class MainWindow : Window
         var b = GetActiveBox();
         if (b == null)
         {
-            LnCol.Text = "Riga 1, col. 1";
-            CharCount.Text = "0 caratteri";
+            LnCol.Text = string.Format(Str("StatusLine"), 1, 1);
+            CharCount.Text = string.Format(Str("StatusChars"), 0);
             return;
         }
         var text = b.Text ?? "";
-        CharCount.Text = $"{text.Length} caratteri";
+        CharCount.Text = string.Format(Str("StatusChars"), text.Length);
         int caret = Math.Clamp(b.SelectionStart, 0, text.Length);
         int line = 1, col = 1;
         for (int k = 0; k < caret; k++)
@@ -655,7 +701,7 @@ public sealed partial class MainWindow : Window
             if (text[k] == '\n') { line++; col = 1; }
             else col++;
         }
-        LnCol.Text = $"Riga {line}, col. {col}";
+        LnCol.Text = string.Format(Str("StatusLine"), line, col);
     }
 
     // ================= TEMA =================
@@ -703,12 +749,47 @@ public sealed partial class MainWindow : Window
         if (d is { IsMarkdown: true, PreviewVisible: true }) RenderPreview(d);
     }
 
-    private void ThemeButton_Click(object s, RoutedEventArgs e) => ApplyTheme(!_dark);
+    private void ThemeButton_Click(object s, RoutedEventArgs e) =>
+        // Passa a esplicito opposto di quello effettivo: il combo salva+applica da solo
+        ThemeCombo.SelectedIndex = _dark ? 0 : 1;
     private void ThemeCombo_Changed(object s, SelectionChangedEventArgs e)
     {
         if (_loading) return;
-        if (ThemeCombo.SelectedIndex == 0) ApplyTheme(false);
-        else if (ThemeCombo.SelectedIndex == 1) ApplyTheme(true);
+        string mode = ThemeCombo.SelectedIndex == 0 ? "light"
+            : ThemeCombo.SelectedIndex == 1 ? "dark" : "system";
+        SaveThemeSetting(mode);
+        ApplyThemeSetting(mode);
+    }
+
+    private static readonly string _settingsPath = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "FluentNotepad", "settings.json");
+
+    private static string LoadThemeSetting()
+    {
+        try
+        {
+            var m = Regex.Match(File.ReadAllText(_settingsPath), @"""theme""\s*:\s*""(light|dark|system)""");
+            if (m.Success) return m.Groups[1].Value;
+        }
+        catch (Exception ex) { Debug.WriteLine($"LoadTheme: {ex.Message}"); }
+        return "system";
+    }
+
+    private static void SaveThemeSetting(string mode)
+    {
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(_settingsPath)!);
+            File.WriteAllText(_settingsPath, $"{{\"theme\":\"{mode}\"}}");
+        }
+        catch (Exception ex) { Debug.WriteLine($"SaveTheme: {ex.Message}"); }
+    }
+
+    private void ApplyThemeSetting(string mode)
+    {
+        if (mode == "light") ApplyTheme(false);
+        else if (mode == "dark") ApplyTheme(true);
         else { DetectWindowsTheme(); ApplyTheme(_dark); }
     }
 
@@ -756,11 +837,11 @@ public sealed partial class MainWindow : Window
     }
 
     // ================= BARRA FORMATTAZIONE =================
-    private void WrapSelection(string before, string after, string placeholder = "testo")
+    private void WrapSelection(string before, string after, string? placeholder = null)
     {
         var b = EditableBox(); if (b == null) return;
         var (start, len) = CachedSelection(b);
-        string sel = len > 0 ? b.Text.Substring(start, len) : placeholder;
+        string sel = len > 0 ? b.Text.Substring(start, len) : (placeholder ?? Str("PlaceholderText"));
         b.Select(start, len);
         b.SelectedText = before + sel + after;
         if (len == 0) b.Select(start + before.Length, sel.Length);
@@ -800,12 +881,12 @@ public sealed partial class MainWindow : Window
     private void FormatBold_Click(object s, RoutedEventArgs e) => WrapSelection("**", "**");
     private void FormatItalic_Click(object s, RoutedEventArgs e) => WrapSelection("*", "*");
     private void FormatStrike_Click(object s, RoutedEventArgs e) => WrapSelection("~~", "~~");
-    private void FormatCode_Click(object s, RoutedEventArgs e) => WrapSelection("`", "`", "codice");
+    private void FormatCode_Click(object s, RoutedEventArgs e) => WrapSelection("`", "`", Str("PlaceholderCode"));
     private void FormatLink_Click(object s, RoutedEventArgs e)
     {
         var b = EditableBox(); if (b == null) return;
         var (start, len) = CachedSelection(b);
-        string sel = len > 0 ? b.Text.Substring(start, len) : "testo";
+        string sel = len > 0 ? b.Text.Substring(start, len) : Str("PlaceholderText");
         b.Select(start, len);
         b.SelectedText = $"[{sel}](https://)";
         b.Select(start + 1, sel.Length);

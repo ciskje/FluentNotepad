@@ -32,6 +32,10 @@
     <Content Include="Assets\StoreLogo.png" />
     <Content Include="Assets\AppIcon.ico" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Assets\Wide310x150Logo.scale-200.png" />
+    <!-- .resw anche come file (per le stringhe da codice senza MRT: ResourceLoader
+         richiede package identity, assente nelle app unpackaged) -->
+    <Content Include="Strings\it-IT\Resources.resw" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Strings\en-US\Resources.resw" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

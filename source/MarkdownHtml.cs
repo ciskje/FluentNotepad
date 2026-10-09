@@ -19,7 +19,7 @@ public static class MarkdownHtml
     public static string Build(string markdown, string? baseDir, bool dark, double fontSize)
     {
         string body = string.IsNullOrWhiteSpace(markdown)
-            ? "<p class='empty-hint'>Niente da visualizzare — scrivi Markdown in modalita Modifica.</p>"
+            ? "<p class='empty-hint'>" + MainWindow.Str("EmptyHint") + "</p>"
             : Markdig.Markdown.ToHtml(markdown, _pipeline);
         body = ProcessImages(body, baseDir);
         string css = dark ? DarkCss(fontSize) : LightCss(fontSize);
@@ -41,7 +41,7 @@ public static class MarkdownHtml
     private static string InjectOnError(string attrs)
     {
         if (attrs.Contains("onerror")) return attrs;
-        return attrs + "onerror=\"this.style.display='none';var s=document.createElement('span');s.className='img-missing';s.textContent='\\uD83D\\uDDBC '+(this.alt||'Immagine')+' — non disponibile';this.after(s);\" ";
+        return attrs + "onerror=\"this.style.display='none';var s=document.createElement('span');s.className='img-missing';s.textContent='\\uD83D\\uDDBC '+(this.alt||'" + MainWindow.Str("ImgName") + "')+'" + MainWindow.Str("ImgMissing") + "';this.after(s);\" ";
     }
 
     private static string ResolveSrc(string src, string? baseDir)

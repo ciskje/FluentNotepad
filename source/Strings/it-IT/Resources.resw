@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!-- Menu File -->
+  <data name="MenuFile.Title"><value>File</value></data>
+  <data name="FileNewTab.Text"><value>Nuova scheda</value></data>
+  <data name="FileOpen.Text"><value>Apri…</value></data>
+  <data name="FileSave.Text"><value>Salva</value></data>
+  <data name="FileSaveAs.Text"><value>Salva con nome…</value></data>
+  <data name="FileCloseTab.Text"><value>Chiudi scheda</value></data>
+  <data name="FileExit.Text"><value>Esci</value></data>
+  <!-- Menu Modifica -->
+  <data name="MenuEdit.Title"><value>Modifica</value></data>
+  <data name="EditUndo.Text"><value>Annulla</value></data>
+  <data name="EditRedo.Text"><value>Ripeti</value></data>
+  <data name="EditCut.Text"><value>Taglia</value></data>
+  <data name="EditCopy.Text"><value>Copia</value></data>
+  <data name="EditPaste.Text"><value>Incolla</value></data>
+  <data name="EditFind.Text"><value>Trova…</value></data>
+  <data name="EditSelectAll.Text"><value>Seleziona tutto</value></data>
+  <!-- Menu Visualizza -->
+  <data name="MenuView.Title"><value>Visualizza</value></data>
+  <data name="ViewZoomIn.Text"><value>Aumenta zoom</value></data>
+  <data name="ViewZoomOut.Text"><value>Riduci zoom</value></data>
+  <data name="ViewZoomReset.Text"><value>Ripristina zoom</value></data>
+  <data name="ViewPreview.Text"><value>Anteprima Markdown</value></data>
+  <data name="ViewWrap.Text"><value>A capo automatico</value></data>
+  <!-- Barra formattazione -->
+  <data name="FmtHeading.ToolTipService.ToolTip"><value>Titolo (#)</value></data>
+  <data name="FmtBold.ToolTipService.ToolTip"><value>Grassetto (**testo**)</value></data>
+  <data name="FmtItalic.ToolTipService.ToolTip"><value>Corsivo (*testo*)</value></data>
+  <data name="FmtStrike.ToolTipService.ToolTip"><value>Barrato (~~testo~~)</value></data>
+  <data name="FmtLink.ToolTipService.ToolTip"><value>Link [testo](url)</value></data>
+  <data name="FmtQuote.ToolTipService.ToolTip"><value>Citazione (&gt; )</value></data>
+  <data name="FmtBullets.ToolTipService.ToolTip"><value>Elenco puntato (- )</value></data>
+  <data name="FmtNumbers.ToolTipService.ToolTip"><value>Elenco numerato (1. )</value></data>
+  <data name="FmtCode.ToolTipService.ToolTip"><value>Codice (`testo`)</value></data>
+  <!-- Toggle Modifica/Anteprima -->
+  <data name="EditModeBtn.Content"><value>Modifica</value></data>
+  <data name="EditModeBtn.ToolTipService.ToolTip"><value>Modalità modifica</value></data>
+  <data name="PreviewModeBtn.Content"><value>Anteprima</value></data>
+  <data name="PreviewModeBtn.ToolTipService.ToolTip"><value>Anteprima Markdown (Ctrl+Maiusc+V)</value></data>
+  <!-- Pulsanti destra -->
+  <data name="SearchBtn.ToolTipService.ToolTip"><value>Cerca (Ctrl+F)</value></data>
+  <data name="ThemeBtn.ToolTipService.ToolTip"><value>Tema chiaro/scuro</value></data>
+  <data name="SettingsBtn.ToolTipService.ToolTip"><value>Impostazioni</value></data>
+  <!-- Trova -->
+  <data name="FindBox.PlaceholderText"><value>Cerca</value></data>
+  <data name="FindPrevBtn.ToolTipService.ToolTip"><value>Precedente</value></data>
+  <data name="FindNextBtn.ToolTipService.ToolTip"><value>Successivo</value></data>
+  <!-- Status bar -->
+  <data name="LnCol.Text"><value>Riga 1, col. 1</value></data>
+  <data name="CharCount.Text"><value>0 caratteri</value></data>
+  <data name="FileTypeLabel.Text"><value>Testo normale</value></data>
+  <data name="LineEndLabel.Text"><value>Windows (CRLF)</value></data>
+  <data name="EncodingLabel.Text"><value>UTF-8</value></data>
+  <data name="ZoomOutBtn.ToolTipService.ToolTip"><value>Riduci zoom</value></data>
+  <data name="ZoomInBtn.ToolTipService.ToolTip"><value>Aumenta zoom</value></data>
+  <!-- Impostazioni -->
+  <data name="SettingsDialog.Title"><value>Impostazioni</value></data>
+  <data name="SettingsDialog.CloseButtonText"><value>Chiudi</value></data>
+  <data name="SetAppearance.Text"><value>Aspetto</value></data>
+  <data name="SetTheme.Text"><value>Tema app</value></data>
+  <data name="SetLight.Content"><value>Chiaro</value></data>
+  <data name="SetDark.Content"><value>Scuro</value></data>
+  <data name="SetSystem.Content"><value>Segui Windows</value></data>
+  <data name="SetEditor.Text"><value>Editor</value></data>
+  <data name="WrapCheck.Content"><value>A capo automatico</value></data>
+  <data name="SetFontSize.Text"><value>Dimensione carattere</value></data>
+  <data name="SetInfo.Text"><value>Informazioni</value></data>
+  <!-- Codice -->
+  <data name="Untitled"><value>Senza titolo</value></data>
+  <data name="VersionInfo"><value>FluentNotepad {0} — anteprima Markdown via WebView2.</value></data>
+  <data name="SaveContent"><value>Salvare le modifiche a {0}?</value></data>
+  <data name="SavePrimary"><value>Salva</value></data>
+  <data name="SaveSecondary"><value>Non salvare</value></data>
+  <data name="SaveClose"><value>Annulla</value></data>
+  <data name="PreviewError"><value>Anteprima non disponibile (WebView2). </value></data>
+  <data name="StatusLine"><value>Riga {0}, col. {1}</value></data>
+  <data name="StatusChars"><value>{0} caratteri</value></data>
+  <data name="FileTypePlain"><value>Testo normale</value></data>
+  <data name="PlaceholderText"><value>testo</value></data>
+  <data name="PlaceholderCode"><value>codice</value></data>
+  <data name="EmptyHint"><value>Niente da visualizzare — scrivi Markdown in modalità Modifica.</value></data>
+  <data name="ImgName"><value>Immagine</value></data>
+  <data name="ImgMissing"><value> — non disponibile</value></data>
+</root>

@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!-- File menu -->
+  <data name="MenuFile.Title"><value>File</value></data>
+  <data name="FileNewTab.Text"><value>New tab</value></data>
+  <data name="FileOpen.Text"><value>Open…</value></data>
+  <data name="FileSave.Text"><value>Save</value></data>
+  <data name="FileSaveAs.Text"><value>Save as…</value></data>
+  <data name="FileCloseTab.Text"><value>Close tab</value></data>
+  <data name="FileExit.Text"><value>Exit</value></data>
+  <!-- Edit menu -->
+  <data name="MenuEdit.Title"><value>Edit</value></data>
+  <data name="EditUndo.Text"><value>Undo</value></data>
+  <data name="EditRedo.Text"><value>Redo</value></data>
+  <data name="EditCut.Text"><value>Cut</value></data>
+  <data name="EditCopy.Text"><value>Copy</value></data>
+  <data name="EditPaste.Text"><value>Paste</value></data>
+  <data name="EditFind.Text"><value>Find…</value></data>
+  <data name="EditSelectAll.Text"><value>Select all</value></data>
+  <!-- View menu -->
+  <data name="MenuView.Title"><value>View</value></data>
+  <data name="ViewZoomIn.Text"><value>Zoom in</value></data>
+  <data name="ViewZoomOut.Text"><value>Zoom out</value></data>
+  <data name="ViewZoomReset.Text"><value>Reset zoom</value></data>
+  <data name="ViewPreview.Text"><value>Markdown preview</value></data>
+  <data name="ViewWrap.Text"><value>Word wrap</value></data>
+  <!-- Formatting toolbar -->
+  <data name="FmtHeading.ToolTipService.ToolTip"><value>Heading (#)</value></data>
+  <data name="FmtBold.ToolTipService.ToolTip"><value>Bold (**text**)</value></data>
+  <data name="FmtItalic.ToolTipService.ToolTip"><value>Italic (*text*)</value></data>
+  <data name="FmtStrike.ToolTipService.ToolTip"><value>Strikethrough (~~text~~)</value></data>
+  <data name="FmtLink.ToolTipService.ToolTip"><value>Link [text](url)</value></data>
+  <data name="FmtQuote.ToolTipService.ToolTip"><value>Quote (&gt; )</value></data>
+  <data name="FmtBullets.ToolTipService.ToolTip"><value>Bulleted list (- )</value></data>
+  <data name="FmtNumbers.ToolTipService.ToolTip"><value>Numbered list (1. )</value></data>
+  <data name="FmtCode.ToolTipService.ToolTip"><value>Code (`text`)</value></data>
+  <!-- Edit/Preview toggle -->
+  <data name="EditModeBtn.Content"><value>Edit</value></data>
+  <data name="EditModeBtn.ToolTipService.ToolTip"><value>Edit mode</value></data>
+  <data name="PreviewModeBtn.Content"><value>Preview</value></data>
+  <data name="PreviewModeBtn.ToolTipService.ToolTip"><value>Markdown preview (Ctrl+Shift+V)</value></data>
+  <!-- Right buttons -->
+  <data name="SearchBtn.ToolTipService.ToolTip"><value>Find (Ctrl+F)</value></data>
+  <data name="ThemeBtn.ToolTipService.ToolTip"><value>Light/dark theme</value></data>
+  <data name="SettingsBtn.ToolTipService.ToolTip"><value>Settings</value></data>
+  <!-- Find -->
+  <data name="FindBox.PlaceholderText"><value>Search</value></data>
+  <data name="FindPrevBtn.ToolTipService.ToolTip"><value>Previous</value></data>
+  <data name="FindNextBtn.ToolTipService.ToolTip"><value>Next</value></data>
+  <!-- Status bar -->
+  <data name="LnCol.Text"><value>Line 1, col 1</value></data>
+  <data name="CharCount.Text"><value>0 characters</value></data>
+  <data name="FileTypeLabel.Text"><value>Plain text</value></data>
+  <data name="LineEndLabel.Text"><value>Windows (CRLF)</value></data>
+  <data name="EncodingLabel.Text"><value>UTF-8</value></data>
+  <data name="ZoomOutBtn.ToolTipService.ToolTip"><value>Zoom out</value></data>
+  <data name="ZoomInBtn.ToolTipService.ToolTip"><value>Zoom in</value></data>
+  <!-- Settings -->
+  <data name="SettingsDialog.Title"><value>Settings</value></data>
+  <data name="SettingsDialog.CloseButtonText"><value>Close</value></data>
+  <data name="SetAppearance.Text"><value>Appearance</value></data>
+  <data name="SetTheme.Text"><value>App theme</value></data>
+  <data name="SetLight.Content"><value>Light</value></data>
+  <data name="SetDark.Content"><value>Dark</value></data>
+  <data name="SetSystem.Content"><value>Follow Windows</value></data>
+  <data name="SetEditor.Text"><value>Editor</value></data>
+  <data name="WrapCheck.Content"><value>Word wrap</value></data>
+  <data name="SetFontSize.Text"><value>Font size</value></data>
+  <data name="SetInfo.Text"><value>About</value></data>
+  <!-- Code -->
+  <data name="Untitled"><value>Untitled</value></data>
+  <data name="VersionInfo"><value>FluentNotepad {0} — Markdown preview via WebView2.</value></data>
+  <data name="SaveContent"><value>Save changes to {0}?</value></data>
+  <data name="SavePrimary"><value>Save</value></data>
+  <data name="SaveSecondary"><value>Don't save</value></data>
+  <data name="SaveClose"><value>Cancel</value></data>
+  <data name="PreviewError"><value>Markdown preview unavailable (WebView2). </value></data>
+  <data name="StatusLine"><value>Line {0}, col {1}</value></data>
+  <data name="StatusChars"><value>{0} characters</value></data>
+  <data name="FileTypePlain"><value>Plain text</value></data>
+  <data name="PlaceholderText"><value>text</value></data>
+  <data name="PlaceholderCode"><value>code</value></data>
+  <data name="EmptyHint"><value>Nothing to display — write Markdown in Edit mode.</value></data>
+  <data name="ImgName"><value>Image</value></data>
+  <data name="ImgMissing"><value> — unavailable</value></data>
+</root>
