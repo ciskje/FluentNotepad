@@ -53,4 +53,4 @@ Dettagli tecnici in [`source/README.md`](source/README.md).
 
 ## Licenza
 
-Da definire.
+MIT — vedi [LICENSE](LICENSE).
