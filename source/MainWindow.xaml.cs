@@ -45,6 +45,13 @@ public sealed partial class MainWindow : Window
 
     public MainWindow()
     {
+        // WebView2 scrive i suoi dati accanto all'exe (default): in Program Files (non scrivibile)
+        // non si inizializza mai. Si punta a LocalAppData — solo per questo processo, non persistita.
+        // (Letta da WebView2 alla prima inizializzazione, quindi va impostata qui prima di tutto.)
+        Environment.SetEnvironmentVariable("WEBVIEW2_USER_DATA_FOLDER", Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "FluentNotepad", "WebView2"));
+
         InitializeComponent();
 
         // Title bar estesa + Mica di sistema (niente P/Invoke: è built-in)
@@ -89,12 +96,7 @@ public sealed partial class MainWindow : Window
 
     public void OpenFileFromArgs(string path)
     {
-        try
-        {
-            OpenFile(path, File.ReadAllText(path));
-            var d = GetActiveDoc();
-            if (d?.IsMarkdown == true) ShowPreview(d, true);
-        }
+        try { OpenFile(path, File.ReadAllText(path)); }
         catch (Exception ex) { Debug.WriteLine($"OpenFileFromArgs: {ex.Message}"); }
     }
 
@@ -249,20 +251,62 @@ public sealed partial class MainWindow : Window
     private readonly SemaphoreSlim _webLock = new(1, 1);
     private string _lastWebError = "";
     private string? _previewTmp;
+    private Microsoft.Web.WebView2.Core.CoreWebView2? _hookedCore;
+
+    // Cursore "impegnato" (cerchio che gira): XAML per l'area dell'app, classe html.busy
+    // dentro la pagina per l'area WebView2, che gestisce il cursore per conto suo.
+    // Durata minima: Windows aggiorna il cursore solo al movimento del mouse, quindi un
+    // render da pochi ms non si vedrebbe mai.
+    private const int MinBusyMs = 600;
+    private bool _busy;
+    private DateTime _busyUntil;
+    private int _busyGen;
+
+    private void SetBusy(bool busy)
+    {
+        if (busy)
+        {
+            _busyGen++;
+            _busy = true;
+            _busyUntil = DateTime.UtcNow.AddMilliseconds(MinBusyMs);
+            Root.SetBusy(true);
+            return;
+        }
+        if (_busy) _ = EndBusyAsync(_busyGen);
+    }
+
+    private async Task EndBusyAsync(int gen)
+    {
+        int wait = (int)(_busyUntil - DateTime.UtcNow).TotalMilliseconds;
+        if (wait > 0) await Task.Delay(wait);
+        if (gen != _busyGen) return; // nel frattempo e' partito un altro render
+        _busy = false;
+        Root.SetBusy(false);
+        _ = ClearPageBusyAsync();
+    }
+
+    private async Task ClearPageBusyAsync()
+    {
+        if (!_webReady) return;
+        try { await PreviewView.CoreWebView2.ExecuteScriptAsync("document.documentElement.classList.remove('busy')"); }
+        catch (Exception ex) { Debug.WriteLine($"ClearPageBusy: {ex.Message}"); }
+    }
 
     private async void RenderPreview(DocumentInfo doc)
     {
         if (!doc.IsMarkdown || !doc.PreviewVisible) return;
         PreviewError.Visibility = Visibility.Collapsed;
+        SetBusy(true);
         for (int attempt = 0; attempt < 3; attempt++)
         {
             if (await TryRenderAsync(doc)) return;
-            if (!doc.PreviewVisible) return;
+            if (!doc.PreviewVisible) { SetBusy(false); return; }
             if (attempt < 2) await Task.Delay(1500);
         }
         PreviewView.Visibility = Visibility.Collapsed;
         PreviewErrorText.Text = "Anteprima non disponibile (WebView2). " + _lastWebError;
         PreviewError.Visibility = Visibility.Visible;
+        SetBusy(false);
     }
 
     private async Task<bool> TryRenderAsync(DocumentInfo doc)
@@ -270,7 +314,20 @@ public sealed partial class MainWindow : Window
         await _webLock.WaitAsync();
         try
         {
-            if (!_webReady) { await PreviewView.EnsureCoreWebView2Async(); _webReady = true; }
+            if (!_webReady)
+            {
+                await PreviewView.EnsureCoreWebView2Async();
+                _webReady = true;
+                // Re-hook a ogni nuova istanza: dopo un reset (_webReady=false) il vecchio
+                // CoreWebView2 e' morto e il suo NavigationCompleted non scatterebbe mai piu',
+                // lasciando il busy eterno. Il render e' finito quando la pagina ha caricato.
+                var core = PreviewView.CoreWebView2;
+                if (!ReferenceEquals(_hookedCore, core))
+                {
+                    _hookedCore = core;
+                    core.NavigationCompleted += (_, _) => SetBusy(false);
+                }
+            }
             string? baseDir = doc.Path != null ? Path.GetDirectoryName(doc.Path) : null;
             double size = (FontSlider?.Value ?? 15) * _zoom;
             string html = MarkdownHtml.Build(doc.Editor.Text, baseDir, _dark, size);
@@ -285,7 +342,7 @@ public sealed partial class MainWindow : Window
             PreviewView.Visibility = Visibility.Visible;
             return true;
         }
-        catch (Exception ex) { _webReady = false; _lastWebError = ex.Message; return false; }
+        catch (Exception ex) { _webReady = false; _lastWebError = ex.Message; SetBusy(false); return false; }
         finally { _webLock.Release(); }
     }
 
@@ -438,6 +495,9 @@ public sealed partial class MainWindow : Window
             if (File.Exists(path)) d.FileEncoding = DetectEncoding(path);
             RefreshHeader(d);
             RefreshFileLabels();
+            // Un .md aperto da qualunque percorso (associazione/riga di comando, File > Apri,
+            // drag & drop) parte subito in Anteprima
+            if (d.IsMarkdown) ShowPreview(d, true);
         }
     }
 
@@ -614,16 +674,14 @@ public sealed partial class MainWindow : Window
     {
         _dark = dark;
         Root.RequestedTheme = dark ? ElementTheme.Dark : ElementTheme.Light;
-        // Titolo = Mica, sfondo = bianco/#282828, menu = via di mezzo.
+        // Solo la barra linguette e' Mica (chrome); la barra menu segue l'editor come in
+        // Notepad (bianco / #282828), cosi' linguetta e menu sono lo stesso bianco/nero
         var editorBg = new SolidColorBrush(dark
             ? Windows.UI.Color.FromArgb(255, 40, 40, 40)      // #282828
             : Windows.UI.Color.FromArgb(255, 255, 255, 255)); // bianco
-        var menuBg = new SolidColorBrush(dark
-            ? Windows.UI.Color.FromArgb(255, 36, 36, 36)      // #242424: tra #202020 e #282828
-            : Windows.UI.Color.FromArgb(255, 249, 249, 249)); // #F9F9F9: tra #F3F3F3 e bianco
         EditorHost.Background = editorBg;
-        TitleBarGrid.Background = new SolidColorBrush(Windows.UI.Color.FromArgb(0, 0, 0, 0)); // Mica a vista
-        MenuRow.Background = menuBg;
+        TitleBarGrid.Background = new SolidColorBrush(Colors.Transparent); // Mica a vista
+        MenuRow.Background = editorBg;
         StatusRow.Background = new SolidColorBrush(dark
             ? Windows.UI.Color.FromArgb(255, 32, 32, 32)      // #202020
             : Windows.UI.Color.FromArgb(255, 243, 243, 243)); // #F3F3F3

@@ -4,11 +4,18 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:local="using:FluentNotepad"
     mc:Ignorable="d">
 
-    <Grid x:Name="Root">
+    <local:CursorGrid x:Name="Root">
+        <local:CursorGrid.Resources>
+            <!-- Il TabView disegna una riga di 1px sotto lo strip: Notepad non ce l'ha -->
+            <SolidColorBrush x:Key="TabViewBorderBrush" Color="Transparent"/>
+        </local:CursorGrid.Resources>
         <Grid.RowDefinitions>
-            <RowDefinition Height="48"/>
+            <!-- 46 e non 48: lo strip deve finire esattamente dove finisce la linguetta,
+                 altrimenti sotto la linguetta resta una striscia grigia di 2px -->
+            <RowDefinition Height="46"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
@@ -256,5 +263,5 @@
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
             </StackPanel>
         </ContentDialog>
-    </Grid>
+    </local:CursorGrid>
 </Window>

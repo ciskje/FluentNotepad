@@ -2,6 +2,11 @@
 bin/
 obj/
 out/
+# App pubblicata (self-contained, non versionata)
+app/
+# Output installer Inno Setup (non versionato: ricreabile con iscc)
+installer/dist/
+installer/Output/
 # VS / Rider
 .vs/
 .idea/

@@ -14,9 +14,9 @@ Per qualunque altra ragione (docs, refactor interni, build) la versione **non** 
 ## Avvio
 
 ```bash
-# doppio clic su avvia-debug.bat, oppure:
-dotnet build FluentNotepad.WinUI/FluentNotepad.WinUI.csproj -c Debug
-FluentNotepad.WinUI/bin/Debug/net8.0-windows10.0.26100.0/win-x64/FluentNotepad.exe [file]
+# doppio clic su avvia-debug.bat (nella radice), oppure dalla radice del repo:
+dotnet build source/FluentNotepad.WinUI.csproj -c Debug
+source/bin/Debug/net8.0-windows10.0.26100.0/win-x64/FluentNotepad.exe [file]
 ```
 
 Exe **unpackaged** (niente MSIX): si avvia standalone, richiede solo il runtime
@@ -30,12 +30,12 @@ Mica su Windows 11.
   codice, citazioni, link, **immagini locali/remote/data-URI/SVG**), toggle
   Modifica/Anteprima (Ctrl+Maiusc+V), anteprima live, temi chiaro/scuro
 - **Barra di formattazione** (H/B/I/S/link/citazione/elenchi/codice) che inserisce sintassi
-- **Mica di sistema** (`MicaBackdrop` BaseAlt, zero P/Invoke), title bar estesa con tab dentro
+- **Mica di sistema** (`MicaBackdrop` BaseAlt, tinta marcata, zero P/Invoke), title bar estesa con tab dentro
 - Menu File/Modifica/Visualizza con shortcut, ricerca (Ctrl+F), zoom, a capo, drag & drop
 - Status bar come l'originale (riga/col, caratteri, tipo, zoom, CRLF, UTF-8)
 - Icona `Assets/AppIcon.ico` (exe, taskbar, title bar)
 
-## Struttura (FluentNotepad.WinUI/)
+## Struttura (source/)
 
 - `MainWindow.xaml` / `.xaml.cs` — shell, tab, editor, menu, status, temi, scorciatoie
 - `MarkdownHtml.cs` — Markdown → HTML (Markdig + CSS chiaro/scuro + immagini data-URI)
