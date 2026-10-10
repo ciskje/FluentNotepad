@@ -8,7 +8,7 @@
     <!-- Icona dell'exe (Explorer, collegamenti, Pannello di controllo): senza questa
          resta quella predefinita .NET, perche' AppWindow.SetIcon vale solo a runtime -->
     <ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>
-    <Version>2.0.10</Version>
+    <Version>2.1.1</Version>
     <WindowsPackageType>None</WindowsPackageType>
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <ApplicationManifest>app.manifest</ApplicationManifest>

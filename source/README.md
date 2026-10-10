@@ -14,7 +14,7 @@ Per qualunque altra ragione (docs, refactor interni, build) la versione **non** 
 ## Avvio
 
 ```bash
-# doppio clic su avvia-debug.bat (nella radice), oppure dalla radice del repo:
+# doppio clic su start-debug.bat (nella radice), oppure dalla radice del repo:
 dotnet build source/FluentNotepad.WinUI.csproj -c Debug
 source/bin/Debug/net8.0-windows10.0.26100.0/win-x64/FluentNotepad.exe [file]
 ```

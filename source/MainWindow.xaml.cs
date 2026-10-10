@@ -1,6 +1,6 @@
 using System.Diagnostics;
 using System.Reflection;
-using System.Text.RegularExpressions;
+using System.Text.Json;
 using Microsoft.UI;
 using Microsoft.UI.Composition.SystemBackdrops;
 using Microsoft.UI.Input;
@@ -102,9 +102,10 @@ public sealed partial class MainWindow : Window
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(TitleBarGrid);
         SystemBackdrop = new MicaBackdrop { Kind = MicaKind.BaseAlt };
-        AppWindow.Resize(new SizeInt32(1000, 650));
+        RestoreWindowGeometry();
         AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "AppIcon.ico"));
         AppWindow.Closing += App_Closing;
+        AppWindow.Changed += App_Changed;
         AppWindow.Destroying += (_, _) =>
         {
             try { if (_previewTmp != null && File.Exists(_previewTmp)) File.Delete(_previewTmp); }
@@ -120,10 +121,17 @@ public sealed partial class MainWindow : Window
             if (d is { IsMarkdown: true, PreviewVisible: true }) RenderPreview(d);
         };
 
+        _winSaveTimer = DispatcherQueue.CreateTimer();
+        _winSaveTimer.Interval = TimeSpan.FromSeconds(1);
+        _winSaveTimer.Tick += (_, _) => { _winSaveTimer.Stop(); SaveWindowGeometry(); };
+
         var v = Assembly.GetExecutingAssembly().GetName().Version;
         VersionInfo.Text = string.Format(Str("VersionInfo"), v?.ToString(3) ?? "?");
 
-        // Ctrl++ / Ctrl+- sulla tastiera principale (187=OemPlus, 189=OemMinus)
+        // Ctrl++ / Ctrl+- sulla tastiera principale (187=OemPlus, 189=OemMinus).
+        // Hidden: senza, WinUI mostra il primo acceleratore in un tooltip all'hover
+        // su tutta la finestra (Root e' lo scope) — gli shortcut restano attivi.
+        Root.KeyboardAcceleratorPlacementMode = KeyboardAcceleratorPlacementMode.Hidden;
         var plus = new KeyboardAccelerator { Key = (VirtualKey)187, Modifiers = VirtualKeyModifiers.Control };
         plus.Invoked += ZoomInAccel_Invoked;
         Root.KeyboardAccelerators.Add(plus);
@@ -279,10 +287,10 @@ public sealed partial class MainWindow : Window
 
     private async void App_Closing(AppWindow sender, AppWindowClosingEventArgs e)
     {
-        if (_closeConfirmed) return;
+        if (_closeConfirmed) { SaveWindowGeometry(); return; }
         var dirty = Tabs.TabItems.OfType<TabViewItem>()
             .Select(t => t.Tag as DocumentInfo).Where(d => d?.Dirty == true).ToList();
-        if (dirty.Count == 0) return;
+        if (dirty.Count == 0) { SaveWindowGeometry(); return; }
         e.Cancel = true;
         foreach (var d in dirty)
         {
@@ -290,8 +298,15 @@ public sealed partial class MainWindow : Window
             if (await AskSaveAsync(d) == SaveAction.Cancel) return;
         }
         _closeConfirmed = true;
+        SaveWindowGeometry();
         Close();
     }
+
+    // Ultimi bounds non-massimizzati: quando la finestra e' massimizzata
+    // AppWindow.Size/Position riportano il monitor, non il restore — si tiene cache.
+    private RectInt32 _restoreBounds = new(100, 100, 1000, 650);
+    private bool _restoreValid = false;
+    private Microsoft.UI.Dispatching.DispatcherQueueTimer? _winSaveTimer;
 
     // ================= ANTEPRIMA MARKDOWN (WebView2) =================
     private readonly SemaphoreSlim _webLock = new(1, 1);
@@ -765,25 +780,151 @@ public sealed partial class MainWindow : Window
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "FluentNotepad", "settings.json");
 
-    private static string LoadThemeSetting()
+    private sealed class AppSettings
+    {
+        public string Theme { get; set; } = "system";
+        public int X { get; set; }
+        public int Y { get; set; }
+        public int Width { get; set; }
+        public int Height { get; set; }
+        public bool Maximized { get; set; }
+        public bool HasWindow { get; set; }
+    }
+
+    private static readonly JsonSerializerOptions _jsonOptions = new()
+    {
+        WriteIndented = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        PropertyNameCaseInsensitive = true,
+    };
+
+    private static AppSettings LoadSettings()
     {
         try
         {
-            var m = Regex.Match(File.ReadAllText(_settingsPath), @"""theme""\s*:\s*""(light|dark|system)""");
-            if (m.Success) return m.Groups[1].Value;
+            var s = JsonSerializer.Deserialize<AppSettings>(
+                File.ReadAllText(_settingsPath), _jsonOptions);
+            if (s == null) return new AppSettings();
+            if (s.Theme is not ("light" or "dark" or "system")) s.Theme = "system";
+            s.HasWindow = s.Width >= 300 && s.Height >= 200;
+            return s;
         }
-        catch (Exception ex) { Debug.WriteLine($"LoadTheme: {ex.Message}"); }
-        return "system";
+        catch (Exception ex) { Debug.WriteLine($"LoadSettings: {ex.Message}"); }
+        return new AppSettings();
     }
 
-    private static void SaveThemeSetting(string mode)
+    private static void SaveSettings(AppSettings s)
     {
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(_settingsPath)!);
-            File.WriteAllText(_settingsPath, $"{{\"theme\":\"{mode}\"}}");
+            File.WriteAllText(_settingsPath, JsonSerializer.Serialize(s, _jsonOptions));
         }
-        catch (Exception ex) { Debug.WriteLine($"SaveTheme: {ex.Message}"); }
+        catch (Exception ex) { Debug.WriteLine($"SaveSettings: {ex.Message}"); }
+    }
+
+    private static string LoadThemeSetting() => LoadSettings().Theme;
+
+    private static void SaveThemeSetting(string mode)
+    {
+        var s = LoadSettings();
+        s.Theme = mode;
+        SaveSettings(s);
+    }
+
+    // ================= GEOMETRIA FINESTRA =================
+    private void RestoreWindowGeometry()
+    {
+        var s = LoadSettings();
+        try
+        {
+            if (!s.HasWindow)
+            {
+                AppWindow.Resize(new SizeInt32(1000, 650));
+                _restoreBounds = new RectInt32(100, 100, 1000, 650);
+                return;
+            }
+            var bounds = new RectInt32(s.X, s.Y, s.Width, s.Height);
+            if (!IntersectsAnyDisplay(bounds))
+            {
+                AppWindow.Resize(new SizeInt32(1000, 650));
+                return;
+            }
+            _restoreBounds = bounds;
+            _restoreValid = true;
+            AppWindow.MoveAndResize(bounds);
+            if (s.Maximized && AppWindow.Presenter is OverlappedPresenter p && p.IsMaximizable)
+                p.Maximize();
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"RestoreWindow: {ex.Message}");
+            try { AppWindow.Resize(new SizeInt32(1000, 650)); } catch { }
+        }
+    }
+
+    private static bool IntersectsAnyDisplay(RectInt32 r)
+    {
+        try
+        {
+            foreach (var area in DisplayArea.FindAll())
+            {
+                var w = area.WorkArea;
+                if (r.X < w.X + w.Width && r.X + r.Width > w.X &&
+                    r.Y < w.Y + w.Height && r.Y + r.Height > w.Y)
+                    return true;
+            }
+        }
+        catch (Exception ex) { Debug.WriteLine($"Displays: {ex.Message}"); return true; }
+        return false;
+    }
+
+    private void App_Changed(AppWindow sender, AppWindowChangedEventArgs e)
+    {
+        try
+        {
+            // Cache dei bounds ripristinati mentre la finestra non e' massimizzata/minimizzata
+            if (sender.Presenter is OverlappedPresenter p && p.State == OverlappedPresenterState.Restored &&
+                (e.DidSizeChange || e.DidPositionChange))
+            {
+                _restoreBounds = new RectInt32(sender.Position.X, sender.Position.Y,
+                    sender.Size.Width, sender.Size.Height);
+                _restoreValid = true;
+            }
+            if (e.DidSizeChange || e.DidPositionChange || e.DidPresenterChange)
+            {
+                _winSaveTimer?.Stop();
+                _winSaveTimer?.Start(); // debounce: salva 1s dopo l'ultima modifica
+            }
+        }
+        catch (Exception ex) { Debug.WriteLine($"WinChanged: {ex.Message}"); }
+    }
+
+    private void SaveWindowGeometry()
+    {
+        try
+        {
+            var s = LoadSettings();
+            if (AppWindow.Presenter is OverlappedPresenter p)
+            {
+                if (p.State == OverlappedPresenterState.Minimized) return; // non persistere mai il minimizzato
+                if (p.State == OverlappedPresenterState.Maximized)
+                {
+                    s.Maximized = true;
+                    if (_restoreValid)
+                    { s.X = _restoreBounds.X; s.Y = _restoreBounds.Y; s.Width = _restoreBounds.Width; s.Height = _restoreBounds.Height; s.HasWindow = true; }
+                    SaveSettings(s);
+                    return;
+                }
+            }
+            s.Maximized = false;
+            var pos = AppWindow.Position;
+            var size = AppWindow.Size;
+            if (size.Width >= 300 && size.Height >= 200)
+            { s.X = pos.X; s.Y = pos.Y; s.Width = size.Width; s.Height = size.Height; s.HasWindow = true; }
+            SaveSettings(s);
+        }
+        catch (Exception ex) { Debug.WriteLine($"SaveWindow: {ex.Message}"); }
     }
 
     private void ApplyThemeSetting(string mode)

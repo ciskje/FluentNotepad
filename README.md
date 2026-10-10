@@ -25,7 +25,7 @@ A Windows 11 Notepad clone in WinUI 3, with built-in Markdown preview.
 
 The repo contains sources only (builds and setup are **not** versioned). Two options:
 
-- **Ready-made setup**: [Releases](../../releases) page → `FluentNotepad-Setup-2.0.10-win-x64.exe` (per-machine install in Program Files, optional `.md` association)
+- **Ready-made setup**: [Releases](../../releases) page → `FluentNotepad-Setup-2.1.1-win-x64.exe` (per-machine install in Program Files, optional `.md` association)
 - **Build it yourself**:
 
 ```bash
@@ -38,7 +38,7 @@ The installer lands in `installer\dist\` (requires Inno Setup 6).
 ## Try without installing
 
 ```bash
-# double-click avvia-debug.bat, or:
+# double-click start-debug.bat, or:
 dotnet build source\FluentNotepad.WinUI.csproj -c Debug
 ```
 
@@ -51,6 +51,11 @@ dotnet build source\FluentNotepad.WinUI.csproj -c Debug
 - `screenshot-dark.png` — the BENCH.md preview shown above
 
 Technical details (in Italian) in [`source/README.md`](source/README.md).
+
+## Changelog
+
+- **2.1.1** — Fixed spurious `Ctrl++` tooltip over the editor (accelerator display hidden, shortcuts unchanged); fixed window geometry not being restored (settings JSON casing mismatch).
+- **2.1.0** — Window remembers position, size and maximized state; renamed `avvia-debug.bat` → `start-debug.bat`.
 
 ## License
 
