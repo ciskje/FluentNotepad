@@ -45,6 +45,12 @@ gh release create vX.Y.Z "installer/dist/FluentNotepad-Setup-X.Y.Z-win-x64.exe" 
 - Stessa policy del versionamento: niente release per docs/refactor/build.
 - Allineare il nome setup nella sezione Download del `README.md`.
 
+## Lingua del sorgente
+
+Sorgente tutto in inglese: commenti, docs (`source/README.md`), nomi file di prova.
+Eccezione: le stringhe di interfaccia (`.resw` it-IT/en-US + fallback `x:Uid` in XAML),
+che restano localizzate; le stringhe da codice passano da `Str()` + chiavi resw.
+
 ## Vincoli unpackaged (niente package identity)
 
 - **Niente MRT/`ResourceLoader` da codice**: il costruttore lancia `FileNotFoundException`. Le stringhe da codice in `MainWindow.xaml.cs` (`Str()`, `LoadResw()`) leggono i `.resw` come XML da `Strings/<lingua>/` accanto all'exe. Gli `x:Uid` in XAML invece funzionano (MRT interno).

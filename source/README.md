@@ -1,50 +1,50 @@
-# FluentNotepad 2.x — clone del Notepad di Windows 11 in WinUI 3
+# FluentNotepad 2.x — Windows 11 Notepad clone in WinUI 3
 
-## Versionamento (X.Y.Z)
+## Versioning (X.Y.Z)
 
-La versione sta in `<Version>` nel `.csproj` ed è mostrata nel pannello Impostazioni.
-Si aggiorna **solo** per modifiche al codice, così:
+The version lives in `<Version>` in the `.csproj` and is shown in the Settings panel.
+It is updated **only** for code changes, as follows:
 
-- **Z** (es. 2.0.0 → 2.0.1) — piccole modifiche: bugfix, ritocchi grafici, testi
-- **Y** (es. 2.0.0 → 2.1.0) — modifiche importanti: nuove funzioni, cambi di comportamento
-- **X** (es. 2.0.0 → 3.0.0) — stravolgimenti: architettura, riscritture, rotture di compatibilità
+- **Z** (e.g. 2.0.0 → 2.0.1) — small changes: bugfixes, visual tweaks, texts
+- **Y** (e.g. 2.0.0 → 2.1.0) — notable changes: new features, behavior changes
+- **X** (e.g. 2.0.0 → 3.0.0) — upheavals: architecture, rewrites, breaking changes
 
-Per qualunque altra ragione (docs, refactor interni, build) la versione **non** si tocca.
+For any other reason (docs, internal refactors, build) the version is **not** touched.
 
-## Avvio
+## Run
 
 ```bash
-# doppio clic su start-debug.bat (nella radice), oppure dalla radice del repo:
+# double-click start-debug.bat (repo root), or from the repo root:
 dotnet build source/FluentNotepad.WinUI.csproj -c Debug
 source/bin/Debug/net8.0-windows10.0.26100.0/win-x64/FluentNotepad.exe [file]
 ```
 
-Exe **unpackaged** (niente MSIX): si avvia standalone, richiede solo il runtime
-WebView2 evergreen (preinstallato su Windows 11). Richiede Windows 10 1809+,
-Mica su Windows 11.
+**Unpackaged** exe (no MSIX): runs standalone, only needs the
+WebView2 evergreen runtime (preinstalled on Windows 11). Requires Windows 10 1809+,
+Mica on Windows 11.
 
-## Funzioni
+## Features
 
-- **TabView nativo**: schede riordinabili col drag, `+` dopo l'ultima tab, `*` modifiche
-- **Markdown**: apre `.md` con anteprima **WebView2 + Markdig** (tabelle, task list,
-  codice, citazioni, link, **immagini locali/remote/data-URI/SVG**), toggle
-  Modifica/Anteprima (Ctrl+Maiusc+V), anteprima live, temi chiaro/scuro
-- **Barra di formattazione** (H/B/I/S/link/citazione/elenchi/codice) che inserisce sintassi
-- **Mica di sistema** (`MicaBackdrop` BaseAlt, tinta marcata, zero P/Invoke), title bar estesa con tab dentro
-- Menu File/Modifica/Visualizza con shortcut, ricerca (Ctrl+F), zoom, a capo, drag & drop
-- Status bar come l'originale (riga/col, caratteri, tipo, zoom, CRLF, UTF-8)
-- Icona `Assets/AppIcon.ico` (exe, taskbar, title bar)
+- **Native TabView**: drag-reorderable tabs, `+` after the last tab, `*` for dirty
+- **Markdown**: opens `.md` with a **WebView2 + Markdig** preview (tables, task lists,
+  code, quotes, links, **local/remote/data-URI/SVG images**), Edit/Preview
+  toggle (Ctrl+Shift+V), live preview, light/dark themes
+- **Formatting toolbar** (H/B/I/S/link/quote/lists/code) inserting syntax
+- **System Mica** (`MicaBackdrop` BaseAlt, tinted, zero P/Invoke), extended title bar with tabs inside
+- File/Edit/View menus with shortcuts, find (Ctrl+F), zoom, word wrap, drag & drop
+- Status bar like the original (line/col, characters, type, zoom, CRLF, UTF-8)
+- `Assets/AppIcon.ico` icon (exe, taskbar, title bar)
 
-## Struttura (source/)
+## Layout (source/)
 
-- `MainWindow.xaml` / `.xaml.cs` — shell, tab, editor, menu, status, temi, scorciatoie
-- `MarkdownHtml.cs` — Markdown → HTML (Markdig + CSS chiaro/scuro + immagini data-URI)
-- `App.xaml(.cs)` — avvio + apertura file da riga di comando
-- `esempio.md` / `esempio.png` — file di prova
+- `MainWindow.xaml` / `.xaml.cs` — shell, tabs, editor, menus, status, themes, shortcuts
+- `MarkdownHtml.cs` — Markdown → HTML (Markdig + light/dark CSS + data-URI images)
+- `App.xaml(.cs)` — startup + command-line file open
+- `example.md` / `example.png` — sample files
 
-## Note tecniche apprese
+## Technical notes
 
-- WinUI `TextBox.Text` va assegnato **dopo** `AcceptsReturn=true`, altrimenti taglia al primo `\n`
-- Niente `FlowDocument`: le API clipboard (`Cut`/`Copy`/`Paste`) non esistono su `TextBox` WinUI,
-  implementate via `Windows.ApplicationModel.DataTransfer`
-- `AppWindow.Closing` non ha deferral: pattern conferma-con-`Cancel=true` + `Close()` dopo i dialoghi
+- WinUI `TextBox.Text` must be assigned **after** `AcceptsReturn=true`, otherwise it cuts at the first `\n`
+- No `FlowDocument`: the clipboard APIs (`Cut`/`Copy`/`Paste`) don't exist on WinUI `TextBox`,
+  implemented via `Windows.ApplicationModel.DataTransfer`
+- `AppWindow.Closing` has no deferral: confirm-with-`Cancel=true` + `Close()` pattern after dialogs

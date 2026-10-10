@@ -9,19 +9,19 @@
 
     <local:CursorGrid x:Name="Root">
         <local:CursorGrid.Resources>
-            <!-- Il TabView disegna una riga di 1px sotto lo strip: Notepad non ce l'ha -->
+            <!-- TabView draws a 1px line under the strip: Notepad doesn't have it -->
             <SolidColorBrush x:Key="TabViewBorderBrush" Color="Transparent"/>
         </local:CursorGrid.Resources>
         <Grid.RowDefinitions>
-            <!-- 46 e non 48: lo strip deve finire esattamente dove finisce la linguetta,
-                 altrimenti sotto la linguetta resta una striscia grigia di 2px -->
+            <!-- 46 not 48: the strip must end exactly where the tab ends,
+                 otherwise a 2px gray stripe remains under the tab -->
             <RowDefinition Height="46"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- ===== TITLE BAR con TabView (come Notepad) ===== -->
+        <!-- ===== TITLE BAR with TabView (like Notepad) ===== -->
         <Grid x:Name="TitleBarGrid" Grid.Row="0" Background="Transparent">
             <controls:TabView
                 xmlns:controls="using:Microsoft.UI.Xaml.Controls"
@@ -36,7 +36,7 @@
             </controls:TabView>
         </Grid>
 
-        <!-- ===== MENU + FORMATTAZIONE (velo bianco/nero su Mica come Notepad) ===== -->
+        <!-- ===== MENU + FORMATTING (white/black veil over Mica like Notepad) ===== -->
         <Grid x:Name="MenuRow" Grid.Row="1" Padding="8,0,4,0" BorderThickness="0"
               BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" MinHeight="0">
             <Grid.ColumnDefinitions>
@@ -190,7 +190,7 @@
             </StackPanel>
         </Grid>
 
-        <!-- ===== EDITOR (host contenuto + overlay fissi: non vengono mai rimossi) ===== -->
+        <!-- ===== EDITOR (content host + pinned overlays: never removed) ===== -->
         <Grid Grid.Row="2" AllowDrop="True" Drop="Root_Drop" DragOver="Root_DragOver">
             <Grid x:Name="EditorHost"/>
             <WebView2 x:Name="PreviewView" Visibility="Collapsed"/>
@@ -206,7 +206,7 @@
                     <Button Content="&#xE8BB;" FontFamily="Segoe Fluent Icons" Width="32" Click="FindClose_Click"/>
                 </StackPanel>
             </Border>
-            <!-- Errore anteprima (mai rimosso: fuori da EditorHost) -->
+            <!-- Preview error (never removed: outside EditorHost) -->
             <Border x:Name="PreviewError" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center"
                     Padding="20" CornerRadius="8" BorderThickness="1" MaxWidth="420"
                     Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
@@ -244,7 +244,7 @@
             </StackPanel>
         </Grid>
 
-        <!-- ===== IMPOSTAZIONI ===== -->
+        <!-- ===== SETTINGS ===== -->
         <ContentDialog x:Uid="SettingsDialog" x:Name="SettingsDialog" Title="Impostazioni" CloseButtonText="Chiudi" DefaultButton="Close">
             <StackPanel Spacing="8" MinWidth="260">
                 <TextBlock x:Uid="SetAppearance" Text="Aspetto" FontWeight="SemiBold"/>

@@ -4,10 +4,10 @@ using Markdig;
 namespace FluentNotepad;
 
 /// <summary>
-/// Markdown -&gt; HTML per WebView2 (Markdig, zero codice di rendering nostro).
-/// Immagini locali -&gt; data-URI (niente server virtuale), remote/data-URI native,
-/// SVG supportato dal browser, file mancanti -&gt; segnaposto elegante via onerror.
-/// Query (?raw=true) e frammenti (#...) ignorati nella ricerca file.
+/// Markdown -&gt; HTML for WebView2 (Markdig, no rendering code of our own).
+/// Local images -&gt; data-URI (no virtual server), remote/data-URI natively,
+/// SVG supported by the browser, missing files -&gt; graceful placeholder via onerror.
+/// Query (?raw=true) and fragments (#...) ignored in file lookup.
 /// </summary>
 public static class MarkdownHtml
 {
@@ -23,9 +23,9 @@ public static class MarkdownHtml
             : Markdig.Markdown.ToHtml(markdown, _pipeline);
         body = ProcessImages(body, baseDir);
         string css = dark ? DarkCss(fontSize) : LightCss(fontSize);
-        // class='busy' sulla radice: la pagina nasce "impegnata" (cursore a cerchio) e la
-        // finestra la sblocca a NavigationCompleted. Il cursore del contenuto web lo governa
-        // WebView2, non XAML: ProtectedCursor da solo non coprirebbe l'area della pagina.
+        // 'busy' class on the root: the page is born "busy" (ring cursor) and the
+        // window clears it on NavigationCompleted. The web content cursor is owned by
+        // WebView2, not XAML: ProtectedCursor alone would not cover the page area.
         return "<!DOCTYPE html><html class='busy'><head><meta charset='utf-8'>" +
                "<meta name='color-scheme' content='" + (dark ? "dark" : "light") + "'>" +
                "<style>" + css + "</style></head><body>" + body + "</body></html>";
@@ -53,7 +53,7 @@ public static class MarkdownHtml
             s.StartsWith("file://", StringComparison.OrdinalIgnoreCase) ||
             s.StartsWith('#'))
             return s;
-        // Percorso locale: togli query/frammenti, risolvi, incorpora come data-URI
+        // Local path: strip query/fragments, resolve, embed as data-URI
         var clean = s;
         int q = clean.IndexOf('?'); int h = clean.IndexOf('#');
         int cut = q >= 0 && h >= 0 ? Math.Min(q, h) : q >= 0 ? q : h;
@@ -82,8 +82,8 @@ public static class MarkdownHtml
         catch { return src; }
     }
 
-    // Palette dei temi di Visual Studio 2022: blu keyword/link, arancio stringhe (code),
-    // oro funzioni (grassetto), viola controllo (corsivo), superfici del pannello editor.
+    // Visual Studio 2022 theme palette: blue keywords/links, orange strings (code),
+    // gold functions (bold), purple control flow (italic), editor panel surfaces.
     private static string BaseCss(double fs) => $@"
 html.busy,html.busy *{{cursor:wait!important}}
 body{{font-family:'Cascadia Mono','Cascadia Code',Consolas,monospace;font-size:{fs:0}px;line-height:1.6;margin:0;padding:20px 28px;word-wrap:break-word}}

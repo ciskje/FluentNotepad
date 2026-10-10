@@ -31,9 +31,9 @@ public sealed partial class MainWindow : Window
     private readonly SolidColorBrush _accentSoft =
         new(Windows.UI.Color.FromArgb(0x33, 0x00, 0x78, 0xD4));
 
-    // Stringhe da codice: lette dai .resw distribuiti accanto all'exe (Strings/<lingua>/).
-    // Niente MRT/ResourceLoader: richiede package identity, assente nelle unpackaged
-    // (FileNotFoundException al costruttore). Gli x:Uid in XAML usano MRT interno e funzionano.
+    // Code-behind strings: read from the .resw files shipped next to the exe (Strings/<language>/).
+    // No MRT/ResourceLoader: it needs package identity, missing in unpackaged apps
+    // (FileNotFoundException in the constructor). x:Uid in XAML uses internal MRT and works.
     private static System.Collections.Generic.Dictionary<string, string>? _res;
     internal static string Str(string key)
     {
@@ -41,7 +41,7 @@ public sealed partial class MainWindow : Window
         {
             if (_res == null)
             {
-                // Stessa regola del resto dell'interfaccia: inglese solo se sistema inglese
+                // Same rule as the rest of the UI: English only on English systems
                 var lang = Windows.Globalization.ApplicationLanguages.Languages.FirstOrDefault()?.Split('-')[0];
                 _res = LoadResw(lang == "en" ? "en-US" : "it-IT");
             }
@@ -78,9 +78,9 @@ public sealed partial class MainWindow : Window
 
     public MainWindow()
     {
-        // Lingua interfaccia (italiano/inglese) dalla lingua di Windows; italiano per le altre.
-        // Prima di InitializeComponent: gli x:Uid si risolvono al caricamento XAML.
-        // Protetto: il setter ha fatto failfast una volta con tag neutro, si usa qualificato.
+        // UI language (Italian/English) from the Windows language; Italian for anything else.
+        // Before InitializeComponent: x:Uid values resolve at XAML load time.
+        // Guarded: the setter once fail-fasted on a neutral tag, so the qualified form is used.
         try
         {
             var lang = Windows.Globalization.ApplicationLanguages.Languages.FirstOrDefault()?.Split('-')[0];
@@ -89,16 +89,16 @@ public sealed partial class MainWindow : Window
         }
         catch (Exception ex) { Debug.WriteLine($"Lang override: {ex.Message}"); }
 
-        // WebView2 scrive i suoi dati accanto all'exe (default): in Program Files (non scrivibile)
-        // non si inizializza mai. Si punta a LocalAppData — solo per questo processo, non persistita.
-        // (Letta da WebView2 alla prima inizializzazione, quindi va impostata qui prima di tutto.)
+        // WebView2 writes its data next to the exe by default: under Program Files (not writable)
+        // it never initializes. Point it at LocalAppData — process-local only, not persisted.
+        // (Read by WebView2 at first initialization, so it must be set here before anything else.)
         Environment.SetEnvironmentVariable("WEBVIEW2_USER_DATA_FOLDER", Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "FluentNotepad", "WebView2"));
 
         InitializeComponent();
 
-        // Title bar estesa + Mica di sistema (niente P/Invoke: è built-in)
+        // Extended title bar + system Mica (no P/Invoke: built in)
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(TitleBarGrid);
         SystemBackdrop = new MicaBackdrop { Kind = MicaKind.BaseAlt };
@@ -128,9 +128,9 @@ public sealed partial class MainWindow : Window
         var v = Assembly.GetExecutingAssembly().GetName().Version;
         VersionInfo.Text = string.Format(Str("VersionInfo"), v?.ToString(3) ?? "?");
 
-        // Ctrl++ / Ctrl+- sulla tastiera principale (187=OemPlus, 189=OemMinus).
-        // Hidden: senza, WinUI mostra il primo acceleratore in un tooltip all'hover
-        // su tutta la finestra (Root e' lo scope) — gli shortcut restano attivi.
+        // Ctrl++ / Ctrl+- on the main keyboard (187=OemPlus, 189=OemMinus).
+        // Hidden: otherwise WinUI shows the first accelerator in a hover tooltip
+        // over the whole window (Root is the scope) — shortcuts stay active.
         Root.KeyboardAcceleratorPlacementMode = KeyboardAcceleratorPlacementMode.Hidden;
         var plus = new KeyboardAccelerator { Key = (VirtualKey)187, Modifiers = VirtualKeyModifiers.Control };
         plus.Invoked += ZoomInAccel_Invoked;
@@ -139,7 +139,7 @@ public sealed partial class MainWindow : Window
         minus.Invoked += ZoomOutAccel_Invoked;
         Root.KeyboardAccelerators.Add(minus);
 
-        // Tema salvato (chiaro/scuro/sistema): di default segue Windows
+        // Saved theme (light/dark/system): follows Windows by default
         string mode = LoadThemeSetting();
         ThemeCombo.SelectedIndex = mode == "light" ? 0 : mode == "dark" ? 1 : 2;
         ApplyThemeSetting(mode);
@@ -154,12 +154,12 @@ public sealed partial class MainWindow : Window
         catch (Exception ex) { Debug.WriteLine($"OpenFileFromArgs: {ex.Message}"); }
     }
 
-    // ================= DOCUMENTI / TAB =================
+    // ================= DOCUMENTS / TABS =================
     private DocumentInfo? GetActiveDoc() => Tabs.SelectedItem as TabViewItem is { Tag: DocumentInfo d } ? d : null;
     private TextBox? GetActiveBox() => GetActiveDoc()?.Editor;
 
-    // Selezione "ricordata": il click su un pulsante/menu sposta il focus e lo stato
-    // live del TextBox nel gestore non e' affidabile — la cache e' aggiornata a ogni SelectionChanged.
+    // "Remembered" selection: clicking a button/menu moves focus and the
+    // live TextBox state in the handler is unreliable — the cache is updated on every SelectionChanged.
     private (int Start, int Length) CachedSelection(TextBox b)
     {
         int textLen = b.Text.Length;
@@ -185,7 +185,7 @@ public sealed partial class MainWindow : Window
         {
             using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
             int b0 = fs.ReadByte(), b1 = fs.ReadByte(), b2 = fs.ReadByte();
-            if (b0 == 0xEF && b1 == 0xBB && b2 == 0xBF) return "UTF-8 con BOM";
+            if (b0 == 0xEF && b1 == 0xBB && b2 == 0xBF) return Str("EncUtf8Bom");
             if (b0 == 0xFF && b1 == 0xFE) return "UTF-16 LE";
             if (b0 == 0xFE && b1 == 0xFF) return "UTF-16 BE";
         }
@@ -212,7 +212,7 @@ public sealed partial class MainWindow : Window
             BorderThickness = new Thickness(0),
             Background = new SolidColorBrush(Colors.Transparent)
         };
-        // NOTA: Text DOPO AcceptsReturn, altrimenti WinUI taglia tutto dopo il primo \n
+        // NOTE: Text AFTER AcceptsReturn, otherwise WinUI cuts everything after the first \n
         box.Text = content;
         var doc = new DocumentInfo { Editor = box, Path = path, IsMarkdown = IsMarkdownFile(path) };
         var tab = new TabViewItem { Tag = doc };
@@ -235,8 +235,8 @@ public sealed partial class MainWindow : Window
             _selLen = box.SelectionLength;
             UpdateStatus();
         };
-        // Snapshot quando il focus lascia l'editor: il Click sul pulsante/menu arriva dopo,
-        // e in quel momento lo stato live della selezione non e' piu' affidabile
+        // Snapshot when focus leaves the editor: the button/menu Click arrives later,
+        // when the live selection state is no longer reliable
         box.LosingFocus += (_, _) =>
         {
             _selStart = box.SelectionStart;
@@ -270,7 +270,7 @@ public sealed partial class MainWindow : Window
         return SaveAction.Cancel;
     }
 
-    // NOTA: TabView NON rimuove la tab da solo: bisogna farlo qui (vale anche per Annulla = non rimuovere)
+    // NOTE: TabView does NOT remove the tab by itself: do it here (also applies to Cancel = don't remove)
     private async Task CloseTabAsync(TabViewItem item)
     {
         if (item.Tag is not DocumentInfo doc) return;
@@ -302,22 +302,22 @@ public sealed partial class MainWindow : Window
         Close();
     }
 
-    // Ultimi bounds non-massimizzati: quando la finestra e' massimizzata
-    // AppWindow.Size/Position riportano il monitor, non il restore — si tiene cache.
+    // Last non-maximized bounds: when maximized, AppWindow.Size/Position report the
+    // monitor, not the restore bounds — keep a cache.
     private RectInt32 _restoreBounds = new(100, 100, 1000, 650);
     private bool _restoreValid = false;
     private Microsoft.UI.Dispatching.DispatcherQueueTimer? _winSaveTimer;
 
-    // ================= ANTEPRIMA MARKDOWN (WebView2) =================
+    // ================= MARKDOWN PREVIEW (WebView2) =================
     private readonly SemaphoreSlim _webLock = new(1, 1);
     private string _lastWebError = "";
     private string? _previewTmp;
     private Microsoft.Web.WebView2.Core.CoreWebView2? _hookedCore;
 
-    // Cursore "impegnato" (cerchio che gira): XAML per l'area dell'app, classe html.busy
-    // dentro la pagina per l'area WebView2, che gestisce il cursore per conto suo.
-    // Durata minima: Windows aggiorna il cursore solo al movimento del mouse, quindi un
-    // render da pochi ms non si vedrebbe mai.
+    // "Busy" cursor (spinning ring): XAML for the app area, html.busy class
+    // inside the page for the WebView2 area, which owns its cursor.
+    // Minimum duration: Windows only updates the cursor on mouse move, so a
+    // render lasting a few ms would never be visible.
     private const int MinBusyMs = 600;
     private bool _busy;
     private DateTime _busyUntil;
@@ -340,7 +340,7 @@ public sealed partial class MainWindow : Window
     {
         int wait = (int)(_busyUntil - DateTime.UtcNow).TotalMilliseconds;
         if (wait > 0) await Task.Delay(wait);
-        if (gen != _busyGen) return; // nel frattempo e' partito un altro render
+        if (gen != _busyGen) return; // another render has started in the meantime
         _busy = false;
         Root.SetBusy(false);
         _ = ClearPageBusyAsync();
@@ -379,9 +379,9 @@ public sealed partial class MainWindow : Window
             {
                 await PreviewView.EnsureCoreWebView2Async();
                 _webReady = true;
-                // Re-hook a ogni nuova istanza: dopo un reset (_webReady=false) il vecchio
-                // CoreWebView2 e' morto e il suo NavigationCompleted non scatterebbe mai piu',
-                // lasciando il busy eterno. Il render e' finito quando la pagina ha caricato.
+                // Re-hook on every new instance: after a reset (_webReady=false) the old
+                // CoreWebView2 is dead and its NavigationCompleted would never fire again,
+                // leaving the busy cursor forever. The render is done once the page loads.
                 var core = PreviewView.CoreWebView2;
                 if (!ReferenceEquals(_hookedCore, core))
                 {
@@ -394,7 +394,7 @@ public sealed partial class MainWindow : Window
             string html = MarkdownHtml.Build(doc.Editor.Text, baseDir, _dark, size);
             if (html.Length > 1500000)
             {
-                // NavigateToString ha un limite ~2MB: file grandi via temp file
+                // NavigateToString has a ~2MB limit: large files go through a temp file
                 _previewTmp ??= Path.Combine(Path.GetTempPath(), $"fluent_preview_{Environment.ProcessId}.html");
                 File.WriteAllText(_previewTmp, html);
                 PreviewView.Source = new Uri(_previewTmp);
@@ -425,8 +425,8 @@ public sealed partial class MainWindow : Window
         else
         {
             PreviewView.Visibility = Visibility.Collapsed;
-            // Non ri-aggiungere l'editor se e' gia' ospitato: il re-parenting
-            // azzera selezione (e scroll), e i tag finivano a inizio file
+            // Don't re-add the editor if already hosted: re-parenting
+            // resets selection (and scroll), and tags ended up at the top of the file
             if (EditorHost.Children.Count != 1 || !ReferenceEquals(EditorHost.Children[0], d.Editor))
             {
                 EditorHost.Children.Clear();
@@ -518,7 +518,7 @@ public sealed partial class MainWindow : Window
             }
             else
             {
-                picker.FileTypeChoices.Add("File di testo", new List<string> { ".txt" });
+                picker.FileTypeChoices.Add(Str("FileFilterText"), new List<string> { ".txt" });
                 picker.FileTypeChoices.Add("Markdown", new List<string> { ".md" });
                 picker.SuggestedFileName = Str("Untitled");
                 picker.DefaultFileExtension = ".txt";
@@ -537,7 +537,7 @@ public sealed partial class MainWindow : Window
         }
         doc.Dirty = false;
         doc.LineEnding = DetectLineEnding(doc.Editor.Text);
-        doc.FileEncoding = "UTF-8"; // FileIO.WriteTextAsync e File.WriteAllText scrivono UTF-8 senza BOM
+        doc.FileEncoding = "UTF-8"; // FileIO.WriteTextAsync and File.WriteAllText write UTF-8 without BOM
         RefreshHeader(doc);
         RefreshFileLabels();
         return true;
@@ -556,8 +556,8 @@ public sealed partial class MainWindow : Window
             if (File.Exists(path)) d.FileEncoding = DetectEncoding(path);
             RefreshHeader(d);
             RefreshFileLabels();
-            // Un .md aperto da qualunque percorso (associazione/riga di comando, File > Apri,
-            // drag & drop) parte subito in Anteprima
+            // An .md opened from anywhere (association/command line, File > Open,
+            // drag & drop) starts directly in Preview
             if (d.IsMarkdown) ShowPreview(d, true);
         }
     }
@@ -590,7 +590,7 @@ public sealed partial class MainWindow : Window
         RefreshMdUi();
     }
 
-    // ================= MODIFICA =================
+    // ================= EDIT =================
     private TextBox? EditableBox()
     {
         var d = GetActiveDoc();
@@ -635,7 +635,7 @@ public sealed partial class MainWindow : Window
     }
     private void SelectAll_Click(object s, RoutedEventArgs e) => GetActiveBox()?.SelectAll();
 
-    // ================= TROVA =================
+    // ================= FIND =================
     private void ShowFind()
     {
         var d = GetActiveDoc();
@@ -719,7 +719,7 @@ public sealed partial class MainWindow : Window
         LnCol.Text = string.Format(Str("StatusLine"), line, col);
     }
 
-    // ================= TEMA =================
+    // ================= THEME =================
     private void DetectWindowsTheme()
     {
         try
@@ -735,8 +735,8 @@ public sealed partial class MainWindow : Window
     {
         _dark = dark;
         Root.RequestedTheme = dark ? ElementTheme.Dark : ElementTheme.Light;
-        // Solo la barra linguette e' Mica (chrome); la barra menu segue l'editor come in
-        // Notepad (bianco / #282828), cosi' linguetta e menu sono lo stesso bianco/nero
+        // Only the tab strip is Mica (chrome); the menu bar follows the editor as in
+        // Notepad (white / #282828), so tab and menu share the same white/black
         var editorBg = new SolidColorBrush(dark
             ? Windows.UI.Color.FromArgb(255, 40, 40, 40)      // #282828
             : Windows.UI.Color.FromArgb(255, 255, 255, 255)); // bianco
@@ -746,7 +746,7 @@ public sealed partial class MainWindow : Window
         StatusRow.Background = new SolidColorBrush(dark
             ? Windows.UI.Color.FromArgb(255, 32, 32, 32)      // #202020
             : Windows.UI.Color.FromArgb(255, 243, 243, 243)); // #F3F3F3
-        // Toggle Modifica/Anteprima: stessi toni del menu, mai bianco in dark
+        // Edit/Preview toggle: same tones as the menu, never white in dark mode
         MdToggle.Background = new SolidColorBrush(dark
             ? Windows.UI.Color.FromArgb(255, 45, 45, 45)
             : Windows.UI.Color.FromArgb(255, 243, 243, 243));
@@ -765,7 +765,7 @@ public sealed partial class MainWindow : Window
     }
 
     private void ThemeButton_Click(object s, RoutedEventArgs e) =>
-        // Passa a esplicito opposto di quello effettivo: il combo salva+applica da solo
+        // Switch to the explicit opposite of the effective theme: the combo saves+applies by itself
         ThemeCombo.SelectedIndex = _dark ? 0 : 1;
     private void ThemeCombo_Changed(object s, SelectionChangedEventArgs e)
     {
@@ -832,7 +832,7 @@ public sealed partial class MainWindow : Window
         SaveSettings(s);
     }
 
-    // ================= GEOMETRIA FINESTRA =================
+    // ================= WINDOW GEOMETRY =================
     private void RestoreWindowGeometry()
     {
         var s = LoadSettings();
@@ -883,7 +883,7 @@ public sealed partial class MainWindow : Window
     {
         try
         {
-            // Cache dei bounds ripristinati mentre la finestra non e' massimizzata/minimizzata
+            // Cache of the restored bounds while the window is neither maximized nor minimized
             if (sender.Presenter is OverlappedPresenter p && p.State == OverlappedPresenterState.Restored &&
                 (e.DidSizeChange || e.DidPositionChange))
             {
@@ -894,7 +894,7 @@ public sealed partial class MainWindow : Window
             if (e.DidSizeChange || e.DidPositionChange || e.DidPresenterChange)
             {
                 _winSaveTimer?.Stop();
-                _winSaveTimer?.Start(); // debounce: salva 1s dopo l'ultima modifica
+                _winSaveTimer?.Start(); // debounce: save 1s after the last change
             }
         }
         catch (Exception ex) { Debug.WriteLine($"WinChanged: {ex.Message}"); }
@@ -907,7 +907,7 @@ public sealed partial class MainWindow : Window
             var s = LoadSettings();
             if (AppWindow.Presenter is OverlappedPresenter p)
             {
-                if (p.State == OverlappedPresenterState.Minimized) return; // non persistere mai il minimizzato
+                if (p.State == OverlappedPresenterState.Minimized) return; // never persist the minimized state
                 if (p.State == OverlappedPresenterState.Maximized)
                 {
                     s.Maximized = true;
@@ -934,7 +934,7 @@ public sealed partial class MainWindow : Window
         else { DetectWindowsTheme(); ApplyTheme(_dark); }
     }
 
-    // ================= IMPOSTAZIONI / WRAP / FONT / DRAGDROP =================
+    // ================= SETTINGS / WRAP / FONT / DRAG & DROP =================
     private async void Settings_Click(object s, RoutedEventArgs e)
     {
         SettingsDialog.XamlRoot = Content.XamlRoot;
@@ -953,7 +953,7 @@ public sealed partial class MainWindow : Window
     {
         if (_loading) return;
         SetZoom(_zoom, renderPreview: false);
-        // L'anteprima WebView2 e' costosa: debounce invece di un render a ogni tick del drag
+        // The WebView2 preview is expensive: debounce instead of rendering on every drag tick
         var d = GetActiveDoc();
         if (d is { IsMarkdown: true, PreviewVisible: true }) { _previewTimer.Stop(); _previewTimer.Start(); }
     }
@@ -977,7 +977,7 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    // ================= BARRA FORMATTAZIONE =================
+    // ================= FORMATTING TOOLBAR =================
     private void WrapSelection(string before, string after, string? placeholder = null)
     {
         var b = EditableBox(); if (b == null) return;

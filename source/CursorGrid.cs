@@ -4,8 +4,8 @@ using Microsoft.UI.Xaml.Controls;
 namespace FluentNotepad;
 
 /// <summary>
-/// Grid che espone il cursore di sistema. UIElement.ProtectedCursor e' protected,
-/// quindi serve una sottoclasse per poterlo assegnare (pattern indicato da Microsoft).
+/// Grid exposing the system cursor. UIElement.ProtectedCursor is protected,
+/// so a subclass is needed to assign it (Microsoft-recommended pattern).
 /// </summary>
 public sealed class CursorGrid : Grid
 {

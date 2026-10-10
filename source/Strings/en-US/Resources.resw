@@ -80,6 +80,8 @@
   <data name="FileTypePlain"><value>Plain text</value></data>
   <data name="PlaceholderText"><value>text</value></data>
   <data name="PlaceholderCode"><value>code</value></data>
+  <data name="FileFilterText"><value>Text file</value></data>
+  <data name="EncUtf8Bom"><value>UTF-8 with BOM</value></data>
   <data name="EmptyHint"><value>Nothing to display — write Markdown in Edit mode.</value></data>
   <data name="ImgName"><value>Image</value></data>
   <data name="ImgMissing"><value> — unavailable</value></data>

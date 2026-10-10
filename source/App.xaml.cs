@@ -16,7 +16,7 @@ public partial class App : Application
         m_window = new MainWindow();
         var main = (MainWindow)m_window;
         main.Activate();
-        // Apertura file da riga di comando: FluentNotepad.exe appunto.md
+        // Command-line file open: FluentNotepad.exe notes.md
         foreach (var arg in Environment.GetCommandLineArgs().Skip(1))
         {
             if (File.Exists(arg))
