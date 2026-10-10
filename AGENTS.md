@@ -28,6 +28,23 @@ Policy in `source/README.md`: si tocca **solo** per modifiche al codice.
 - Docs/refactor/build non cambiano la versione.
 - Allineare in 3 punti: `<Version>` in `source/FluentNotepad.WinUI.csproj`, `#define MyAppVersion` in `installer/FluentNotepad.iss`, nome setup in `README.md`.
 
+## Release su GitHub
+
+La pagina Releases è il canale "ready-made setup" citato nel `README.md`:
+**ogni bump di versione va pubblicato anche lì** (tag + release con setup allegato),
+altrimenti la release Latest resta indietro rispetto al codice.
+
+```bash
+git tag vX.Y.Z && git push origin vX.Y.Z
+gh release create vX.Y.Z "installer/dist/FluentNotepad-Setup-X.Y.Z-win-x64.exe" \
+  --title "vX.Y.Z" --latest --notes "<riepilogo changelog>"
+```
+
+- L'exe va ricostruito prima se manca o è stale: `dotnet publish` + `iscc` (vedi sopra).
+- Nelle note: riga install standard (Program Files per-machine, `.md` opzionale, WebView2) + novità rispetto alla release precedente (voci dal Changelog nel `README.md`).
+- Stessa policy del versionamento: niente release per docs/refactor/build.
+- Allineare il nome setup nella sezione Download del `README.md`.
+
 ## Vincoli unpackaged (niente package identity)
 
 - **Niente MRT/`ResourceLoader` da codice**: il costruttore lancia `FileNotFoundException`. Le stringhe da codice in `MainWindow.xaml.cs` (`Str()`, `LoadResw()`) leggono i `.resw` come XML da `Strings/<lingua>/` accanto all'exe. Gli `x:Uid` in XAML invece funzionano (MRT interno).
