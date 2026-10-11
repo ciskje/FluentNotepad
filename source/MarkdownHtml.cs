@@ -100,7 +100,8 @@ ul,ol{{margin:0 0 10px;padding-left:26px}}li{{margin:3px 0}}li input[type=checkb
 table{{border-collapse:collapse;margin:0 0 14px;font-size:.95em}}th,td{{border:1px solid;padding:6px 12px}}th{{font-weight:700}}
 img{{max-width:100%;margin:8px 0}}.img-missing{{font-style:italic;opacity:.7}}
 .empty-hint{{opacity:.6;font-style:italic;text-align:center;margin-top:40px}}
-hr{{border:none;border-top:1px solid;margin:18px 0}}";
+hr{{border:none;border-top:1px solid;margin:18px 0}}
+@media print{{*{{print-color-adjust:exact!important;-webkit-print-color-adjust:exact!important}}body{{margin:0;background:#FFFFFF!important;color:#1E1E1E!important}}h1,h2{{border-color:#E5E5E5!important}}h1,h2,h3,h4,h5{{color:#0F6CBD!important}}h6{{color:#808080!important}}a{{color:#0F6CBD!important}}strong{{color:#A31515!important}}em{{color:#7A3E9D!important}}code{{background:#F3F3F3!important;color:#A31515!important}}pre{{background:#F6F6F6!important;border-color:#E5E5E5!important}}pre code{{color:#1E1E1E!important;background:none!important;border:0!important}}blockquote{{background:#F6F6F6!important;border-color:#0F6CBD!important;color:#075AA0!important}}th{{background:#F3F3F3!important;color:#0F6CBD!important}}th,td{{border-color:#D4D4D4!important}}tbody tr:nth-child(even){{background:#FAFAFA!important}}hr{{border-color:#E5E5E5!important}}}}";
 
     private static string LightCss(double fs) => BaseCss(fs) + @"
 body{background:#FFFFFF;color:#1E1E1E}

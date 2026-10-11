@@ -580,6 +580,76 @@ public sealed partial class MainWindow : Window
 
     private void Exit_Click(object s, RoutedEventArgs e) => Close();
 
+    // ================= PRINT (rendered Markdown preview only, in color) =================
+    private async void Print_Click(object s, RoutedEventArgs e)
+    {
+        var d = GetActiveDoc();
+        if (d?.IsMarkdown != true)
+        {
+            var dlg = new ContentDialog
+            {
+                Title = "FluentNotepad",
+                Content = Str("PrintOnlyMarkdown"),
+                CloseButtonText = Str("PrintClose"),
+                XamlRoot = Content.XamlRoot
+            };
+            await dlg.ShowAsync();
+            return;
+        }
+        if (!d.PreviewVisible) ShowPreview(d, true);
+        if (PreviewError.Visibility == Visibility.Visible)
+        {
+            var dlg = new ContentDialog
+            {
+                Title = "FluentNotepad",
+                Content = Str("PrintError") + _lastWebError,
+                CloseButtonText = Str("PrintClose"),
+                XamlRoot = Content.XamlRoot
+            };
+            await dlg.ShowAsync();
+            return;
+        }
+        try
+        {
+            await PreviewView.EnsureCoreWebView2Async();
+            await WaitForPreviewPrintReadyAsync();
+            PreviewView.CoreWebView2.ShowPrintUI(
+                Microsoft.Web.WebView2.Core.CoreWebView2PrintDialogKind.Browser);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Print: {ex.Message}");
+            var dlg = new ContentDialog
+            {
+                Title = "FluentNotepad",
+                Content = Str("PrintError") + ex.Message,
+                CloseButtonText = Str("PrintClose"),
+                XamlRoot = Content.XamlRoot
+            };
+            await dlg.ShowAsync();
+        }
+    }
+
+    // Wait for the current preview navigation so the print dialog prints fresh
+    // content instead of the previous page (no wait when nothing is loading).
+    private Task WaitForPreviewPrintReadyAsync(int timeoutMs = 5000)
+    {
+        if (!_busy) return Task.CompletedTask;
+        var tcs = new TaskCompletionSource<object?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        Windows.Foundation.TypedEventHandler<Microsoft.Web.WebView2.Core.CoreWebView2, Microsoft.Web.WebView2.Core.CoreWebView2NavigationCompletedEventArgs>? handler = null;
+        handler = (_, _) =>
+        {
+            try { PreviewView.CoreWebView2.NavigationCompleted -= handler; } catch { }
+            tcs.TrySetResult(null);
+        };
+        try { PreviewView.CoreWebView2.NavigationCompleted += handler; }
+        catch { return Task.CompletedTask; }
+        return Task.WhenAny(tcs.Task, Task.Delay(timeoutMs)).ContinueWith(_ =>
+        {
+            try { PreviewView.CoreWebView2.NavigationCompleted -= handler; } catch { }
+        });
+    }
+
     private void Tabs_SelectionChanged(object s, SelectionChangedEventArgs e)
     {
         ShowActiveContent();

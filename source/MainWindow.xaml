@@ -73,6 +73,12 @@
                         </MenuFlyoutItem.KeyboardAccelerators>
                     </MenuFlyoutItem>
                     <MenuFlyoutSeparator/>
+                    <MenuFlyoutItem x:Uid="FilePrint" Text="Stampa…" Click="Print_Click">
+                        <MenuFlyoutItem.KeyboardAccelerators>
+                            <KeyboardAccelerator Key="P" Modifiers="Control"/>
+                        </MenuFlyoutItem.KeyboardAccelerators>
+                    </MenuFlyoutItem>
+                    <MenuFlyoutSeparator/>
                     <MenuFlyoutItem x:Uid="FileExit" Text="Esci" Click="Exit_Click"/>
                 </MenuBarItem>
                 <MenuBarItem x:Uid="MenuEdit" Title="Modifica">

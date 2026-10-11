@@ -7,6 +7,7 @@
   <data name="FileSave.Text"><value>Save</value></data>
   <data name="FileSaveAs.Text"><value>Save as…</value></data>
   <data name="FileCloseTab.Text"><value>Close tab</value></data>
+  <data name="FilePrint.Text"><value>Print…</value></data>
   <data name="FileExit.Text"><value>Exit</value></data>
   <!-- Edit menu -->
   <data name="MenuEdit.Title"><value>Edit</value></data>
@@ -75,6 +76,9 @@
   <data name="SaveSecondary"><value>Don't save</value></data>
   <data name="SaveClose"><value>Cancel</value></data>
   <data name="PreviewError"><value>Markdown preview unavailable (WebView2). </value></data>
+  <data name="PrintOnlyMarkdown"><value>Printing is only available for the Markdown preview. Open a .md file and switch to Preview.</value></data>
+  <data name="PrintError"><value>Printing failed (WebView2). </value></data>
+  <data name="PrintClose"><value>Close</value></data>
   <data name="StatusLine"><value>Line {0}, col {1}</value></data>
   <data name="StatusChars"><value>{0} characters</value></data>
   <data name="FileTypePlain"><value>Plain text</value></data>

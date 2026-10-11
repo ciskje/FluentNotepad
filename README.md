@@ -12,6 +12,7 @@ A Windows 11 Notepad clone in WinUI 3, with built-in Markdown preview.
 - **Formatting toolbar** (heading, bold, italic, strikethrough, link, quotes, lists, code)
 - System **Mica**, extended title bar with tabs inside, Edit/Preview toggle (Ctrl+Shift+V)
 - Find (Ctrl+F), zoom, word wrap, file drag & drop
+- Print (Ctrl+P) of the rendered Markdown preview in color, always with the light theme on paper (WebView2 print dialog)
 - Status bar like the original (line/column, characters, file type, zoom, CRLF/LF, UTF-8)
 - Interface in **English and Italian** (follows the Windows display language)
 
@@ -25,7 +26,7 @@ A Windows 11 Notepad clone in WinUI 3, with built-in Markdown preview.
 
 The repo contains sources only (builds and setup are **not** versioned). Two options:
 
-- **Ready-made setup**: [Releases](../../releases) page → `FluentNotepad-Setup-2.1.1-win-x64.exe` (per-machine install in Program Files, optional `.md` association)
+- **Ready-made setup**: [Releases](../../releases) page → `FluentNotepad-Setup-2.2.0-win-x64.exe` (per-machine install in Program Files, optional `.md` association)
 - **Build it yourself**:
 
 ```bash
@@ -54,6 +55,7 @@ Technical details (in Italian) in [`source/README.md`](source/README.md).
 
 ## Changelog
 
+- **2.2.0** — File → Stampa (Ctrl+P): prints the rendered Markdown preview in color via WebView2 (browser print dialog), always with the light theme on paper; plain text shows an info message.
 - **2.1.1** — Fixed spurious `Ctrl++` tooltip over the editor (accelerator display hidden, shortcuts unchanged); fixed window geometry not being restored (settings JSON casing mismatch).
 - **2.1.0** — Window remembers position, size and maximized state; renamed `avvia-debug.bat` → `start-debug.bat`.
 

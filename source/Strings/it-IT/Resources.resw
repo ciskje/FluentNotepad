@@ -7,6 +7,7 @@
   <data name="FileSave.Text"><value>Salva</value></data>
   <data name="FileSaveAs.Text"><value>Salva con nome…</value></data>
   <data name="FileCloseTab.Text"><value>Chiudi scheda</value></data>
+  <data name="FilePrint.Text"><value>Stampa…</value></data>
   <data name="FileExit.Text"><value>Esci</value></data>
   <!-- Menu Modifica -->
   <data name="MenuEdit.Title"><value>Modifica</value></data>
@@ -75,6 +76,9 @@
   <data name="SaveSecondary"><value>Non salvare</value></data>
   <data name="SaveClose"><value>Annulla</value></data>
   <data name="PreviewError"><value>Anteprima non disponibile (WebView2). </value></data>
+  <data name="PrintOnlyMarkdown"><value>La stampa è disponibile solo per l'anteprima Markdown. Apri un file .md e passa in Anteprima.</value></data>
+  <data name="PrintError"><value>Stampa non riuscita (WebView2). </value></data>
+  <data name="PrintClose"><value>Chiudi</value></data>
   <data name="StatusLine"><value>Riga {0}, col. {1}</value></data>
   <data name="StatusChars"><value>{0} caratteri</value></data>
   <data name="FileTypePlain"><value>Testo normale</value></data>
