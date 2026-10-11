@@ -16,7 +16,7 @@ public static class MarkdownHtml
 
     private const long MaxImageBytes = 20L * 1024 * 1024;
 
-    public static string Build(string markdown, string? baseDir, bool dark, double fontSize)
+    public static string Build(string markdown, string? baseDir, bool dark, double fontSize, string? title = null)
     {
         string body = string.IsNullOrWhiteSpace(markdown)
             ? "<p class='empty-hint'>" + MainWindow.Str("EmptyHint") + "</p>"
@@ -26,9 +26,13 @@ public static class MarkdownHtml
         // 'busy' class on the root: the page is born "busy" (ring cursor) and the
         // window clears it on NavigationCompleted. The web content cursor is owned by
         // WebView2, not XAML: ProtectedCursor alone would not cover the page area.
-        return "<!DOCTYPE html><html class='busy'><head><meta charset='utf-8'>" +
+        // <title>: the browser print dialog prints headers (title + URL) by default.
+        // NavigateToString has no URL, so without a title the header reads "about:blank".
+        string head = "<!DOCTYPE html><html class='busy'><head><meta charset='utf-8'>" +
                "<meta name='color-scheme' content='" + (dark ? "dark" : "light") + "'>" +
+               (title != null ? "<title>" + System.Net.WebUtility.HtmlEncode(title) + "</title>" : "") +
                "<style>" + css + "</style></head><body>" + body + "</body></html>";
+        return head;
     }
 
     private static string ProcessImages(string html, string? baseDir)
@@ -101,7 +105,7 @@ table{{border-collapse:collapse;margin:0 0 14px;font-size:.95em}}th,td{{border:1
 img{{max-width:100%;margin:8px 0}}.img-missing{{font-style:italic;opacity:.7}}
 .empty-hint{{opacity:.6;font-style:italic;text-align:center;margin-top:40px}}
 hr{{border:none;border-top:1px solid;margin:18px 0}}
-@media print{{*{{print-color-adjust:exact!important;-webkit-print-color-adjust:exact!important}}body{{margin:0;background:#FFFFFF!important;color:#1E1E1E!important}}h1,h2{{border-color:#E5E5E5!important}}h1,h2,h3,h4,h5{{color:#0F6CBD!important}}h6{{color:#808080!important}}a{{color:#0F6CBD!important}}strong{{color:#A31515!important}}em{{color:#7A3E9D!important}}code{{background:#F3F3F3!important;color:#A31515!important}}pre{{background:#F6F6F6!important;border-color:#E5E5E5!important}}pre code{{color:#1E1E1E!important;background:none!important;border:0!important}}blockquote{{background:#F6F6F6!important;border-color:#0F6CBD!important;color:#075AA0!important}}th{{background:#F3F3F3!important;color:#0F6CBD!important}}th,td{{border-color:#D4D4D4!important}}tbody tr:nth-child(even){{background:#FAFAFA!important}}hr{{border-color:#E5E5E5!important}}}}";
+@media print{{html{{background:#FFFFFF!important;color-scheme:light!important}}*{{print-color-adjust:exact!important;-webkit-print-color-adjust:exact!important}}body{{margin:0;background:#FFFFFF!important;color:#1E1E1E!important}}h1,h2{{border-color:#E5E5E5!important}}h1,h2,h3,h4,h5{{color:#0F6CBD!important}}h6{{color:#808080!important}}a{{color:#0F6CBD!important}}strong{{color:#A31515!important}}em{{color:#7A3E9D!important}}code{{background:#F3F3F3!important;color:#A31515!important}}pre{{background:#F6F6F6!important;border-color:#E5E5E5!important}}pre code{{color:#1E1E1E!important;background:none!important;border:0!important}}blockquote{{background:#F6F6F6!important;border-color:#0F6CBD!important;color:#075AA0!important}}th{{background:#F3F3F3!important;color:#0F6CBD!important}}th,td{{border-color:#D4D4D4!important}}tbody tr:nth-child(even){{background:#FAFAFA!important}}hr{{border-color:#E5E5E5!important}}}}";
 
     private static string LightCss(double fs) => BaseCss(fs) + @"
 body{background:#FFFFFF;color:#1E1E1E}

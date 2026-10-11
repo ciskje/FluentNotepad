@@ -391,7 +391,8 @@ public sealed partial class MainWindow : Window
             }
             string? baseDir = doc.Path != null ? Path.GetDirectoryName(doc.Path) : null;
             double size = (FontSlider?.Value ?? 15) * _zoom;
-            string html = MarkdownHtml.Build(doc.Editor.Text, baseDir, _dark, size);
+            string html = MarkdownHtml.Build(doc.Editor.Text, baseDir, _dark, size,
+                DisplayName(doc).TrimStart('*'));
             if (html.Length > 1500000)
             {
                 // NavigateToString has a ~2MB limit: large files go through a temp file
@@ -613,6 +614,14 @@ public sealed partial class MainWindow : Window
         {
             await PreviewView.EnsureCoreWebView2Async();
             await WaitForPreviewPrintReadyAsync();
+            // Refresh the title (e.g. after Save As without re-render): without it the
+            // browser print header shows the document URL (about:blank for NavigateToString).
+            try
+            {
+                string jsTitle = System.Text.Json.JsonSerializer.Serialize(DisplayName(d).TrimStart('*'));
+                await PreviewView.CoreWebView2.ExecuteScriptAsync($"document.title = {jsTitle};");
+            }
+            catch (Exception ex) { Debug.WriteLine($"Print title: {ex.Message}"); }
             PreviewView.CoreWebView2.ShowPrintUI(
                 Microsoft.Web.WebView2.Core.CoreWebView2PrintDialogKind.Browser);
         }
