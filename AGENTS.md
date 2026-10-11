@@ -42,6 +42,7 @@ gh release create vX.Y.Z "installer/dist/FluentNotepad-Setup-X.Y.Z-win-x64.exe" 
 
 - L'exe va ricostruito prima se manca o è stale: `dotnet publish` + `iscc` (vedi sopra).
 - Nelle note: riga install standard (Program Files per-machine, `.md` opzionale, WebView2) + novità rispetto alla release precedente (voci dal Changelog nel `README.md`).
+- Note release **sempre in inglese** (stesso testo del Changelog nel `README.md`, che è in inglese).
 - Stessa policy del versionamento: niente release per docs/refactor/build.
 - Allineare il nome setup nella sezione Download del `README.md`.
 
