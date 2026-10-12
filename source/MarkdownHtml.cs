@@ -11,8 +11,18 @@ namespace FluentNotepad;
 /// </summary>
 public static class MarkdownHtml
 {
-    private static readonly MarkdownPipeline _pipeline =
-        new MarkdownPipelineBuilder().UseAdvancedExtensions().Build();
+    private static readonly MarkdownPipeline _pipeline = CreatePipeline();
+
+    private static MarkdownPipeline CreatePipeline()
+    {
+        var builder = new MarkdownPipelineBuilder().UseAdvancedExtensions();
+        // Single-dollar math swallows "$ ... | ... $" across table cells
+        // (e.g. "| Go cap $ | AA $/task | ..."), merging cells into a
+        // "<span class='math'>". No MathJax is loaded, so math never rendered
+        // anyway: drop it and keep dollars literal.
+        builder.Extensions.RemoveAll(e => (e.GetType().FullName ?? "").Contains("Mathematic"));
+        return builder.Build();
+    }
 
     private const long MaxImageBytes = 20L * 1024 * 1024;
 
