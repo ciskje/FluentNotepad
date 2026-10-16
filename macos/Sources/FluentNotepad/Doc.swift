@@ -25,7 +25,9 @@ final class Doc: Identifiable, @unchecked Sendable {
     var dirty: Bool { text != savedText }
 
     var isMarkdown: Bool {
-        guard let p = path else { return false }
+        // Unsaved tabs count as Markdown: preview toggle, highlighting and
+        // .md save default work before the first save (real .txt keeps none).
+        guard let p = path else { return true }
         let l = p.lowercased()
         return l.hasSuffix(".md") || l.hasSuffix(".markdown")
     }

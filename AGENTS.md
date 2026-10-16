@@ -16,7 +16,7 @@ Both builds implement the same intents; platform-native details may differ
 
 - Drag-reorderable tabs, `+` for a new tab, dirty marker, multi-window
 - Markdown preview (tables, task lists, code, quotes, links, local/remote images)
-- `.md` files open directly in Preview; Edit/Preview toggle (+ ESC both ways)
+- `.md` files (and unsaved tabs) open directly in Preview; Edit/Preview toggle (+ ESC both ways)
 - Parser-driven edit-mode highlighting, same VS tones as the preview
   (only real syntax nodes; never leaks across cells/spans)
 - Formatting toolbar (heading, bold, italic, strikethrough, link, quote,

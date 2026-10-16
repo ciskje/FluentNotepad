@@ -14,7 +14,7 @@ Legend per row: `win:[x]` / `mac:[x]` = shipped on that platform.
 
 ## Pending
 
-(none)
+- [ ] [generic] Unsaved tabs count as Markdown (preview toggle, highlighting, .md save default) — win:[ ] mac:[x]
 
 ## Done
 
