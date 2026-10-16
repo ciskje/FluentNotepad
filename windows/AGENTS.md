@@ -17,14 +17,16 @@ dotnet publish source\FluentNotepad.WinUI.csproj -c Release -p:Platform=x64
 iscc installer\FluentNotepad.iss   # requires Inno Setup 6, output in installer\dist\
 ```
 
-- `app/` (published build) and `installer/dist/` are **not** versioned (see `.gitignore`).
+- `app/` (local publish output, never commit) and `installer/dist/`
+  (not versioned, see `.gitignore`).
 - `dotnet build` from `windows/`; the default `RuntimeIdentifier` follows the host architecture.
 
 ## Versioning (X.Y.Z)
 
-Windows-only detail (shared rules in root `AGENTS.md`): align 3 spots —
-`<Version>` in `source/FluentNotepad.WinUI.csproj`, `#define MyAppVersion`
-in `installer/FluentNotepad.iss`, setup name in the root `README.md`.
+Windows-only detail (shared rules in root `AGENTS.md`): single source is
+`<Version>` in `source/FluentNotepad.WinUI.csproj` — `#define MyAppVersion`
+in `installer/FluentNotepad.iss` and the setup name in the root `README.md`
+derive from it at build/release time (never bumped for docs/refactor/build).
 
 ## GitHub releases
 
@@ -98,20 +100,9 @@ pixel-perfect (`App.NewWindow()`).
 
 ## Headless GUI checks
 
-- Smoke start: launch the exe with a file (`FluentNotepad.exe source\example.md &`),
+- Smoke start: launch the exe with a file (`FluentNotepad.exe ..\README.md &`),
   wait, screenshot with `CopyFromScreen` via PowerShell, kill the process.
 - Edit/Preview toggle and focus via UI Automation (Invoke on the button,
   `SetFocus` on the Edit); `SendKeys`/`AppActivate` alone are unreliable.
 - Query document state via TextPattern (selection, attributes); for real colors
   trust only the screenshot, never the COM read-back.
-
-## Structure
-
-- `source/MainWindow.xaml(.cs)` — shell, tabs, editor (`RichEditBox`), menu, status, themes, window geometry.
-- `source/MarkdownHtml.cs` — Markdown → HTML (Markdig + light/dark CSS + data-URI images).
-- `source/MarkdownHighlight.cs` — Markdown colors in edit mode (Markdig AST → `ITextDocument` ranges, same palette as the preview).
-- `source/CursorGrid.cs` — busy cursor for preview renders.
-- `source/App.xaml(.cs)` — startup + command-line file open + extra cascaded windows.
-- `source/Strings/it-IT|en-US/Resources.resw` — UI resources (copied next to the exe via `.csproj`).
-- `source/Assets/AppIcon.ico` — exe icon (Explorer) + `AppWindow.SetIcon` (runtime).
-- `source/example.md` + root `BENCH.md` — sample files for the preview.

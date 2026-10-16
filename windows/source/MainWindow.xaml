@@ -11,6 +11,18 @@
         <local:CursorGrid.Resources>
             <!-- TabView draws a 1px line under the strip: Notepad doesn't have it -->
             <SolidColorBrush x:Key="TabViewBorderBrush" Color="Transparent"/>
+            <!-- Shared card look for the floating overlays (find bar, preview error) -->
+            <Style x:Key="OverlayCard" TargetType="Border">
+                <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}"/>
+                <Setter Property="BorderBrush" Value="{ThemeResource ControlStrokeColorDefaultBrush}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+            </Style>
+            <!-- Thin dividers in the status bar -->
+            <Style x:Key="StatusSep" TargetType="Rectangle">
+                <Setter Property="Width" Value="1"/>
+                <Setter Property="Height" Value="16"/>
+                <Setter Property="Fill" Value="{ThemeResource DividerStrokeColorDefaultBrush}"/>
+            </Style>
         </local:CursorGrid.Resources>
         <Grid.RowDefinitions>
             <!-- 46 not 48: the strip must end exactly where the tab ends,
@@ -190,10 +202,8 @@
         <Grid Grid.Row="2" AllowDrop="True" Drop="Root_Drop" DragOver="Root_DragOver">
             <Grid x:Name="EditorHost"/>
             <WebView2 x:Name="PreviewView" Visibility="Collapsed"/>
-            <Border x:Name="FindBar" Visibility="Collapsed" HorizontalAlignment="Right" VerticalAlignment="Top"
-                    Margin="0,12,16,0" Padding="8" CornerRadius="8" BorderThickness="1"
-                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                    BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}">
+            <Border x:Name="FindBar" Style="{StaticResource OverlayCard}" Visibility="Collapsed" HorizontalAlignment="Right" VerticalAlignment="Top"
+                    Margin="0,12,16,0" Padding="8" CornerRadius="8">
                 <StackPanel Orientation="Horizontal" Spacing="4">
                     <TextBox x:Uid="FindBox" x:Name="FindBox" Width="170" PlaceholderText="Cerca"
                              TextChanged="FindBox_TextChanged" KeyDown="FindBox_KeyDown"/>
@@ -203,10 +213,8 @@
                 </StackPanel>
             </Border>
             <!-- Preview error (never removed: outside EditorHost) -->
-            <Border x:Name="PreviewError" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center"
-                    Padding="20" CornerRadius="8" BorderThickness="1" MaxWidth="420"
-                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                    BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}">
+            <Border x:Name="PreviewError" Style="{StaticResource OverlayCard}" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center"
+                    Padding="20" CornerRadius="8" MaxWidth="420">
                 <StackPanel Spacing="8">
                     <TextBlock x:Name="PreviewErrorText" TextWrapping="WrapWholeWords"/>
                     <Button Content="Riprova" Click="PreviewRetry_Click" HorizontalAlignment="Left"/>
@@ -224,18 +232,18 @@
             </Grid.ColumnDefinitions>
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="10">
                 <TextBlock x:Uid="LnCol" x:Name="LnCol" Text="Riga 1, col. 1" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                <Rectangle Width="1" Height="16" Fill="{ThemeResource DividerStrokeColorDefaultBrush}"/>
+                <Rectangle Style="{StaticResource StatusSep}"/>
                 <TextBlock x:Uid="CharCount" x:Name="CharCount" Text="0 caratteri" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                <Rectangle Width="1" Height="16" Fill="{ThemeResource DividerStrokeColorDefaultBrush}"/>
+                <Rectangle Style="{StaticResource StatusSep}"/>
                 <TextBlock x:Uid="FileTypeLabel" x:Name="FileTypeLabel" Text="Testo normale" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
             </StackPanel>
             <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Spacing="6">
-                <Button x:Uid="ZoomOutBtn" Content="&#xE949;" FontFamily="Segoe Fluent Icons" FontSize="11" Padding="6,2" Click="ZoomOut_Click" ToolTipService.ToolTip="Riduci zoom"/>
+                <Button x:Name="ZoomOutBtn" Content="&#xE949;" FontFamily="Segoe Fluent Icons" FontSize="11" Padding="6,2" Click="ZoomOut_Click"/>
                 <TextBlock x:Name="ZoomLabel" Text="100%" VerticalAlignment="Center" Width="42" TextAlignment="Center" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                <Button x:Uid="ZoomInBtn" Content="&#xE948;" FontFamily="Segoe Fluent Icons" FontSize="11" Padding="6,2" Click="ZoomIn_Click" ToolTipService.ToolTip="Aumenta zoom"/>
-                <Rectangle Width="1" Height="16" Fill="{ThemeResource DividerStrokeColorDefaultBrush}"/>
+                <Button x:Name="ZoomInBtn" Content="&#xE948;" FontFamily="Segoe Fluent Icons" FontSize="11" Padding="6,2" Click="ZoomIn_Click"/>
+                <Rectangle Style="{StaticResource StatusSep}"/>
                 <TextBlock x:Uid="LineEndLabel" x:Name="LineEndLabel" Text="Windows (CRLF)" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                <Rectangle Width="1" Height="16" Fill="{ThemeResource DividerStrokeColorDefaultBrush}"/>
+                <Rectangle Style="{StaticResource StatusSep}"/>
                 <TextBlock x:Uid="EncodingLabel" x:Name="EncodingLabel" Text="UTF-8" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
             </StackPanel>
         </Grid>

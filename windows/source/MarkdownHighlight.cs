@@ -24,53 +24,22 @@ public static class MarkdownHighlight
 {
     public const int MaxChars = 300_000;
 
-    private static readonly MarkdownPipeline _pipeline = CreatePipeline();
-
-    private static MarkdownPipeline CreatePipeline()
-    {
-        var builder = new MarkdownPipelineBuilder().UseAdvancedExtensions();
-        // Same as MarkdownHtml: single-dollar math swallows "$ ... | ... $"
-        // across table cells; it never renders, keep dollars literal.
-        builder.Extensions.RemoveAll(e => (e.GetType().FullName ?? "").Contains("Mathematic"));
-        return builder.Build();
-    }
+    private static readonly MarkdownPipeline _pipeline = MarkdownShared.CreatePipeline();
 
     private readonly struct Paint
     {
-        public readonly Color Fg;
-        public readonly Color? Bg;
+        public readonly MarkdownShared.Rgb Fg;
+        public readonly MarkdownShared.Rgb? Bg;
         public readonly bool Bold;
         public readonly bool Italic;
         public readonly bool Strike;
         public readonly bool Underline;
 
-        public Paint(Color fg, Color? bg = null, bool bold = false, bool italic = false,
+        public Paint(MarkdownShared.Rgb fg, MarkdownShared.Rgb? bg = null, bool bold = false, bool italic = false,
             bool strike = false, bool underline = false)
         {
             Fg = fg; Bg = bg; Bold = bold; Italic = italic; Strike = strike; Underline = underline;
         }
-    }
-
-    // Same VS tones as the preview CSS (MarkdownHtml) and the Mac palette.
-    private readonly struct Palette
-    {
-        public readonly Color Heading, Strong, Emphasis, Code, CodeBg, Link, Quote, Marker, Dim;
-        public Palette(bool dark)
-        {
-            if (dark)
-            {
-                Heading = C(0x56, 0x9C, 0xD6); Strong = C(0xDC, 0xDC, 0xAA); Emphasis = C(0xC5, 0x86, 0xC0);
-                Code = C(0xCE, 0x91, 0x78); CodeBg = C(0x2D, 0x2D, 0x30); Link = C(0x4F, 0xC1, 0xFF);
-                Quote = C(0x9C, 0xDC, 0xFE); Marker = C(0x56, 0x9C, 0xD6); Dim = C(0x80, 0x80, 0x80);
-            }
-            else
-            {
-                Heading = C(0x0F, 0x6C, 0xBD); Strong = C(0xA3, 0x15, 0x15); Emphasis = C(0x7A, 0x3E, 0x9D);
-                Code = C(0xA3, 0x15, 0x15); CodeBg = C(0xF3, 0xF3, 0xF3); Link = C(0x0F, 0x6C, 0xBD);
-                Quote = C(0x07, 0x5A, 0xA0); Marker = C(0x0F, 0x6C, 0xBD); Dim = C(0x80, 0x80, 0x80);
-            }
-        }
-        private static Color C(int r, int g, int b) => Color.FromArgb(255, (byte)r, (byte)g, (byte)b);
     }
 
     private sealed class Ctx
@@ -78,13 +47,15 @@ public static class MarkdownHighlight
         public readonly string Text;
         public readonly int[] Starts;
         public readonly string[] Lines;
-        public readonly Palette Pal;
+        public readonly MarkdownShared.Palette Pal;
         public readonly List<(int Start, int Length, Paint Paint)> Ops = new();
         public readonly List<(int Start, int Length)> Guarded = new(); // code/link/image/html: table pipes skip these
         public readonly List<(int Start, int Length, List<(int Start, int Length)> Covered)> Tables = new();
-        public readonly Stack<(int Start, int Length, List<(int Start, int Length)> Covered)> TableStack = new();
+        public int TableStart = -1; // current table span (tables never nest): rows accumulate into TableCovered
+        public int TableLen;
+        public readonly List<(int Start, int Length)> TableCovered = new();
 
-        public Ctx(string text, Palette pal)
+        public Ctx(string text, MarkdownShared.Palette pal)
         {
             Text = text;
             Pal = pal;
@@ -138,7 +109,7 @@ public static class MarkdownHighlight
             MarkdownDocument md;
             try { md = Markdig.Markdown.Parse(parse, _pipeline); }
             catch { return; }
-            var ctx = new Ctx(parse, new Palette(dark));
+            var ctx = new Ctx(parse, new MarkdownShared.Palette(dark));
             foreach (var b in md) PaintBlock(b, ctx);
             PaintTables(ctx);
             foreach (var (s, l, p) in ctx.Ops)
@@ -146,8 +117,8 @@ public static class MarkdownHighlight
                 if (s < 0 || l <= 0 || s + l > n) continue;
                 var r = doc.GetRange(s, s + l);
                 var f = r.CharacterFormat;
-                f.ForegroundColor = p.Fg;
-                f.BackgroundColor = p.Bg ?? baseBg;
+                f.ForegroundColor = p.Fg.Color;
+                f.BackgroundColor = p.Bg?.Color ?? baseBg;
                 f.Bold = p.Bold ? FormatEffect.On : FormatEffect.Off;
                 f.Italic = p.Italic ? FormatEffect.On : FormatEffect.Off;
                 f.Strikethrough = p.Strike ? FormatEffect.On : FormatEffect.Off;
@@ -179,7 +150,7 @@ public static class MarkdownHighlight
             case HeadingBlock:
                 if (TrySpan(b.Span, ctx.Text.Length, out int hs, out int hl))
                     ctx.Ops.Add((hs, hl, new Paint(pal.Heading, bold: true)));
-                PaintLeafInline(b, ctx);
+                if (b is LeafBlock hb && hb.Inline != null) PaintInline(hb.Inline, ctx);
                 break;
             case QuoteBlock:
                 if (TrySpan(b.Span, ctx.Text.Length, out int qs, out int ql))
@@ -209,19 +180,19 @@ public static class MarkdownHighlight
                 break;
             case Table:
                 if (TrySpan(b.Span, ctx.Text.Length, out int tas, out int tal))
-                    ctx.TableStack.Push((tas, tal, new List<(int, int)>()));
+                { ctx.TableStart = tas; ctx.TableLen = tal; ctx.TableCovered.Clear(); }
                 foreach (var c in ((ContainerBlock)b)) PaintBlock(c, ctx);
-                if (ctx.TableStack.Count > 0)
+                if (ctx.TableStart >= 0)
                 {
-                    var done = ctx.TableStack.Pop();
-                    ctx.Tables.Add((done.Start, done.Length, done.Covered));
+                    ctx.Tables.Add((ctx.TableStart, ctx.TableLen, new List<(int, int)>(ctx.TableCovered)));
+                    ctx.TableStart = -1;
                 }
                 break;
             case TableRow row:
                 if (row.IsHeader && TrySpan(b.Span, ctx.Text.Length, out int hrs, out int hrl))
                     ctx.Ops.Add((hrs, hrl, new Paint(pal.Heading, bold: true)));
-                if (TrySpan(b.Span, ctx.Text.Length, out int rs, out int rl) && ctx.TableStack.Count > 0)
-                    ctx.TableStack.Peek().Covered.Add((rs, rl));
+                if (TrySpan(b.Span, ctx.Text.Length, out int rs, out int rl) && ctx.TableStart >= 0)
+                    ctx.TableCovered.Add((rs, rl));
                 foreach (var c in ((ContainerBlock)b)) PaintBlock(c, ctx);
                 break;
             default:
@@ -234,11 +205,6 @@ public static class MarkdownHighlight
             PaintHtml(ys, yl, ctx);
             ctx.Guarded.Add((ys, yl));
         }
-    }
-
-    private static void PaintLeafInline(Block b, Ctx ctx)
-    {
-        if (b is LeafBlock leaf && leaf.Inline != null) PaintInline(leaf.Inline, ctx);
     }
 
     private static void PaintInline(Inline inl, Ctx ctx)
@@ -311,7 +277,7 @@ public static class MarkdownHighlight
         }
     }
 
-    private static void PaintLineMarkers(int rs, int rl, Ctx ctx, Func<char, bool> check, Color color)
+    private static void PaintLineMarkers(int rs, int rl, Ctx ctx, Func<char, bool> check, MarkdownShared.Rgb color)
     {
         foreach (var (lstart, line) in LinesIn(rs, rl, ctx))
         {
@@ -420,6 +386,9 @@ public static class MarkdownHighlight
 
     // MARK: - Tables: delimiter rows + structural pipes (code/link spans excluded)
 
+    // Delimiter rows (`|:---|---:|:---:|`) get the dim tone: single compiled pattern.
+    private static readonly Regex DelimRe = new(@"^\s*\|?(\s*:?-+:?\s*\|?)+\s*$", RegexOptions.Compiled);
+
     private static void PaintTables(Ctx ctx)
     {
         foreach (var (ts, tl, covered) in ctx.Tables)
@@ -431,7 +400,7 @@ public static class MarkdownHighlight
                     Math.Max(c.Start, lstart) < Math.Min(c.Start + c.Length, lstart + llen));
                 if (!inRow)
                 {
-                    if (IsDelimiterLine(line)) ctx.Ops.Add((lstart, llen, new Paint(ctx.Pal.Dim)));
+                    if (DelimRe.IsMatch(line)) ctx.Ops.Add((lstart, llen, new Paint(ctx.Pal.Dim)));
                     continue;
                 }
                 for (int i = 0; i < line.Length; i++)
@@ -443,23 +412,5 @@ public static class MarkdownHighlight
                 }
             }
         }
-    }
-
-    private static bool IsDelimiterLine(string line)
-    {
-        string t = line.Trim();
-        if (t.StartsWith('|')) t = t[1..];
-        if (t.EndsWith('|')) t = t[..^1];
-        var cells = t.Split('|');
-        if (cells.Length == 0) return false;
-        foreach (var cell in cells)
-        {
-            string k = cell.Trim();
-            if (k.Length == 0) return false;
-            if (k.StartsWith(':')) k = k[1..];
-            if (k.EndsWith(':')) k = k[..^1];
-            if (k.Length == 0 || k.Any(ch => ch != '-')) return false;
-        }
-        return true;
     }
 }

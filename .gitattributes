@@ -1,8 +1,4 @@
-# No line-ending conversion, ever: committed bytes are checked out verbatim on
-# every OS, and editors writing LF never trigger autocrlf warnings.
-* -text
-
-# Safety net (also enforced in the index): shell scripts must be LF to run on
-# macOS, batch files must be CRLF for cmd.exe.
+# Line endings: auto everywhere, except LF for shell and CRLF for batch.
+* text=auto
 *.sh text eol=lf
 *.bat text eol=crlf

@@ -6,21 +6,17 @@ import WebKit
 /// (same claim-it-here pattern as EditorTextView: no reliance on bubbling).
 final class PreviewWebView: WKWebView {
     var onFileDrop: ((URL) -> Void)?
-    private static func isFileDrop(_ sender: NSDraggingInfo) -> Bool {
-        sender.draggingPasteboard.types?.contains(.fileURL) == true
-    }
     override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
-        if Self.isFileDrop(sender) { return .copy }
+        if sender.isFileDrop { return .copy }
         return super.draggingEntered(sender)
     }
     override func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation {
-        if Self.isFileDrop(sender) { return .copy }
+        if sender.isFileDrop { return .copy }
         return super.draggingUpdated(sender)
     }
     override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
-        if Self.isFileDrop(sender) {
-            let files = ((sender.draggingPasteboard.readObjects(forClasses: [NSURL.self], options: nil) as? [URL]) ?? [])
-                .filter(\.isFileURL)
+        if sender.isFileDrop {
+            let files = sender.fileURLs
             for url in files { onFileDrop?(url) }
             return !files.isEmpty
         }
@@ -38,7 +34,7 @@ struct PreviewView: NSViewRepresentable {
     /// A file dropped onto the preview opens as a tab instead of navigating.
     var onFileDrop: ((URL) -> Void)?
 
-    func makeCoordinator() -> C { C(ref: webRef) }
+    func makeCoordinator() -> C { C() }
 
     func makeNSView(context: Context) -> WKWebView {
         let ucc = WKUserContentController()
@@ -47,10 +43,8 @@ struct PreviewView: NSViewRepresentable {
         let cfg = WKWebViewConfiguration()
         cfg.userContentController = ucc
         let w = PreviewWebView(frame: .zero, configuration: cfg)
-        w.setValue(false, forKey: "drawsBackground")
         w.navigationDelegate = context.coordinator
         w.onFileDrop = onFileDrop
-        context.coordinator.onFileDrop = onFileDrop
         context.coordinator.onFileDrop = onFileDrop
         webRef.view = w
         if !html.isEmpty { w.loadHTMLString(html, baseURL: nil) }
@@ -87,7 +81,6 @@ struct PreviewView: NSViewRepresentable {
     final class C: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
         var lastHTML = ""
         var onFileDrop: ((URL) -> Void)?
-        init(ref: WebRef) {}
 
         func userContentController(_ ucc: WKUserContentController, didReceive message: WKScriptMessage) {
             guard message.name == "srcLine",
@@ -113,15 +106,9 @@ struct PreviewView: NSViewRepresentable {
     }
 }
 
-/// Handle for print / JS calls on the preview web view. Main-thread confined.
+/// Handle for printing the preview web view. Main-thread confined.
 final class WebRef: @unchecked Sendable {
     weak var view: WKWebView?
-
-    func setTitle(_ title: String) {
-        let data = (try? JSONSerialization.data(withJSONObject: [title])) ?? Data("[]".utf8)
-        let js = String(data: data, encoding: .utf8).map { "document.title = \($0)[0];" } ?? ""
-        view?.evaluateJavaScript(js, completionHandler: nil)
-    }
 
     func print() {
         guard let w = view else { return }

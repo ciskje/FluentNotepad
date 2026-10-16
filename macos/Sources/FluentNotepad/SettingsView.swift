@@ -7,9 +7,7 @@ struct SettingsView: View {
     var body: some View {
         Form {
             Section(L("appearance")) {
-                Picker(L("appTheme"), selection: Binding(
-                    get: { store.theme },
-                    set: { store.theme = $0 }))
+                Picker(L("appTheme"), selection: $store.theme)
                 {
                     Text(L("light")).tag("light")
                     Text(L("dark")).tag("dark")
@@ -18,11 +16,10 @@ struct SettingsView: View {
                 .pickerStyle(.radioGroup)
             }
             Section(L("editor")) {
-                Toggle(L("wordWrap"), isOn: Binding(
-                    get: { store.wrap }, set: { store.wrap = $0 }))
+                Toggle(L("wordWrap"), isOn: $store.wrap)
                 HStack {
                     Text(L("fontSize"))
-                    Slider(value: Binding(get: { store.fontSize }, set: { store.fontSize = $0 }),
+                    Slider(value: $store.fontSize,
                         in: 12 ... 24, step: 1)
                     Text("\(Int(store.fontSize))").frame(width: 24)
                 }

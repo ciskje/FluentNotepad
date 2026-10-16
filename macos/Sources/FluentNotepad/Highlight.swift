@@ -30,7 +30,6 @@ enum SyntaxHighlight {
         if markdown, !text.isEmpty, text.count <= maxChars {
             let ctx = Ctx(text: text, pal: Palette(dark: dark), baseFont: baseFont)
             walk(Document(parsing: text), ctx)
-            paintTables(ctx)
             for (r, p) in ctx.ops {
                 let rr = NSIntersectionRange(r, full)
                 if rr.length > 0 { storage.setAttributes(ctx.dict(p), range: rr) }
@@ -90,22 +89,27 @@ enum SyntaxHighlight {
         let ns: NSString
         let pal: Palette
         let baseFont: NSFont
+        let boldFont: NSFont
+        let italicFont: NSFont
+        let boldItalicFont: NSFont
         var ops: [(NSRange, Paint)] = []
         var guarded: [NSRange] = [] // code/link/image/html: table pipes skip these
-        var tables: [(range: NSRange, covered: [NSRange])] = []
-        var tableStack: [(NSRange, [NSRange])] = []
         init(text: String, pal: Palette, baseFont: NSFont) {
             self.map = LineMap(text)
             self.ns = text as NSString
             self.pal = pal
             self.baseFont = baseFont
+            let fm = NSFontManager.shared
+            self.boldFont = fm.convert(baseFont, toHaveTrait: .boldFontMask)
+            self.italicFont = fm.convert(baseFont, toHaveTrait: .italicFontMask)
+            self.boldItalicFont = fm.convert(baseFont, toHaveTrait: [.boldFontMask, .italicFontMask])
         }
         func dict(_ p: Paint) -> [NSAttributedString.Key: Any] {
             var d: [NSAttributedString.Key: Any] = [.foregroundColor: p.fg]
-            var mask: NSFontTraitMask = []
-            if p.bold { mask.insert(.boldFontMask) }
-            if p.italic { mask.insert(.italicFontMask) }
-            d[.font] = mask.isEmpty ? baseFont : NSFontManager.shared.convert(baseFont, toHaveTrait: mask)
+            if p.bold, p.italic { d[.font] = boldItalicFont }
+            else if p.bold { d[.font] = boldFont }
+            else if p.italic { d[.font] = italicFont }
+            else { d[.font] = baseFont }
             if let bg = p.bg { d[.backgroundColor] = bg }
             if p.strike {
                 d[.strikethroughStyle] = NSUnderlineStyle.single.rawValue
@@ -130,8 +134,6 @@ enum SyntaxHighlight {
     static func walk(_ m: Markup, _ ctx: Ctx) {
         let pal = ctx.pal
         switch m {
-        case is Document, is Paragraph, is Table.Body:
-            for c in m.children { walk(c, ctx) }
         case is Heading:
             ctx.paint(m, Paint(fg: pal.heading, bold: true))
             for c in m.children { walk(c, ctx) }
@@ -144,26 +146,16 @@ enum SyntaxHighlight {
             ctx.guardRange(m)
         case is ThematicBreak:
             ctx.paint(m, Paint(fg: pal.dim))
-        case is OrderedList, is UnorderedList:
-            for c in m.children { walk(c, ctx) }
         case let i as ListItem:
             paintListMarker(i, ctx)
             for c in i.children { walk(c, ctx) }
         case let t as Table:
-            if let r = t.range.flatMap({ ctx.map.nsRange($0) }) { ctx.tableStack.append((r, [])) }
             for c in t.children { walk(c, ctx) }
-            if !ctx.tableStack.isEmpty {
-                let done = ctx.tableStack.removeLast()
-                ctx.tables.append((done.0, done.1))
-            }
+            paintTable(t, ctx)
         case is Table.Head:
             ctx.paint(m, Paint(fg: pal.heading, bold: true))
-            coverRow(m, ctx)
             for c in m.children { walk(c, ctx) }
         case is Table.Row:
-            coverRow(m, ctx)
-            for c in m.children { walk(c, ctx) }
-        case is Table.Cell, is Text, is LineBreak, is SoftBreak:
             for c in m.children { walk(c, ctx) }
         case is Emphasis:
             ctx.paint(m, Paint(fg: pal.emphasis, italic: true))
@@ -193,12 +185,6 @@ enum SyntaxHighlight {
             ctx.guardRange(m)
         default:
             for c in m.children { walk(c, ctx) }
-        }
-    }
-
-    private static func coverRow(_ m: Markup, _ ctx: Ctx) {
-        if let r = m.range.flatMap({ ctx.map.nsRange($0) }), !ctx.tableStack.isEmpty {
-            ctx.tableStack[ctx.tableStack.count - 1].1.append(r)
         }
     }
 
@@ -278,13 +264,14 @@ enum SyntaxHighlight {
 
     // MARK: - HTML (tags/comments confined to HTML nodes)
 
-    private static let htmlPattern = "(<!--[\\s\\S]*?-->)|(</?[A-Za-z][A-Za-z0-9]*(?:\\s[^<>\\n]*)?/?>)"
+    private static let htmlRe = try! NSRegularExpression(pattern: "(<!--[\\s\\S]*?-->)|(</?[A-Za-z][A-Za-z0-9]*(?:\\s[^<>\\n]*)?/?>)")
+    private static let tagRe = try! NSRegularExpression(pattern: "^(</?)([A-Za-z][A-Za-z0-9]*)")
+    private static let attrStrRe = try! NSRegularExpression(pattern: "\"[^\"]*\"")
 
     private static func paintHtml(in r: NSRange, _ ctx: Ctx) {
-        guard let re = try? NSRegularExpression(pattern: htmlPattern) else { return }
         let text = ctx.ns.substring(with: NSIntersectionRange(r, NSRange(location: 0, length: ctx.ns.length)))
         let base = r.location
-        for m in re.matches(in: text, range: NSRange(location: 0, length: (text as NSString).length)) {
+        for m in htmlRe.matches(in: text, range: NSRange(location: 0, length: (text as NSString).length)) {
             let mr = NSRange(location: base + m.range.location, length: m.range.length)
             if m.range(at: 1).location != NSNotFound {
                 ctx.ops.append((mr, Paint(fg: ctx.pal.dim, italic: true)))
@@ -298,43 +285,38 @@ enum SyntaxHighlight {
         let s = ctx.ns.substring(with: range)
         let base = range.location
         ctx.ops.append((range, Paint(fg: ctx.pal.dim)))
-        guard let tagRe = try? NSRegularExpression(pattern: "^(</?)([A-Za-z][A-Za-z0-9]*)"),
-            let m = tagRe.firstMatch(in: s, range: NSRange(location: 0, length: (s as NSString).length))
+        guard let m = tagRe.firstMatch(in: s, range: NSRange(location: 0, length: (s as NSString).length))
         else { return }
         ctx.ops.append((NSRange(location: base + m.range(at: 2).location, length: m.range(at: 2).length),
             Paint(fg: ctx.pal.marker, bold: true)))
-        if let strRe = try? NSRegularExpression(pattern: "\"[^\"]*\"") {
-            for sm in strRe.matches(in: s, range: NSRange(location: 0, length: (s as NSString).length)) {
-                ctx.ops.append((NSRange(location: base + sm.range.location, length: sm.range.length),
-                    Paint(fg: ctx.pal.code)))
-            }
+        for sm in attrStrRe.matches(in: s, range: NSRange(location: 0, length: (s as NSString).length)) {
+            ctx.ops.append((NSRange(location: base + sm.range.location, length: sm.range.length),
+                Paint(fg: ctx.pal.code)))
         }
     }
 
     // MARK: - Tables: delimiter rows + structural pipes (code/link spans excluded)
 
-    private static func paintTables(_ ctx: Ctx) {
-        for (trange, covered) in ctx.tables {
-            for (lstart, line) in lines(in: trange, ctx) {
-                let llen = line.utf16.count
-                let lr = NSRange(location: lstart, length: llen)
-                let inRow = covered.contains { $0.intersection(lr)?.length ?? 0 > 0 }
-                if !inRow {
-                    if isDelimiterLine(line) { ctx.ops.append((lr, Paint(fg: ctx.pal.dim))) }
-                    continue
-                }
-                var idx = line.startIndex
-                var unit = 0
-                while idx < line.endIndex {
-                    if line[idx] == "|" {
-                        let abs = lstart + unit
-                        if !ctx.guarded.contains(where: { NSLocationInRange(abs, $0) }) {
-                            ctx.ops.append((NSRange(location: abs, length: 1), Paint(fg: ctx.pal.dim)))
-                        }
+    /// Pipes and delimiter tint, painted right after the table's children
+    /// walked (guarded ranges already complete): no second pass, no row cover.
+    private static func paintTable(_ t: Table, _ ctx: Ctx) {
+        guard let tr = t.range.flatMap({ ctx.map.nsRange($0) }) else { return }
+        for (lstart, line) in lines(in: tr, ctx) {
+            if isDelimiterLine(line) {
+                ctx.ops.append((NSRange(location: lstart, length: line.utf16.count), Paint(fg: ctx.pal.dim)))
+                continue
+            }
+            var unit = 0
+            var idx = line.startIndex
+            while idx < line.endIndex {
+                if line[idx] == "|" {
+                    let abs = lstart + unit
+                    if !ctx.guarded.contains(where: { NSLocationInRange(abs, $0) }) {
+                        ctx.ops.append((NSRange(location: abs, length: 1), Paint(fg: ctx.pal.dim)))
                     }
-                    unit += line[idx].utf16.count
-                    idx = line.index(after: idx)
                 }
+                unit += line[idx].utf16.count
+                idx = line.index(after: idx)
             }
         }
     }

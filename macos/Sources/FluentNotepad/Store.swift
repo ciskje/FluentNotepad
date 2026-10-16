@@ -134,18 +134,15 @@ final class Store: @unchecked Sendable {
 
     // MARK: - Panels (native AppKit, no custom dialogs)
 
+    /// Markdown extensions for the save panel (open accepts any plain text).
     static var mdTypes: [UTType] {
         ["md", "markdown"].compactMap { UTType(filenameExtension: $0) }
-    }
-
-    static var textTypes: [UTType] {
-        (["txt"].compactMap { UTType(filenameExtension: $0) }) + mdTypes + [UTType.plainText]
     }
 
     func openPanel() {
         let p = NSOpenPanel()
         p.allowsMultipleSelection = false
-        p.allowedContentTypes = Self.textTypes
+        p.allowedContentTypes = [UTType.plainText]
         if p.runModal() == .OK, let url = p.url { open(url: url) }
     }
 
@@ -154,7 +151,7 @@ final class Store: @unchecked Sendable {
         if doc.path == nil {
             let p = NSSavePanel()
             p.nameFieldStringValue = L("untitled") + (doc.isMarkdown ? ".md" : ".txt")
-            p.allowedContentTypes = doc.isMarkdown ? Self.mdTypes : Self.textTypes
+            p.allowedContentTypes = doc.isMarkdown ? Self.mdTypes : [UTType.plainText]
             guard p.runModal() == .OK, let url = p.url else { return false }
             doc.path = url.path
         }
@@ -172,20 +169,9 @@ final class Store: @unchecked Sendable {
         doc.path = nil
         if !save(doc) { doc.path = old }
     }
-
-    func saveAll() -> Bool {
-        for d in dirtyDocs { if !save(d) { return false } }
-        return true
-    }
 }
 
 // MARK: - Multi-window plumbing (one Store per window, Notepad-style tabs)
-
-/// Files waiting for a window (CLI args, openFile events arriving with no
-/// window yet). The next window to appear consumes them.
-enum PendingFiles {
-    static var urls: [URL] = []
-}
 
 /// Registry of live windows. Menu commands and open events always target the
 /// frontmost window's store; with no windows they fall back to the shared one.

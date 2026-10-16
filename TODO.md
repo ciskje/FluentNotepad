@@ -7,7 +7,9 @@ before implementing:
   machine/build). The row is done only when all platforms have it.
 - `windows` / `macos` / `linux` — platform-only: implement (and rebuild the
   app) only where relevant; other platforms ignore the row.
-- Implement only for the current platform, update the row, never delete it.
+- Implement only for the current platform, update the row; Done rows are
+  archived (deleted here) at each release — history lives in tags and
+  release notes, not in this file.
 - Generic intents are also mirrored in the parity checklist in `AGENTS.md`.
 
 Legend per row: `win:[x]` / `mac:[x]` = shipped on that platform.

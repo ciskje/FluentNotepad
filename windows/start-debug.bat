@@ -1,16 +1,10 @@
 @echo off
-REM Avvia FluentNotepad WinUI 3 (versione di Debug, exe unpackaged)
+REM Start FluentNotepad WinUI 3 (Debug unpackaged build)
 cd /d "%~dp0"
-where dotnet >nul 2>nul
-if errorlevel 1 (
-    if exist "%ProgramFiles%\dotnet\dotnet.exe" set "PATH=%ProgramFiles%\dotnet;%PATH%"
-)
-set "EXE=source\bin\Debug\net8.0-windows10.0.26100.0\win-x64\FluentNotepad.exe"
-echo Compilazione...
-dotnet build source\FluentNotepad.WinUI.csproj -c Debug -v minimal
-if errorlevel 1 (
-    echo ERRORE di compilazione.
-    pause
-    exit /b 1
-)
+echo Building...
+dotnet build source\FluentNotepad.WinUI.csproj -c Debug
+if errorlevel 1 pause & exit /b 1
+echo Starting...
+for /f "delims=" %%E in ('dir /b /s source\bin\Debug\FluentNotepad.exe 2^>nul') do set "EXE=%%E"
+if not defined EXE pause & exit /b 1
 start "" "%EXE%" %*

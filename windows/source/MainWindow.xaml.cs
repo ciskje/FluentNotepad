@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Reflection;
 using System.Text.Json;
+using System.Xml.Linq;
 using Microsoft.UI;
 using Microsoft.UI.Composition.SystemBackdrops;
 using Microsoft.UI.Input;
@@ -34,36 +35,28 @@ public sealed partial class MainWindow : Window
     // Code-behind strings: read from the .resw files shipped next to the exe (Strings/<language>/).
     // No MRT/ResourceLoader: it needs package identity, missing in unpackaged apps
     // (FileNotFoundException in the constructor). x:Uid in XAML uses internal MRT and works.
-    private static System.Collections.Generic.Dictionary<string, string>? _res;
+    private static Dictionary<string, string>? _res;
     internal static string Str(string key)
     {
         try
         {
-            if (_res == null)
-            {
-                // Same rule as the rest of the UI: English only on English systems
-                var lang = Windows.Globalization.ApplicationLanguages.Languages.FirstOrDefault()?.Split('-')[0];
-                _res = LoadResw(lang == "en" ? "en-US" : "it-IT");
-            }
+            // Same rule as the rest of the UI: English only on English systems
+            _res ??= LoadResw(UiLang() == "en" ? "en-US" : "it-IT");
             if (_res.TryGetValue(key, out var s)) return s;
         }
         catch (Exception ex) { Debug.WriteLine($"Str({key}): {ex.Message}"); }
         return $"[{key}]";
     }
 
-    private static System.Collections.Generic.Dictionary<string, string> LoadResw(string folder)
-    {
-        var d = new System.Collections.Generic.Dictionary<string, string>();
-        var xml = new System.Xml.XmlDocument();
-        xml.Load(Path.Combine(AppContext.BaseDirectory, "Strings", folder, "Resources.resw"));
-        foreach (System.Xml.XmlNode n in xml.SelectNodes("/root/data")!)
-        {
-            var name = n.Attributes?["name"]?.Value;
-            var value = n.SelectSingleNode("value")?.InnerText;
-            if (name != null && value != null) d[name] = value;
-        }
-        return d;
-    }
+    private static Dictionary<string, string> LoadResw(string folder) =>
+        XDocument.Load(Path.Combine(AppContext.BaseDirectory, "Strings", folder, "Resources.resw"))
+            .Root!.Elements("data")
+            .Where(e => e.Attribute("name")?.Value != null && e.Element("value") != null)
+            .ToDictionary(e => e.Attribute("name")!.Value, e => e.Element("value")!.Value);
+
+    // UI language subtag from the Windows language list (Italian for anything but it/en).
+    private static string UiLang() =>
+        Windows.Globalization.ApplicationLanguages.Languages.FirstOrDefault()?.Split('-')[0] ?? "";
     private sealed class DocumentInfo
     {
         public TabViewItem Tab = null!;
@@ -73,7 +66,6 @@ public sealed partial class MainWindow : Window
         public bool PreviewVisible;
         public bool Dirty;
         public string LineEnding = "Windows (CRLF)";
-        public string FileEncoding = "UTF-8";
         // Edit-mode highlight cache (hash of the inputs, like FluentNotepadMac)
         // and text snapshot (RichEditBox fires TextChanged for formatting too).
         public string HighlightKey = "";
@@ -88,8 +80,7 @@ public sealed partial class MainWindow : Window
         // Guarded: the setter once fail-fasted on a neutral tag, so the qualified form is used.
         try
         {
-            var lang = Windows.Globalization.ApplicationLanguages.Languages.FirstOrDefault()?.Split('-')[0];
-            if (lang != "it" && lang != "en")
+            if (UiLang() is not ("it" or "en"))
                 Windows.Globalization.ApplicationLanguages.PrimaryLanguageOverride = "it-IT";
         }
         catch (Exception ex) { Debug.WriteLine($"Lang override: {ex.Message}"); }
@@ -111,11 +102,6 @@ public sealed partial class MainWindow : Window
         AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "AppIcon.ico"));
         AppWindow.Closing += App_Closing;
         AppWindow.Changed += App_Changed;
-        AppWindow.Destroying += (_, _) =>
-        {
-            try { if (_previewTmp != null && File.Exists(_previewTmp)) File.Delete(_previewTmp); }
-            catch (Exception ex) { Debug.WriteLine($"PreviewTmp cleanup: {ex.Message}"); }
-        };
 
         _previewTimer = DispatcherQueue.CreateTimer();
         _previewTimer.Interval = TimeSpan.FromMilliseconds(400);
@@ -126,12 +112,10 @@ public sealed partial class MainWindow : Window
             if (d is { IsMarkdown: true, PreviewVisible: true }) RenderPreview(d);
         };
 
-        _winSaveTimer = DispatcherQueue.CreateTimer();
-        _winSaveTimer.Interval = TimeSpan.FromSeconds(1);
-        _winSaveTimer.Tick += (_, _) => { _winSaveTimer.Stop(); SaveWindowGeometry(); };
-
         var v = Assembly.GetExecutingAssembly().GetName().Version;
         VersionInfo.Text = string.Format(Str("VersionInfo"), v?.ToString(3) ?? "?");
+        ToolTipService.SetToolTip(ZoomOutBtn, Str("ViewZoomOut.Text"));
+        ToolTipService.SetToolTip(ZoomInBtn, Str("ViewZoomIn.Text"));
 
         // Ctrl++ / Ctrl+- on the main keyboard (187=OemPlus, 189=OemMinus).
         // Hidden: otherwise WinUI shows the first accelerator in a hover tooltip
@@ -151,7 +135,7 @@ public sealed partial class MainWindow : Window
         Root.KeyboardAccelerators.Add(esc);
 
         // Saved theme (light/dark/system): follows Windows by default
-        string mode = LoadThemeSetting();
+        string mode = LoadSettings().Theme;
         ThemeCombo.SelectedIndex = mode == "light" ? 0 : mode == "dark" ? 1 : 2;
         ApplyThemeSetting(mode);
         NewTab(null);
@@ -242,32 +226,18 @@ public sealed partial class MainWindow : Window
                          path.EndsWith(".markdown", StringComparison.OrdinalIgnoreCase));
 
     private static string DisplayName(DocumentInfo d) =>
-        (d.Dirty ? "*" : "") + (d.Path != null ? System.IO.Path.GetFileName(d.Path) : Str("Untitled"));
+        d.Path != null ? System.IO.Path.GetFileName(d.Path) : Str("Untitled");
 
-    private void RefreshHeader(DocumentInfo d) => d.Tab.Header = DisplayName(d);
+    private void RefreshHeader(DocumentInfo d) => d.Tab.Header = (d.Dirty ? "*" : "") + DisplayName(d);
 
     private static string DetectLineEnding(string text) =>
         text.Contains("\r\n") ? "Windows (CRLF)" : text.Contains('\n') ? "Unix (LF)" : "Windows (CRLF)";
-
-    private static string DetectEncoding(string path)
-    {
-        try
-        {
-            using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-            int b0 = fs.ReadByte(), b1 = fs.ReadByte(), b2 = fs.ReadByte();
-            if (b0 == 0xEF && b1 == 0xBB && b2 == 0xBF) return Str("EncUtf8Bom");
-            if (b0 == 0xFF && b1 == 0xFE) return "UTF-16 LE";
-            if (b0 == 0xFE && b1 == 0xFF) return "UTF-16 BE";
-        }
-        catch (Exception ex) { Debug.WriteLine($"DetectEncoding: {ex.Message}"); }
-        return "UTF-8";
-    }
 
     private void RefreshFileLabels()
     {
         var d = GetActiveDoc();
         if (LineEndLabel != null) LineEndLabel.Text = d?.LineEnding ?? "Windows (CRLF)";
-        if (EncodingLabel != null) EncodingLabel.Text = d?.FileEncoding ?? "UTF-8";
+        if (EncodingLabel != null) EncodingLabel.Text = "UTF-8"; // save always writes UTF-8 without BOM
     }
 
     private void NewTab(string? path, string content = "")
@@ -389,7 +359,7 @@ public sealed partial class MainWindow : Window
         var dlg = new ContentDialog
         {
             Title = "FluentNotepad",
-            Content = string.Format(Str("SaveContent"), DisplayName(doc).TrimStart('*')),
+            Content = string.Format(Str("SaveContent"), DisplayName(doc)),
             PrimaryButtonText = Str("SavePrimary"),
             SecondaryButtonText = Str("SaveSecondary"),
             CloseButtonText = Str("SaveClose"),
@@ -437,53 +407,15 @@ public sealed partial class MainWindow : Window
     // Last non-maximized bounds: when maximized, AppWindow.Size/Position report the
     // monitor, not the restore bounds — keep a cache.
     private RectInt32 _restoreBounds = new(100, 100, 1000, 650);
-    private bool _restoreValid = false;
-    private Microsoft.UI.Dispatching.DispatcherQueueTimer? _winSaveTimer;
 
     // ================= MARKDOWN PREVIEW (WebView2) =================
     private readonly SemaphoreSlim _webLock = new(1, 1);
     private string _lastWebError = "";
-    private string? _previewTmp;
     private Microsoft.Web.WebView2.Core.CoreWebView2? _hookedCore;
 
-    // "Busy" cursor (spinning ring): XAML for the app area, html.busy class
-    // inside the page for the WebView2 area, which owns its cursor.
-    // Minimum duration: Windows only updates the cursor on mouse move, so a
-    // render lasting a few ms would never be visible.
-    private const int MinBusyMs = 600;
-    private bool _busy;
-    private DateTime _busyUntil;
-    private int _busyGen;
-
-    private void SetBusy(bool busy)
-    {
-        if (busy)
-        {
-            _busyGen++;
-            _busy = true;
-            _busyUntil = DateTime.UtcNow.AddMilliseconds(MinBusyMs);
-            Root.SetBusy(true);
-            return;
-        }
-        if (_busy) _ = EndBusyAsync(_busyGen);
-    }
-
-    private async Task EndBusyAsync(int gen)
-    {
-        int wait = (int)(_busyUntil - DateTime.UtcNow).TotalMilliseconds;
-        if (wait > 0) await Task.Delay(wait);
-        if (gen != _busyGen) return; // another render has started in the meantime
-        _busy = false;
-        Root.SetBusy(false);
-        _ = ClearPageBusyAsync();
-    }
-
-    private async Task ClearPageBusyAsync()
-    {
-        if (!_webReady) return;
-        try { await PreviewView.CoreWebView2.ExecuteScriptAsync("document.documentElement.classList.remove('busy')"); }
-        catch (Exception ex) { Debug.WriteLine($"ClearPageBusy: {ex.Message}"); }
-    }
+    // "Busy" cursor (spinning ring) while the preview renders: set on render,
+    // cleared on NavigationCompleted (which fires for every navigation).
+    private void SetBusy(bool busy) => Root.SetBusy(busy);
 
     private async void RenderPreview(DocumentInfo doc)
     {
@@ -537,15 +469,8 @@ public sealed partial class MainWindow : Window
             string? baseDir = doc.Path != null ? Path.GetDirectoryName(doc.Path) : null;
             double size = (FontSlider?.Value ?? 15) * _zoom;
             string html = MarkdownHtml.Build(GetEditorText(doc.Editor), baseDir, _dark, size,
-                DisplayName(doc).TrimStart('*'));
-            if (html.Length > 1500000)
-            {
-                // NavigateToString has a ~2MB limit: large files go through a temp file
-                _previewTmp ??= Path.Combine(Path.GetTempPath(), $"fluent_preview_{Environment.ProcessId}.html");
-                File.WriteAllText(_previewTmp, html);
-                PreviewView.Source = new Uri(_previewTmp);
-            }
-            else PreviewView.NavigateToString(html);
+                DisplayName(doc));
+            PreviewView.NavigateToString(html);
             PreviewView.Visibility = Visibility.Visible;
             return true;
         }
@@ -583,9 +508,8 @@ public sealed partial class MainWindow : Window
 
     // A file dropped onto the preview makes WebView2 navigate to it (like Edge),
     // before the XAML drop handlers ever see it: cancel that and open it as a
-    // tab instead (like FluentNotepadMac). The only file:// navigation we ever
-    // start ourselves is the large-preview temp file, excluded below; our HTML
-    // has no file links (images are data-URI), so anything else is a drop.
+    // tab instead (like FluentNotepadMac). Our HTML has no file links (images
+    // are data-URI), so any file:// navigation is a drop.
     private void Preview_NavigationStarting(Microsoft.Web.WebView2.Core.CoreWebView2 sender,
         Microsoft.Web.WebView2.Core.CoreWebView2NavigationStartingEventArgs e)
     {
@@ -596,8 +520,6 @@ public sealed partial class MainWindow : Window
             string local;
             try { local = new Uri(uri).LocalPath; }
             catch { return; }
-            if (_previewTmp != null &&
-                string.Equals(local, _previewTmp, StringComparison.OrdinalIgnoreCase)) return;
             if (!File.Exists(local)) return;
             e.Cancel = true;
             // Deferred: we are inside the navigation callback, don't reshuffle tabs here.
@@ -653,7 +575,7 @@ public sealed partial class MainWindow : Window
         var d = GetActiveDoc();
         bool isMd = d?.IsMarkdown == true;
         MdToggle.Visibility = isMd ? Visibility.Visible : Visibility.Collapsed;
-        FileTypeLabel.Text = isMd ? "Markdown" : Str("FileTypePlain");
+        FileTypeLabel.Text = isMd ? "Markdown" : Str("FileTypeLabel.Text");
         if (isMd && d != null)
         {
             StyleToggle(EditModeBtn, !d.PreviewVisible);
@@ -758,7 +680,6 @@ public sealed partial class MainWindow : Window
         doc.TextLen = cur.Length;
         doc.TextHash = cur.GetHashCode();
         RefreshSaveBtn();
-        doc.FileEncoding = "UTF-8"; // FileIO.WriteTextAsync and File.WriteAllText write UTF-8 without BOM
         RefreshHeader(doc);
         RefreshFileLabels();
         return true;
@@ -774,7 +695,6 @@ public sealed partial class MainWindow : Window
         {
             d.Dirty = false;
             d.LineEnding = DetectLineEnding(content);
-            if (File.Exists(path)) d.FileEncoding = DetectEncoding(path);
             RefreshHeader(d);
             RefreshFileLabels();
             // An .md opened from anywhere (association/command line, File > Open,
@@ -802,82 +722,46 @@ public sealed partial class MainWindow : Window
 
     private void Exit_Click(object s, RoutedEventArgs e) => Close();
 
+    private async Task ShowNoteAsync(string content)
+    {
+        var dlg = new ContentDialog
+        {
+            Title = "FluentNotepad",
+            Content = content,
+            CloseButtonText = Str("PrintClose"),
+            XamlRoot = Content.XamlRoot
+        };
+        await dlg.ShowAsync();
+    }
+
     // ================= PRINT (rendered Markdown preview only, in color) =================
     private async void Print_Click(object s, RoutedEventArgs e)
     {
         var d = GetActiveDoc();
         if (d?.IsMarkdown != true)
         {
-            var dlg = new ContentDialog
-            {
-                Title = "FluentNotepad",
-                Content = Str("PrintOnlyMarkdown"),
-                CloseButtonText = Str("PrintClose"),
-                XamlRoot = Content.XamlRoot
-            };
-            await dlg.ShowAsync();
+            await ShowNoteAsync(Str("PrintOnlyMarkdown"));
             return;
         }
         if (!d.PreviewVisible) ShowPreview(d, true);
         if (PreviewError.Visibility == Visibility.Visible)
         {
-            var dlg = new ContentDialog
-            {
-                Title = "FluentNotepad",
-                Content = Str("PrintError") + _lastWebError,
-                CloseButtonText = Str("PrintClose"),
-                XamlRoot = Content.XamlRoot
-            };
-            await dlg.ShowAsync();
+            await ShowNoteAsync(Str("PrintError") + _lastWebError);
             return;
         }
         try
         {
+            // The page title already carries DisplayName (see Build): the browser
+            // print header shows it instead of "about:blank".
             await PreviewView.EnsureCoreWebView2Async();
-            await WaitForPreviewPrintReadyAsync();
-            // Refresh the title (e.g. after Save As without re-render): without it the
-            // browser print header shows the document URL (about:blank for NavigateToString).
-            try
-            {
-                string jsTitle = System.Text.Json.JsonSerializer.Serialize(DisplayName(d).TrimStart('*'));
-                await PreviewView.CoreWebView2.ExecuteScriptAsync($"document.title = {jsTitle};");
-            }
-            catch (Exception ex) { Debug.WriteLine($"Print title: {ex.Message}"); }
             PreviewView.CoreWebView2.ShowPrintUI(
                 Microsoft.Web.WebView2.Core.CoreWebView2PrintDialogKind.Browser);
         }
         catch (Exception ex)
         {
             Debug.WriteLine($"Print: {ex.Message}");
-            var dlg = new ContentDialog
-            {
-                Title = "FluentNotepad",
-                Content = Str("PrintError") + ex.Message,
-                CloseButtonText = Str("PrintClose"),
-                XamlRoot = Content.XamlRoot
-            };
-            await dlg.ShowAsync();
+            await ShowNoteAsync(Str("PrintError") + ex.Message);
         }
-    }
-
-    // Wait for the current preview navigation so the print dialog prints fresh
-    // content instead of the previous page (no wait when nothing is loading).
-    private Task WaitForPreviewPrintReadyAsync(int timeoutMs = 5000)
-    {
-        if (!_busy) return Task.CompletedTask;
-        var tcs = new TaskCompletionSource<object?>(TaskCreationOptions.RunContinuationsAsynchronously);
-        Windows.Foundation.TypedEventHandler<Microsoft.Web.WebView2.Core.CoreWebView2, Microsoft.Web.WebView2.Core.CoreWebView2NavigationCompletedEventArgs>? handler = null;
-        handler = (_, _) =>
-        {
-            try { PreviewView.CoreWebView2.NavigationCompleted -= handler; } catch { }
-            tcs.TrySetResult(null);
-        };
-        try { PreviewView.CoreWebView2.NavigationCompleted += handler; }
-        catch { return Task.CompletedTask; }
-        return Task.WhenAny(tcs.Task, Task.Delay(timeoutMs)).ContinueWith(_ =>
-        {
-            try { PreviewView.CoreWebView2.NavigationCompleted -= handler; } catch { }
-        });
     }
 
     private void Tabs_SelectionChanged(object s, SelectionChangedEventArgs e)
@@ -914,48 +798,17 @@ public sealed partial class MainWindow : Window
         var b = GetActiveBox();
         if (b?.Document.CanRedo() == true) b.Document.Redo();
     }
-    private void CopySelection(RichEditBox b)
-    {
-        var (start, len) = CachedSelection(b);
-        if (len == 0) return;
-        var dp = new DataPackage();
-        // CRLF on the clipboard: plain \n pastes as one line in some apps
-        dp.SetText(GetEditorText(b).Substring(start, len).Replace("\n", "\r\n"));
-        Clipboard.SetContent(dp);
-    }
     private void Cut_Click(object s, RoutedEventArgs e)
     {
-        var b = GetActiveBox(); if (b == null) return;
-        var (start, len) = CachedSelection(b);
-        if (len == 0) return;
-        CopySelection(b);
-        b.Document.BeginUndoGroup();
-        try
-        {
-            SetSelection(b, start, len);
-            b.Document.Selection.Text = "";
-        }
-        finally { try { b.Document.EndUndoGroup(); } catch (Exception ex) { Debug.WriteLine($"UndoGroup: {ex.Message}"); } }
+        GetActiveBox()?.Document.Selection.Cut();
     }
     private void Copy_Click(object s, RoutedEventArgs e)
     {
-        var b = GetActiveBox(); if (b != null) CopySelection(b);
+        GetActiveBox()?.Document.Selection.Copy();
     }
-    private async void Paste_Click(object s, RoutedEventArgs e)
+    private void Paste_Click(object s, RoutedEventArgs e)
     {
-        var b = GetActiveBox(); if (b == null) return;
-        var dv = Clipboard.GetContent();
-        if (!dv.Contains(StandardDataFormats.Text)) return;
-        string t;
-        try { t = await dv.GetTextAsync(); } catch (Exception ex) { Debug.WriteLine($"Paste: {ex.Message}"); return; }
-        var (ps, pl) = CachedSelection(b);
-        b.Document.BeginUndoGroup();
-        try
-        {
-            SetSelection(b, ps, pl);
-            b.Document.Selection.Text = t;
-        }
-        finally { try { b.Document.EndUndoGroup(); } catch (Exception ex) { Debug.WriteLine($"UndoGroup: {ex.Message}"); } }
+        GetActiveBox()?.Document.Selection.Paste(0);
     }
     private void SelectAll_Click(object s, RoutedEventArgs e)
     {
@@ -1106,7 +959,9 @@ public sealed partial class MainWindow : Window
         if (_loading) return;
         string mode = ThemeCombo.SelectedIndex == 0 ? "light"
             : ThemeCombo.SelectedIndex == 1 ? "dark" : "system";
-        SaveThemeSetting(mode);
+        var ts = LoadSettings();
+        ts.Theme = mode;
+        SaveSettings(ts);
         ApplyThemeSetting(mode);
     }
 
@@ -1122,12 +977,10 @@ public sealed partial class MainWindow : Window
         public int Width { get; set; }
         public int Height { get; set; }
         public bool Maximized { get; set; }
-        public bool HasWindow { get; set; }
     }
 
     private static readonly JsonSerializerOptions _jsonOptions = new()
     {
-        WriteIndented = true,
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         PropertyNameCaseInsensitive = true,
     };
@@ -1140,7 +993,6 @@ public sealed partial class MainWindow : Window
                 File.ReadAllText(_settingsPath), _jsonOptions);
             if (s == null) return new AppSettings();
             if (s.Theme is not ("light" or "dark" or "system")) s.Theme = "system";
-            s.HasWindow = s.Width >= 300 && s.Height >= 200;
             return s;
         }
         catch (Exception ex) { Debug.WriteLine($"LoadSettings: {ex.Message}"); }
@@ -1157,35 +1009,20 @@ public sealed partial class MainWindow : Window
         catch (Exception ex) { Debug.WriteLine($"SaveSettings: {ex.Message}"); }
     }
 
-    private static string LoadThemeSetting() => LoadSettings().Theme;
-
-    private static void SaveThemeSetting(string mode)
-    {
-        var s = LoadSettings();
-        s.Theme = mode;
-        SaveSettings(s);
-    }
-
     // ================= WINDOW GEOMETRY =================
     private void RestoreWindowGeometry()
     {
         var s = LoadSettings();
         try
         {
-            if (!s.HasWindow)
-            {
-                AppWindow.Resize(new SizeInt32(1000, 650));
-                _restoreBounds = new RectInt32(100, 100, 1000, 650);
-                return;
-            }
+            // Validity derived at load (never persisted): sane size on a live display.
             var bounds = new RectInt32(s.X, s.Y, s.Width, s.Height);
-            if (!IntersectsAnyDisplay(bounds))
+            if (s.Width < 300 || s.Height < 200 || !IntersectsAnyDisplay(bounds))
             {
                 AppWindow.Resize(new SizeInt32(1000, 650));
                 return;
             }
             _restoreBounds = bounds;
-            _restoreValid = true;
             AppWindow.MoveAndResize(bounds);
             if (s.Maximized && AppWindow.Presenter is OverlappedPresenter p && p.IsMaximizable)
                 p.Maximize();
@@ -1223,12 +1060,6 @@ public sealed partial class MainWindow : Window
             {
                 _restoreBounds = new RectInt32(sender.Position.X, sender.Position.Y,
                     sender.Size.Width, sender.Size.Height);
-                _restoreValid = true;
-            }
-            if (e.DidSizeChange || e.DidPositionChange || e.DidPresenterChange)
-            {
-                _winSaveTimer?.Stop();
-                _winSaveTimer?.Start(); // debounce: save 1s after the last change
             }
         }
         catch (Exception ex) { Debug.WriteLine($"WinChanged: {ex.Message}"); }
@@ -1245,8 +1076,8 @@ public sealed partial class MainWindow : Window
                 if (p.State == OverlappedPresenterState.Maximized)
                 {
                     s.Maximized = true;
-                    if (_restoreValid)
-                    { s.X = _restoreBounds.X; s.Y = _restoreBounds.Y; s.Width = _restoreBounds.Width; s.Height = _restoreBounds.Height; s.HasWindow = true; }
+                    s.X = _restoreBounds.X; s.Y = _restoreBounds.Y;
+                    s.Width = _restoreBounds.Width; s.Height = _restoreBounds.Height;
                     SaveSettings(s);
                     return;
                 }
@@ -1255,7 +1086,7 @@ public sealed partial class MainWindow : Window
             var pos = AppWindow.Position;
             var size = AppWindow.Size;
             if (size.Width >= 300 && size.Height >= 200)
-            { s.X = pos.X; s.Y = pos.Y; s.Width = size.Width; s.Height = size.Height; s.HasWindow = true; }
+            { s.X = pos.X; s.Y = pos.Y; s.Width = size.Width; s.Height = size.Height; }
             SaveSettings(s);
         }
         catch (Exception ex) { Debug.WriteLine($"SaveWindow: {ex.Message}"); }

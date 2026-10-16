@@ -46,6 +46,8 @@ before implementing:
   has it (next build on another platform picks it up from TODO.md).
 - platform-only: implement and rebuild the app locally; others ignore it.
 - Mark the local platform done in the row; mirror generic intents here too.
+- Done rows are archived (deleted here) at each release; history lives in
+  tags and release notes, not in TODO.md.
 
 ## Versioning (lockstep X.Y.Z)
 
@@ -55,10 +57,11 @@ implemented those intents; if the other lags, its release waits.
 
 - Z = bugfix/tweak, Y = new feature/behavior, X = upheaval.
 - Docs/refactor/build never change the version.
-- Current: Windows `2.6.2`, macOS `2.6.2`; next shared version: TBD.
-- Version locations: `<Version>` in `windows/source/FluentNotepad.WinUI.csproj`
-  (+ `installer/FluentNotepad.iss`, setup name in `windows/README.md`);
-  `CFBundleShortVersionString` in `macos/packaging/Info.plist`.
+- Current: Windows `2.6.3`, macOS `2.6.3`; next shared version: TBD.
+- Single source: `<Version>` in `windows/source/FluentNotepad.WinUI.csproj`
+  (derives at build into `#define MyAppVersion` in
+  `windows/installer/FluentNotepad.iss` and the setup name in `README.md`);
+  `CFBundleShortVersionString` in `macos/packaging/Info.plist` likewise.
 
 ## Tags & releases
 
@@ -89,15 +92,6 @@ Source everything in English: comments, docs, sample file names.
 Exception: UI strings (WinUI `.resw` it-IT/en-US, macOS `.lproj`), localized;
 code-side strings go through the platform loader (`Str()` / `L()`).
 
-## Structure
+## Line endings
 
-- `windows/` — `source/` (app), `installer/` (Inno Setup 6), `start-debug.bat`,
-  `AGENTS.md` (everything else lives here).
-- `macos/` — `Sources/` (app), `packaging/` (bundle/dmg scripts),
-  `Package.swift`, `AGENTS.md` (everything else lives here).
-- Root: `README.md` (the only one), `TODO.md`, `BENCH.md` (shared preview sample),
-  `LICENSE` (MIT), `screenshot-*.png`.
-- Line endings: `.gitattributes` disables all conversion (`* -text`, bytes are
-  checked out verbatim); only `*.sh` → LF and `*.bat` → CRLF are enforced.
-  A whole-file diff with identical content is a line-ending artifact:
-  `git checkout -- <file>` restores it.
+`* text=auto` everywhere; only `*.sh` → LF and `*.bat` → CRLF are enforced.

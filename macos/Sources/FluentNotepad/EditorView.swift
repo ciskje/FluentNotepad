@@ -7,24 +7,17 @@ final class EditorTextView: NSTextView {
     /// bubbling up to another handler leaves some surfaces with nowhere to go
     /// and the drag bounces back). Everything else keeps NSTextView behavior.
     var onFileDrop: ((URL) -> Void)?
-    private static func isFileDrop(_ sender: NSDraggingInfo) -> Bool {
-        sender.draggingPasteboard.types?.contains(.fileURL) == true
-    }
-    private static func droppedFiles(_ sender: NSDraggingInfo) -> [URL] {
-        ((sender.draggingPasteboard.readObjects(forClasses: [NSURL.self], options: nil) as? [URL]) ?? [])
-            .filter(\.isFileURL)
-    }
     override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
-        if Self.isFileDrop(sender) { return .copy }
+        if sender.isFileDrop { return .copy }
         return super.draggingEntered(sender)
     }
     override func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation {
-        if Self.isFileDrop(sender) { return .copy }
+        if sender.isFileDrop { return .copy }
         return super.draggingUpdated(sender)
     }
     override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
-        if Self.isFileDrop(sender) {
-            let files = Self.droppedFiles(sender)
+        if sender.isFileDrop {
+            let files = sender.fileURLs
             for url in files { onFileDrop?(url) }
             return !files.isEmpty
         }

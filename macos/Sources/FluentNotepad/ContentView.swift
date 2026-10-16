@@ -8,7 +8,6 @@ struct ContentView: View {
 
     @State private var findShown = false
     @State private var findText = ""
-    @State private var importerShown = false
     @State private var renderTimer: Timer?
 
     private var dark: Bool {
@@ -51,9 +50,6 @@ struct ContentView: View {
                 showPreview(doc, !doc.showPreview)
             }
         }
-        .fileImporter(isPresented: $importerShown, allowedContentTypes: Store.textTypes) { r in
-            if case .success(let url) = r { store.open(url: url) }
-        }
         .onDrop(of: [.fileURL], isTargeted: nil, perform: handleDrop)
     }
 
@@ -90,7 +86,7 @@ struct ContentView: View {
                 Divider().frame(height: 12)
                 Text(doc.isMarkdown ? "Markdown" : L("fileTypePlain"))
                 Spacer()
-                Stepper(value: zoomBinding, step: 0.1) {
+                Stepper(value: $store.zoom, in: 0.5 ... 3.0, step: 0.1) {
                     Text("\(Int(store.zoom * 100))%")
                 }
                 .controlSize(.small)
@@ -104,10 +100,6 @@ struct ContentView: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 4)
         }
-    }
-
-    private var zoomBinding: Binding<Double> {
-        Binding(get: { store.zoom }, set: { store.zoom = min(max($0, 0.5), 3.0) })
     }
 
     private func handleDrop(_ providers: [NSItemProvider]) -> Bool {
@@ -125,12 +117,13 @@ struct ContentView: View {
     private var toolbarContent: some ToolbarContent {
         ToolbarItemGroup(placement: .primaryAction) {
             if let doc, doc.isMarkdown {
-                Picker("", selection: previewBinding(doc)) {
+                Picker("", selection: Bindable(doc).showPreview) {
                     Text(L("edit")).tag(false)
                     Text(L("preview")).tag(true)
                 }
                 .pickerStyle(.segmented)
                 .frame(width: 170)
+                .onChange(of: doc.showPreview) { _, show in if show { render(doc) } }
             }
         }
         ToolbarItemGroup(placement: .secondaryAction) {
@@ -153,10 +146,6 @@ struct ContentView: View {
                 Label(L("settings"), systemImage: "gearshape")
             }
         }
-    }
-
-    private func previewBinding(_ doc: Doc) -> Binding<Bool> {
-        Binding(get: { doc.showPreview }, set: { showPreview(doc, $0) })
     }
 
     private var fmtButtons: some View {
@@ -209,19 +198,13 @@ struct ContentView: View {
         doc.revealRange = NSRange(location: lineStartOffset(doc.text, line: line), length: 0)
     }
 
-    /// UTF-16 offset of a 1-based line start, clamped. NSString line ranges
-    /// handle \n, \r\n and \r alike.
+    /// UTF-16 offset of a 1-based line start, clamped. LineMap handles
+    /// \n, \r\n and \r alike.
     private func lineStartOffset(_ text: String, line: Int) -> Int {
-        let ns = text as NSString
-        var loc = 0
-        var current = 1
-        while current < line, loc < ns.length {
-            let lr = ns.lineRange(for: NSRange(location: loc, length: 0))
-            if lr.length == 0 { break }
-            loc = lr.location + lr.length
-            current += 1
-        }
-        return min(loc, ns.length)
+        guard line > 1 else { return 0 }
+        let map = SyntaxHighlight.LineMap(text)
+        if line - 1 < map.starts.count { return map.starts[line - 1] }
+        return (text as NSString).length
     }
 
     // MARK: - Formatting (operates on the cached selection: toolbar clicks move focus)
@@ -308,13 +291,22 @@ struct ContentView: View {
         }
     }
 
+    /// Caret line/column (1-based) via NSString line primitives: UTF-16
+    /// consistent with NSTextView ranges, all line endings handled.
     private func lineCol(_ doc: Doc) -> (Int, Int) {
-        let caret = min(max(doc.caret, 0), doc.text.count)
-        var line = 1, col = 1
-        for ch in doc.text.prefix(caret) {
-            if ch == "\n" { line += 1; col = 1 } else { col += 1 }
+        let ns = doc.text as NSString
+        let caret = min(max(doc.caret, 0), ns.length)
+        var line = 1
+        var search = 0
+        while search < caret {
+            var end = 0, contentsEnd = 0
+            ns.getLineStart(nil, end: &end, contentsEnd: &contentsEnd,
+                for: NSRange(location: search, length: 0))
+            guard end > search else { break }
+            // Past this line only when it has a terminator at/before caret.
+            if end > contentsEnd, end <= caret { search = end; line += 1 } else { break }
         }
-        return (line, col)
+        return (line, caret - search + 1)
     }
 }
 

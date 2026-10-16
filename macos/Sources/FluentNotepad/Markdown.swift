@@ -1,5 +1,6 @@
 import Foundation
 import Markdown
+import UniformTypeIdentifiers
 
 /// Markdown -> HTML for WKWebView. Parsing is Apple's cmark-gfm (swift-markdown);
 /// only rendering is ours: VS-style palette + data-URI local images + graceful
@@ -14,7 +15,7 @@ enum MarkdownHTML {
         if markdown.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             body = "<p class='empty-hint'>\(esc(L("emptyHint")))</p>"
         } else {
-            body = render(Document(parsing: markdown), baseDir: baseDir)
+            body = childrenHTML(Document(parsing: markdown), baseDir: baseDir)
         }
         let css = dark ? darkCss(fontSize) : lightCss(fontSize)
         let t = title.map { "<title>\(esc($0))</title>" } ?? ""
@@ -25,13 +26,7 @@ enum MarkdownHTML {
 
     // MARK: - Walker
 
-    private static func render(_ markup: Markup, baseDir: String?) -> String {
-        var out = ""
-        for child in markup.children { out += node(child, baseDir: baseDir) }
-        return out
-    }
-
-    private static func inline(_ markup: Markup, baseDir: String?) -> String {
+    private static func childrenHTML(_ markup: Markup, baseDir: String?) -> String {
         var out = ""
         for child in markup.children { out += node(child, baseDir: baseDir) }
         return out
@@ -40,11 +35,11 @@ enum MarkdownHTML {
     private static func node(_ m: Markup, baseDir: String?) -> String {
         switch m {
         case let h as Heading:
-            return "<h\(h.level)\(src(h))>\(inline(h, baseDir: baseDir))</h\(h.level)>"
+            return "<h\(h.level)\(src(h))>\(childrenHTML(h, baseDir: baseDir))</h\(h.level)>"
         case let p as Paragraph:
-            return "<p\(src(p))>\(inline(p, baseDir: baseDir))</p>"
+            return "<p\(src(p))>\(childrenHTML(p, baseDir: baseDir))</p>"
         case let b as BlockQuote:
-            return "<blockquote\(src(b))>\(render(b, baseDir: baseDir))</blockquote>"
+            return "<blockquote\(src(b))>\(childrenHTML(b, baseDir: baseDir))</blockquote>"
         case let c as CodeBlock:
             let lang = c.language.map { " class='language-\(esc($0))'" } ?? ""
             return "<pre\(src(c))><code\(lang)>\(esc(c.code))</code></pre>"
@@ -53,9 +48,9 @@ enum MarkdownHTML {
         case is ThematicBreak:
             return "<hr\(src(m))>"
         case let l as OrderedList:
-            return "<ol>\(render(l, baseDir: baseDir))</ol>"
+            return "<ol>\(childrenHTML(l, baseDir: baseDir))</ol>"
         case let l as UnorderedList:
-            return "<ul>\(render(l, baseDir: baseDir))</ul>"
+            return "<ul>\(childrenHTML(l, baseDir: baseDir))</ul>"
         case let i as ListItem:
             let box: String
             if let cb = i.checkbox {
@@ -63,28 +58,24 @@ enum MarkdownHTML {
             } else { box = "" }
             // Tight lists: inline children directly; loose lists keep <p>.
             let inner = i.children.allSatisfy { $0 is Paragraph }
-                ? i.children.map { inline($0, baseDir: baseDir) }.joined()
-                : render(i, baseDir: baseDir)
+                ? i.children.map { childrenHTML($0, baseDir: baseDir) }.joined()
+                : childrenHTML(i, baseDir: baseDir)
             return "<li\(src(i))>\(box)\(inner)</li>"
         case let t as Table:
             var head = "", rows = ""
             for child in t.children {
-                if child is Table.Head { head = render(child, baseDir: baseDir) }
-                if child is Table.Body { rows = render(child, baseDir: baseDir) }
+                if let h = child as? Table.Head { head = tableRows(h, baseDir: baseDir, isHeader: true) }
+                else if let b = child as? Table.Body { rows = tableRows(b, baseDir: baseDir, isHeader: false) }
             }
             return "<table\(src(t))><thead>\(head)</thead><tbody>\(rows)</tbody></table>"
-        case let r as Table.Row:
-            return "<tr\(src(r))>\(render(r, baseDir: baseDir))</tr>"
-        case let c as Table.Cell:
-            return cell(c, baseDir: baseDir)
         case let t as Text:
             return esc(t.string)
         case let e as Emphasis:
-            return "<em>\(inline(e, baseDir: baseDir))</em>"
+            return "<em>\(childrenHTML(e, baseDir: baseDir))</em>"
         case let s as Strong:
-            return "<strong>\(inline(s, baseDir: baseDir))</strong>"
+            return "<strong>\(childrenHTML(s, baseDir: baseDir))</strong>"
         case let s as Strikethrough:
-            return "<del>\(inline(s, baseDir: baseDir))</del>"
+            return "<del>\(childrenHTML(s, baseDir: baseDir))</del>"
         case let c as InlineCode:
             return "<code>\(esc(c.code))</code>"
         case let h as InlineHTML:
@@ -96,14 +87,14 @@ enum MarkdownHTML {
         case let l as Link:
             let dest = l.destination ?? "#"
             let title = l.title.map { " title=\"\(esc($0))\"" } ?? ""
-            return "<a href=\"\(esc(dest))\"\(title)>\(inline(l, baseDir: baseDir))</a>"
+            return "<a href=\"\(esc(dest))\"\(title)>\(childrenHTML(l, baseDir: baseDir))</a>"
         case let i as Image:
             let alt = i.plainText
             let src = resolveSrc(i.source ?? "", baseDir: baseDir)
             let onerror = "this.style.display='none';var s=document.createElement('span');s.className='img-missing';s.textContent='\\uD83D\\uDDBC '+this.alt+'\(escJS(L("imgMissing")))';this.after(s);"
             return "<img src=\"\(esc(src))\" alt=\"\(esc(alt))\" onerror=\"\(onerror)\">"
         default:
-            return render(m, baseDir: baseDir)
+            return childrenHTML(m, baseDir: baseDir)
         }
     }
 
@@ -115,12 +106,18 @@ enum MarkdownHTML {
         return ""
     }
 
-    private static func cell(_ c: Table.Cell, baseDir: String?) -> String {
-        // Header-ness: head cells are rows whose parent is a Table.Head.
-        var p = c.parent
-        if p is Table.Row { p = p?.parent }
-        let tag = p is Table.Head ? "th" : "td"
-        return "<\(tag)>\(inline(c, baseDir: baseDir))</\(tag)>"
+    // Table rows with header-ness passed down (no parent walk per cell).
+    private static func tableRows(_ m: Markup, baseDir: String?, isHeader: Bool) -> String {
+        var out = ""
+        for row in m.children {
+            var cells = ""
+            for cell in row.children {
+                let tag = isHeader ? "th" : "td"
+                cells += "<\(tag)>\(childrenHTML(cell, baseDir: baseDir))</\(tag)>"
+            }
+            out += "<tr\(src(row))>\(cells)</tr>"
+        }
+        return out
     }
 
     // MARK: - Images (same rules as the Windows app)
@@ -144,16 +141,8 @@ enum MarkdownHTML {
             let bytes = try? Data(contentsOf: URL(fileURLWithPath: full)),
             !bytes.isEmpty, bytes.count <= maxImageBytes
         else { return src }
-        let mime: String
-        switch (full as NSString).pathExtension.lowercased() {
-        case "png": mime = "image/png"
-        case "jpg", "jpeg": mime = "image/jpeg"
-        case "gif": mime = "image/gif"
-        case "webp": mime = "image/webp"
-        case "bmp": mime = "image/bmp"
-        case "svg": mime = "image/svg+xml"
-        default: mime = "application/octet-stream"
-        }
+        let mime = UTType(filenameExtension: (full as NSString).pathExtension.lowercased())?.preferredMIMEType
+            ?? "application/octet-stream"
         return "data:\(mime);base64,\(bytes.base64EncodedString())"
     }
 

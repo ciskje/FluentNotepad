@@ -29,8 +29,7 @@ final class CloseGuard: NSObject, NSWindowDelegate {
     func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation { .copy }
 
     func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
-        let urls = sender.draggingPasteboard.readObjects(forClasses: [NSURL.self], options: nil) as? [URL] ?? []
-        let files = urls.filter(\.isFileURL)
+        let files = sender.fileURLs
         guard !files.isEmpty else { return false }
         for url in files { store.open(url: url) }
         return true
@@ -38,17 +37,21 @@ final class CloseGuard: NSObject, NSWindowDelegate {
 }
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    /// Files waiting for a window (CLI args, openFile events arriving with no
+    /// window yet). The next window to appear consumes them.
+    static var pendingURLs: [URL] = []
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Command-line file open: FluentNotepad notes.md. Queued: the first
         // window to appear (or the CLI fallback below) consumes them.
         for arg in CommandLine.arguments.dropFirst() where !arg.hasPrefix("-") {
             if FileManager.default.fileExists(atPath: arg) {
-                PendingFiles.urls.append(URL(fileURLWithPath: arg))
+                Self.pendingURLs.append(URL(fileURLWithPath: arg))
             }
         }
         // Raw-CLI launch with files: SwiftUI withholds the default window for
         // open-document launches, so show one ourselves if none appears.
-        if !PendingFiles.urls.isEmpty {
+        if !Self.pendingURLs.isEmpty {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
                 if !NSApp.windows.contains(where: \.isVisible) { self?.showFallbackWindow() }
             }
@@ -57,16 +60,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// Queued files go to the frontmost window (no-op while none exists).
     static func deliverPending() {
-        guard !PendingFiles.urls.isEmpty, !WindowStores.isEmpty else { return }
+        guard !pendingURLs.isEmpty, !WindowStores.isEmpty else { return }
         let s = WindowStores.frontmost()
-        for url in PendingFiles.urls { s.open(url: url) }
-        PendingFiles.urls.removeAll()
+        for url in pendingURLs { s.open(url: url) }
+        pendingURLs.removeAll()
     }
 
     func showFallbackWindow() {
         let store = Store()
-        for url in PendingFiles.urls { store.open(url: url) }
-        PendingFiles.urls.removeAll()
+        for url in Self.pendingURLs { store.open(url: url) }
+        Self.pendingURLs.removeAll()
         if store.docs.isEmpty { store.newTab() }
         let win = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 1000, height: 650),
@@ -86,7 +89,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func application(_ sender: NSApplication, openFile filename: String) -> Bool {
-        PendingFiles.urls.append(URL(fileURLWithPath: filename))
+        Self.pendingURLs.append(URL(fileURLWithPath: filename))
         Self.deliverPending()
         return true
     }
@@ -173,19 +176,10 @@ struct WindowRoot: View {
     }
 }
 
-/// File > New Window (the automatic item is unreliable once .newItem is
-/// replaced, so this explicit one uses the scene's openWindow).
-struct NewWindowButton: View {
-    @Environment(\.openWindow) private var openWindow
-    var body: some View {
-        Button(L("newWindow")) { openWindow(id: "main") }
-            .keyboardShortcut("n", modifiers: [.command, .shift])
-    }
-}
-
 @main
 struct FluentNotepadApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var delegate
+    @Environment(\.openWindow) private var openWindow
 
     var body: some Scene {
         WindowGroup("FluentNotepad", id: "main") {
@@ -198,7 +192,8 @@ struct FluentNotepadApp: App {
                 Button(L("newTab")) { _ = WindowStores.frontmost().newTab() }.keyboardShortcut("t", modifiers: .command)
                 Button(L("open")) { WindowStores.frontmost().openPanel() }.keyboardShortcut("o", modifiers: .command)
                 Divider()
-                NewWindowButton()
+                Button(L("newWindow")) { openWindow(id: "main") }
+                    .keyboardShortcut("n", modifiers: [.command, .shift])
             }
             CommandGroup(after: .saveItem) {
                 Button(L("saveAs")) {
@@ -212,7 +207,6 @@ struct FluentNotepadApp: App {
                     let s = WindowStores.frontmost()
                     if let d = s.selected, d.isMarkdown {
                         if !d.showPreview { d.showPreview = true }
-                        s.webRef.setTitle(d.fileName)
                         s.webRef.print()
                     }
                 }.keyboardShortcut("p", modifiers: .command)
@@ -234,8 +228,7 @@ struct FluentNotepadApp: App {
                     Button(L("togglePreview")) {
                         if let d = WindowStores.frontmost().selected, d.isMarkdown { d.showPreview.toggle() }
                     }.keyboardShortcut("v", modifiers: [.command, .shift])
-                    Toggle(L("wordWrap"), isOn: Binding(
-                        get: { WindowStores.frontmost().wrap }, set: { WindowStores.frontmost().wrap = $0 }))
+                    Toggle(L("wordWrap"), isOn: Bindable(WindowStores.frontmost()).wrap)
                 }
             }
         }

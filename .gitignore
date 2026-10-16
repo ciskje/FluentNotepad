@@ -1,12 +1,8 @@
 # Windows (dotnet / MSBuild)
 bin/
 obj/
-out/
-# Published app (self-contained, rebuildable, not versioned)
-windows/app/
 # Inno Setup output (not versioned: rebuild with iscc)
 windows/installer/dist/
-windows/installer/Output/
 # VS / Rider
 .vs/
 .idea/
@@ -16,10 +12,7 @@ windows/installer/Output/
 # macOS (SwiftPM)
 .build/
 macos/dist/
-*.o
 
 # OS / junk (all platforms)
-Thumbs.db
-Desktop.ini
 .DS_Store
 ._*

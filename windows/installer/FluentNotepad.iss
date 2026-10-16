@@ -1,18 +1,16 @@
 ; ============================================================
 ; FluentNotepad — Inno Setup 6 script
 ;
-; App version: keep in sync with <Version> in
-; source/FluentNotepad.WinUI.csproj
+; App version: single source is <Version> in
+; source/FluentNotepad.WinUI.csproj — #define MyAppVersion below
+; derives from it at build time (never bump for docs/refactor/build).
 ;
-; Build:
-;   1. dotnet publish source\FluentNotepad.WinUI.csproj -c Release -p:Platform=x64
-;   2. iscc installer\FluentNotepad.iss
-;      (from windows/; requires Inno Setup 6)
+; Build: see windows/AGENTS.md (Release + installer).
 ; Output: installer\dist\FluentNotepad-Setup-<version>-win-x64.exe
 ; ============================================================
 
 #define MyAppName "FluentNotepad"
-#define MyAppVersion "2.6.2"
+#define MyAppVersion "2.6.3"
 #define MyAppExeName "FluentNotepad.exe"
 #define PublishDir "..\source\bin\Release\net8.0-windows10.0.26100.0\win-x64\publish"
 #define IconFile "..\source\Assets\AppIcon.ico"
@@ -21,24 +19,16 @@
 AppId={{E6B42724-3658-48FB-B777-E8C687EBB0DC}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
-VersionInfoVersion={#MyAppVersion}
 DefaultDirName={commonpf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 OutputDir=.\dist
 OutputBaseFilename={#MyAppName}-Setup-{#MyAppVersion}-win-x64
 SetupIconFile={#IconFile}
-UninstallDisplayIcon={app}\{#MyAppExeName}
 Compression=lzma2/ultra64
-SolidCompression=yes
-WizardStyle=modern
 ArchitecturesAllowed=x64compatible
-ArchitecturesInstallIn64BitMode=x64compatible
-MinVersion=10.0.17763
 ; Per-machine install under C:\Program Files: requires the UAC prompt.
 ; {commonpf} is explicit: it can never fall back to the per-user folder (AppData)
 PrivilegesRequired=admin
-CloseApplications=yes
-RestartApplications=no
 ; WebView2 evergreen required (preinstalled on Windows 11)
 
 [Languages]

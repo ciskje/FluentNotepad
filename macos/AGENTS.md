@@ -28,23 +28,6 @@ Shared lockstep versioning, see root `AGENTS.md`: same X.Y.Z on both platforms
 Release + publish: `gh release create macos-vX.Y.Z dist/FluentNotepad.dmg`,
 commit + push `main`. `CFBundleShortVersionString` lives in `packaging/Info.plist`.
 
-## Structure (Sources/FluentNotepad/)
-
-- `App.swift` — scenes, menus (frontmost routing), `WindowRoot` (one Store per
-  window), raw-CLI fallback window, quit chain, ESC monitor, notifications.
-- `Store.swift` / `Doc.swift` — per-window tabs/docs; `WindowStores` registry
-  (frontmost routing); `PendingFiles` queue (CLI/openFile).
-- `ContentView.swift` — tabs, toolbar, find, status bar, preview toggle, drop.
-- `EditorView.swift` — `EditorTextView` (NSTextView: file drops open tabs,
-  neutral typing attributes).
-- `Highlight.swift` — parser-driven highlighting (swift-markdown source ranges);
-  regex only inside HTML nodes. Non-markdown and huge docs stay plain.
-- `Markdown.swift` — Markdown → HTML (+ `data-src-line` for click-to-source).
-- `PreviewView.swift` — `PreviewWebView` (WKWebView subclass: claims file drops,
-  click-to-source JS bridge) + `WebRef` (print/title).
-- `SettingsView.swift`, `Strings.swift` (`L()`), `Resources/<lang>.lproj`
-  (copied into the bundle by `bundle.sh`, NOT via SPM resources).
-
 ## Gotchas learned
 
 - SwiftUI withholds the default window on raw-CLI launches with files → AppKit

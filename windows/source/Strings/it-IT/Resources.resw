@@ -56,8 +56,6 @@
   <data name="FileTypeLabel.Text"><value>Testo normale</value></data>
   <data name="LineEndLabel.Text"><value>Windows (CRLF)</value></data>
   <data name="EncodingLabel.Text"><value>UTF-8</value></data>
-  <data name="ZoomOutBtn.ToolTipService.ToolTip"><value>Riduci zoom</value></data>
-  <data name="ZoomInBtn.ToolTipService.ToolTip"><value>Aumenta zoom</value></data>
   <!-- Impostazioni -->
   <data name="SettingsDialog.Title"><value>Impostazioni</value></data>
   <data name="SettingsDialog.CloseButtonText"><value>Chiudi</value></data>
@@ -83,11 +81,9 @@
   <data name="PrintClose"><value>Chiudi</value></data>
   <data name="StatusLine"><value>Riga {0}, col. {1}</value></data>
   <data name="StatusChars"><value>{0} caratteri</value></data>
-  <data name="FileTypePlain"><value>Testo normale</value></data>
   <data name="PlaceholderText"><value>testo</value></data>
   <data name="PlaceholderCode"><value>codice</value></data>
   <data name="FileFilterText"><value>File di testo</value></data>
-  <data name="EncUtf8Bom"><value>UTF-8 con BOM</value></data>
   <data name="EmptyHint"><value>Niente da visualizzare — scrivi Markdown in modalità Modifica.</value></data>
   <data name="ImgName"><value>Immagine</value></data>
   <data name="ImgMissing"><value> — non disponibile</value></data>
