@@ -1,0 +1,25 @@
+# TODO.md — change tracker
+
+Every requested change is classified **first** by scope, then appended here
+before implementing:
+
+- `generic` — shared intent: implement on **every** platform (each on its own
+  machine/build). The row is done only when all platforms have it.
+- `windows` / `macos` / `linux` — platform-only: implement (and rebuild the
+  app) only where relevant; other platforms ignore the row.
+- Implement only for the current platform, update the row, never delete it.
+- Generic intents are also mirrored in the parity checklist in `AGENTS.md`.
+
+Legend per row: `win:[x]` / `mac:[x]` = shipped on that platform.
+
+## Pending
+
+- [ ] [generic] Click-to-source (click a rendered block to jump to its source line) — win:[ ] mac:[x]
+- [ ] [macos] Align to shared version 2.5.0 (lockstep rule, see AGENTS.md) — mac:[ ]
+
+## Done
+
+- [x] [generic] Parser-driven edit-mode highlighting, same VS tones as preview — win:[x] mac:[x]
+- [x] [generic] ESC toggles Edit/Preview both ways (yields to find field and IME) — win:[x] mac:[x]
+- [x] [generic] Files dropped onto the preview open as tabs — win:[x] mac:[x]
+- [x] [generic] Multiple windows with own tabs — win:[x] mac:[x]

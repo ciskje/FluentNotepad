@@ -35,6 +35,17 @@ Both builds implement the same intents; platform-native details may differ
    the same intent later on its own machine.
 3. Same rule for fixes: if the bug is in a shared intent, mirror the fix.
 
+## TODO.md (classify first)
+
+On every change request, first decide the scope — `generic`, `windows`,
+`macos` or `linux` — and append a row to `TODO.md` with the platform note
+before implementing:
+
+- `generic`: implement locally now; the row stays open until every platform
+  has it (next build on another platform picks it up from TODO.md).
+- platform-only: implement and rebuild the app locally; others ignore it.
+- Mark the local platform done in the row; mirror generic intents here too.
+
 ## Versioning (lockstep X.Y.Z)
 
 Same version number on both platforms so changelogs stay comparable:
