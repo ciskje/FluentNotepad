@@ -92,9 +92,9 @@ code-side strings go through the platform loader (`Str()` / `L()`).
 ## Structure
 
 - `windows/` — `source/` (app), `installer/` (Inno Setup 6), `start-debug.bat`,
-  `AGENTS.md` (tutto il resto è qui).
+  `AGENTS.md` (everything else lives here).
 - `macos/` — `Sources/` (app), `packaging/` (bundle/dmg scripts),
-  `Package.swift`, `AGENTS.md` (tutto il resto è qui).
+  `Package.swift`, `AGENTS.md` (everything else lives here).
 - Root: `README.md` (the only one), `TODO.md`, `BENCH.md` (shared preview sample),
   `LICENSE` (MIT), `screenshot-*.png`.
 - Line endings: `.gitattributes` disables all conversion (`* -text`, bytes are
