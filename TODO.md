@@ -15,9 +15,9 @@ Legend per row: `win:[x]` / `mac:[x]` = shipped on that platform.
 ## Pending
 
 - [x] [windows] Double paste/cut/undo from Edit menu accelerators firing on top of native RichEditBox keys — win:[x] mac:[n/a]
-- [ ] [macos] Publish 2.6.1 (undo/redo Doc-sync fix) — mac:[ ]
-
 ## Done
+
+- [x] [macos] Publish 2.6.1 (undo/redo Doc-sync fix) — mac:[x]
 
 - [x] [macos] Copy-paste broken (fixed: undo/redo bypassed textDidChange, Doc kept pre-undo text and refresh snapped back; coordinator now syncs via NSTextStorageDelegate) — mac:[x]
 - [x] [generic] Click-to-source (click a rendered block to jump to its source line) — win:[x] mac:[x]
