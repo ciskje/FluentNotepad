@@ -282,6 +282,13 @@ public sealed partial class MainWindow : Window
             BorderThickness = new Thickness(0),
             Background = new SolidColorBrush(Colors.Transparent)
         };
+        // No hover/focus background flash: the template paints
+        // TextControlBackgroundPointerOver/Focused over our editor tone.
+        var noFlash = new SolidColorBrush(Colors.Transparent);
+        box.Resources["TextControlBackgroundPointerOver"] = noFlash;
+        box.Resources["TextControlBackgroundFocused"] = noFlash;
+        box.Resources["TextControlBorderBrushPointerOver"] = noFlash;
+        box.Resources["TextControlBorderBrushFocused"] = noFlash;
         var doc = new DocumentInfo { Editor = box, Path = path, IsMarkdown = IsMarkdownFile(path) };
         var tab = new TabViewItem { Tag = doc };
         doc.Tab = tab;

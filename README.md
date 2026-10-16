@@ -27,7 +27,7 @@ A Windows 11 Notepad clone in WinUI 3, with built-in Markdown preview.
 
 The repo contains sources only (builds and setup are **not** versioned). Two options:
 
-- **Ready-made setup**: [Releases](../../releases) page → `FluentNotepad-Setup-2.4.1-win-x64.exe` (per-machine install in Program Files, optional `.md` association)
+- **Ready-made setup**: [Releases](../../releases) page → `FluentNotepad-Setup-2.4.2-win-x64.exe` (per-machine install in Program Files, optional `.md` association)
 - **Build it yourself**:
 
 ```bash
@@ -56,6 +56,7 @@ Technical details (in Italian) in [`source/README.md`](source/README.md).
 
 ## Changelog
 
+- **2.4.2** — No more background flash when hovering the editor (template hover/focus brushes neutralized).
 - **2.4.1** — Fixed edit-mode highlighting not rendering on file open (repaint on editor load) and black bars behind text (opaque editor background instead of transparent).
 - **2.4.0** — Multiple windows (File → New window, Ctrl+Shift+N, cascaded); ESC toggles Edit/Preview on Markdown docs; files dropped onto the preview open as tabs instead of navigating away (all like FluentNotepadMac).
 - **2.3.0** — Syntax highlighting in edit mode for Markdown files (same VS-style colors as the preview, like FluentNotepadMac), applied live while typing.

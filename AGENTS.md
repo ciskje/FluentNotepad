@@ -88,6 +88,9 @@ cascata +36px per non impilarsi perfette (`App.NewWindow()`).
   ignora l'alfa e lo rende nero (barre nere dietro ogni riga). Dipingere il
   colore di sfondo dell'editor (`#282828`/bianco, come `ApplyTheme`); i repaint
   su cambio tema lo riallineano.
+- Anche i brush hover/focus del template (`TextControlBackgroundPointerOver`,
+  `...Focused` + bordi) vanno neutralizzati per-controllo, altrimenti lo
+  sfondo dell'editor lampeggia al passaggio del mouse.
 - `ESC` è un acceleratore a livello finestra che flippa Modifica/Anteprima sui
   doc Markdown; cede se il focus è sulla find box (`FocusManager`) o IME attivo.
   I `ContentDialog` vivono fuori dall'albero di `Root`, il loro ESC non collide.
