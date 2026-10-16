@@ -65,31 +65,22 @@ One channel per platform, tags always carry the platform prefix:
 
 - Windows: tag `windows-vX.Y.Z` + `FluentNotepad-Setup-X.Y.Z-win-x64.exe`
   (per-machine install in Program Files, optional `.md` association).
+  Comando in `windows/AGENTS.md`.
 - macOS: tag `macos-vX.Y.Z` + `FluentNotepad.dmg` (drag into Applications).
-- Old prefix-less tags (`v2.x`, `v1.x`, `mac-v*`) stay as history.
+  Comando in `macos/AGENTS.md`.
 - Every version bump is published (tag + release with artifact), otherwise
   Latest lags behind the code. Keep the **last 2 releases per platform**.
 - Release notes **always in English**: standard install line + changelog
   entries since the previous release of that platform (same text as the
-  Changelog in the READMEs, which are in English).
-
-```bash
-git tag windows-vX.Y.Z && git push origin windows-vX.Y.Z
-gh release create windows-vX.Y.Z "windows/installer/dist/FluentNotepad-Setup-X.Y.Z-win-x64.exe" \
-  --title "windows-vX.Y.Z" --latest --notes "<changelog>"
-gh release create macos-vX.Y.Z "macos/dist/FluentNotepad.dmg" \
-  --title "macos-vX.Y.Z" --latest --notes "<changelog>"
-```
+  Changelog in `README.md`, which is in English).
 
 ## "Genera l'applicazione" (build per l'ambiente corrente)
 
 "Genera l'applicazione" significa sempre: compila **solo per la piattaforma
-della macchina su cui gira l'agent**, mai per l'altra.
-
-- Su Windows, da `windows/`: `dotnet publish source\FluentNotepad.WinUI.csproj -c Release -p:Platform=x64` poi `iscc installer\FluentNotepad.iss` → `installer\dist\FluentNotepad-Setup-X.Y.Z-win-x64.exe`.
-- Su macOS, da `macos/` (su SSD, mai sul NAS): `swift build -c release`, `./packaging/bundle.sh`, `./packaging/dmg.sh` → `dist/FluentNotepad.dmg`.
-- Non cross-compilare, non toccare la versione (salvo release), non pubblicare
-  su GitHub se non richiesto esplicitamente.
+della macchina su cui gira l'agent**, mai per l'altra. Comandi in
+`windows/AGENTS.md` (Build/run) e `macos/AGENTS.md` (Build/run).
+Non toccare la versione (salvo release), non pubblicare
+su GitHub se non richiesto esplicitamente.
 
 ## Source language
 
@@ -99,11 +90,11 @@ code-side strings go through the platform loader (`Str()` / `L()`).
 
 ## Structure
 
-- `windows/` — `source/` (app), `installer/` (Inno Setup 6), `README.md`
-  (product), `AGENTS.md` (platform notes), `start-debug.bat`.
+- `windows/` — `source/` (app), `installer/` (Inno Setup 6), `start-debug.bat`,
+  `AGENTS.md` (tutto il resto è qui).
 - `macos/` — `Sources/` (app), `packaging/` (bundle/dmg scripts),
-  `Package.swift`, `README.md` (product), `AGENTS.md` (platform notes).
-- Root: `BENCH.md` (shared preview sample), `LICENSE` (MIT),
-  `screenshot-*.png`.
+  `Package.swift`, `AGENTS.md` (tutto il resto è qui).
+- Root: `README.md` (unico), `TODO.md`, `BENCH.md` (shared preview sample),
+  `LICENSE` (MIT), `screenshot-*.png`.
 - Line endings: `.gitattributes` disables all conversion (`* -text`, bytes are
   checked out verbatim); only `*.sh` → LF and `*.bat` → CRLF are enforced.

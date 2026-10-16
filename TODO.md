@@ -14,6 +14,7 @@ Legend per row: `win:[x]` / `mac:[x]` = shipped on that platform.
 
 ## Pending
 
+- [ ] [macos] DMG volume icon (app icon on the mounted volume via .VolumeIcon.icns + SetFile) — mac:[ ]
 - [ ] [generic] Click-to-source (click a rendered block to jump to its source line) — win:[ ] mac:[x]
 - [ ] [macos] Align to shared version 2.5.0 (lockstep rule, see AGENTS.md) — mac:[ ]
 

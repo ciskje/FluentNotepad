@@ -22,30 +22,20 @@ iscc installer\FluentNotepad.iss   # richiede Inno Setup 6, output in installer\
 
 ## Versionamento (X.Y.Z)
 
-Lockstep con macOS, vedi `AGENTS.md` in root: stesso X.Y.Z sulle due piattaforme
-(stesso set di intenti); tag `windows-vX.Y.Z`. Policy Z/Y/X in `source/README.md`:
-si tocca **solo** per modifiche al codice.
-
-- Allineare in 3 punti: `<Version>` in `source/FluentNotepad.WinUI.csproj`, `#define MyAppVersion` in `installer/FluentNotepad.iss`, nome setup nel `README.md` in root.
+Solo il dettaglio Windows (regole condivise in root `AGENTS.md`): allineare in
+3 punti `<Version>` in `source/FluentNotepad.WinUI.csproj`, `#define MyAppVersion`
+in `installer/FluentNotepad.iss`, nome setup nel `README.md` in root.
 
 ## Release su GitHub
 
-Stesse regole condivise in root `AGENTS.md` (note in inglese, ultime 2 per
-piattaforma, riga install standard + novità dal Changelog):
+Comando (il resto — note in inglese, ultime 2 per piattaforma, exe stale — in
+root `AGENTS.md`):
 
 ```bash
 git tag windows-vX.Y.Z && git push origin windows-vX.Y.Z
 gh release create windows-vX.Y.Z "installer/dist/FluentNotepad-Setup-X.Y.Z-win-x64.exe" \
   --title "windows-vX.Y.Z" --latest --notes "<riepilogo changelog>"
 ```
-
-- L'exe va ricostruito prima se manca o è stale: `dotnet publish` + `iscc` (vedi sopra).
-
-## Lingua del sorgente
-
-Sorgente tutto in inglese: commenti, docs (`source/README.md`), nomi file di prova.
-Eccezione: le stringhe di interfaccia (`.resw` it-IT/en-US + fallback `x:Uid` in XAML),
-che restano localizzate; le stringhe da codice passano da `Str()` + chiavi resw.
 
 ## Vincoli unpackaged (niente package identity)
 
@@ -109,8 +99,6 @@ cascata +36px per non impilarsi perfette (`App.NewWindow()`).
 - `source/MarkdownHighlight.cs` — colori Markdown in edit mode (AST Markdig → range `ITextDocument`, stessa palette del preview).
 - `source/CursorGrid.cs` — cursore busy per i render anteprima.
 - `source/App.xaml(.cs)` — avvio + apertura file da riga di comando + finestre extra in cascata.
-- `source/CursorGrid.cs` — cursore busy per i render anteprima.
-- `source/App.xaml(.cs)` — avvio + apertura file da riga di comando.
 - `source/Strings/it-IT|en-US/Resources.resw` — risorse UI (copiate accanto all'exe via `.csproj`).
 - `source/Assets/AppIcon.ico` — icona exe (Explorer) + `AppWindow.SetIcon` (runtime).
-- `BENCH.md`, `dati-inventati.md` — file di prova per l'anteprima.
+- `source/example.md` + root `BENCH.md` — file di prova per l'anteprima.
