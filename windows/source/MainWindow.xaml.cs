@@ -289,7 +289,10 @@ public sealed partial class MainWindow : Window
         box.Resources["TextControlBackgroundFocused"] = noFlash;
         box.Resources["TextControlBorderBrushPointerOver"] = noFlash;
         box.Resources["TextControlBorderBrushFocused"] = noFlash;
-        var doc = new DocumentInfo { Editor = box, Path = path, IsMarkdown = IsMarkdownFile(path) };
+        // Unsaved tabs count as Markdown (like the Mac): preview toggle,
+        // highlighting and .md save default work before the first save.
+        // Save As to .txt flips it back (see SaveTabAsync).
+        var doc = new DocumentInfo { Editor = box, Path = path, IsMarkdown = path == null || IsMarkdownFile(path) };
         var tab = new TabViewItem { Tag = doc };
         doc.Tab = tab;
         RefreshHeader(doc);

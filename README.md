@@ -28,7 +28,7 @@ from one repo, same features on both platforms.
 The repo contains sources only (builds and setups are **not** versioned). Same
 version number = same features on both platforms (see Changelogs below).
 
-- **Windows**: [Releases](../../releases) page → `FluentNotepad-Setup-2.6.1-win-x64.exe` (per-machine install in Program Files, optional `.md` association)
+- **Windows**: [Releases](../../releases) page → `FluentNotepad-Setup-2.6.2-win-x64.exe` (per-machine install in Program Files, optional `.md` association)
 - **macOS**: [Releases](../../releases) page → `FluentNotepad.dmg` from a `macos-vX.Y.Z` release → drag `FluentNotepad.app` into Applications. First launch: right-click → Open (ad-hoc signature).
 
 Or build it yourself:
@@ -54,7 +54,7 @@ swift build -c release
 
 ## Changelog
 
-Same version number = same features everywhere. macOS is at `2.6.2`, Windows at `2.6.1` (unsaved-tabs-as-Markdown pending there).
+Same version number = same features everywhere. Windows and macOS are at `2.6.2`.
 
 - **2.6.2** — Unsaved tabs count as Markdown: preview toggle, live highlighting and `.md` save default before the first save; new tabs open directly in Preview.
 

@@ -14,9 +14,11 @@ Legend per row: `win:[x]` / `mac:[x]` = shipped on that platform.
 
 ## Pending
 
-- [ ] [generic] Unsaved tabs count as Markdown (preview toggle, highlighting, .md save default) — win:[ ] mac:[x]
+(none)
 
 ## Done
+
+- [x] [generic] Unsaved tabs count as Markdown (preview toggle, highlighting, .md save default) — win:[x] mac:[x]
 
 - [x] [macos] Publish 2.6.1 (undo/redo Doc-sync fix) — mac:[x]
 
