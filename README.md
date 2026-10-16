@@ -49,7 +49,7 @@ dotnet build source\FluentNotepad.WinUI.csproj -c Debug
 - `source/` — source code (WinUI 3, .NET 8): `MainWindow.*` (shell, tabs, editor, themes), `MarkdownHtml.cs` (Markdown → HTML), `MarkdownHighlight.cs` (edit-mode colors), `CursorGrid.cs`, `Assets/`, `Properties/`, `Strings/` (EN/IT UI resources)
 - `installer/` — Inno Setup 6 script (per-machine install in Program Files, optional `.md` association)
 - `app/` — ready-to-run published build (**not versioned**, see `.gitignore`)
-- `BENCH.md`, `dati-inventati.md` — sample files to try the preview (tables included)
+- `BENCH.md` — sample file to try the preview (tables included)
 - `screenshot-dark.png` — the BENCH.md preview shown above
 
 Technical details (in Italian) in [`source/README.md`](source/README.md).
