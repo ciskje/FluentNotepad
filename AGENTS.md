@@ -94,3 +94,5 @@ code-side strings go through the platform loader (`Str()` / `L()`).
   `Package.swift`, `README.md` (product), `AGENTS.md` (platform notes).
 - Root: `BENCH.md` (shared preview sample), `LICENSE` (MIT),
   `screenshot-*.png`.
+- Line endings: `.gitattributes` disables all conversion (`* -text`, bytes are
+  checked out verbatim); only `*.sh` → LF and `*.bat` → CRLF are enforced.

@@ -1,4 +1,4 @@
-# AGENTS.md — FluentNotepadMac
+# AGENTS.md — FluentNotepad
 
 Native macOS build of FluentNotepad (SwiftUI + WKWebView, Swift 6, macOS 14+, Apple Silicon).
 No Xcode project: SPM + manual `.app` bundle. Sibling: `windows/` (WinUI 3). Shared intents and release rules in root `AGENTS.md`.
