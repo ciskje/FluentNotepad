@@ -70,6 +70,16 @@ gh release create macos-vX.Y.Z "macos/dist/FluentNotepad.dmg" \
   --title "macos-vX.Y.Z" --latest --notes "<changelog>"
 ```
 
+## "Genera l'applicazione" (build per l'ambiente corrente)
+
+"Genera l'applicazione" significa sempre: compila **solo per la piattaforma
+della macchina su cui gira l'agent**, mai per l'altra.
+
+- Su Windows, da `windows/`: `dotnet publish source\FluentNotepad.WinUI.csproj -c Release -p:Platform=x64` poi `iscc installer\FluentNotepad.iss` → `installer\dist\FluentNotepad-Setup-X.Y.Z-win-x64.exe`.
+- Su macOS, da `macos/` (su SSD, mai sul NAS): `swift build -c release`, `./packaging/bundle.sh`, `./packaging/dmg.sh` → `dist/FluentNotepad.dmg`.
+- Non cross-compilare, non toccare la versione (salvo release), non pubblicare
+  su GitHub se non richiesto esplicitamente.
+
 ## Source language
 
 Source everything in English: comments, docs, sample file names.
