@@ -99,3 +99,5 @@ code-side strings go through the platform loader (`Str()` / `L()`).
   `LICENSE` (MIT), `screenshot-*.png`.
 - Line endings: `.gitattributes` disables all conversion (`* -text`, bytes are
   checked out verbatim); only `*.sh` → LF and `*.bat` → CRLF are enforced.
+  A whole-file diff with identical content is a line-ending artifact:
+  `git checkout -- <file>` restores it.

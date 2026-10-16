@@ -92,6 +92,15 @@ cascata +36px per non impilarsi perfette (`App.NewWindow()`).
 - Gli acceleratori da tastiera su un contenitore (es. `Root.KeyboardAccelerators`) mostrano il primo in un tooltip all'hover su tutta l'area: impostare `KeyboardAcceleratorPlacementMode.Hidden` sullo scope, gli shortcut restano attivi.
 - Lingua UI: `PrimaryLanguageOverride = "it-IT"` per tag non it/en; en solo se sistema inglese (`MainWindow` ctor + `Str()`).
 
+## Verifica GUI senza interazione
+
+- Avvio smoke: lanciare l'exe con un file (`FluentNotepad.exe source\example.md &`),
+  attendere, screenshot con `CopyFromScreen` via PowerShell, killare il processo.
+- Toggle Modifica/Anteprima e focus via UI Automation (Invoke sul pulsante,
+  `SetFocus` sull'Edit); `SendKeys`/`AppActivate` sono inaffidabili da soli.
+- Lo stato del documento si interroga via TextPattern (selezione, attributi);
+  per i colori reali fidarsi solo dello screenshot, non del read-back COM.
+
 ## Struttura
 
 - `source/MainWindow.xaml(.cs)` — shell, tab, editor (`RichEditBox`), menu, status, temi, geometria finestra.
