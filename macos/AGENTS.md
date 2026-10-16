@@ -24,7 +24,7 @@ release binary with `strings … | grep -c FN_SELFTEST` (= 0) and the 3 launches
 ## Versioning / releases
 
 Shared lockstep versioning, see root `AGENTS.md`: same X.Y.Z on both platforms
-(same intent set); tags `macos-vX.Y.Z`; `README.md` Changelog mirrors it.
+(same intent set); tags `macos-vX.Y.Z`; root `README.md` Changelog mirrors it.
 Release + publish: `gh release create macos-vX.Y.Z dist/FluentNotepad.dmg`,
 commit + push `main`. `CFBundleShortVersionString` lives in `packaging/Info.plist`.
 

@@ -26,7 +26,7 @@ Lockstep con macOS, vedi `AGENTS.md` in root: stesso X.Y.Z sulle due piattaforme
 (stesso set di intenti); tag `windows-vX.Y.Z`. Policy Z/Y/X in `source/README.md`:
 si tocca **solo** per modifiche al codice.
 
-- Allineare in 3 punti: `<Version>` in `source/FluentNotepad.WinUI.csproj`, `#define MyAppVersion` in `installer/FluentNotepad.iss`, nome setup nel `README.md` (quello in `windows/`).
+- Allineare in 3 punti: `<Version>` in `source/FluentNotepad.WinUI.csproj`, `#define MyAppVersion` in `installer/FluentNotepad.iss`, nome setup nel `README.md` in root.
 
 ## Release su GitHub
 

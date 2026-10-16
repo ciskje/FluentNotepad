@@ -11,7 +11,7 @@ from one repo, same features on both platforms (Windows 11 look and feel).
 - **Markdown preview**: tables, task lists, code, quotes, links, local/remote images — `.md` files open directly in Preview
 - **Visual Studio-style colors** for headings, links, code, bold/italic, quotes and tables (light and dark themes), in Preview and in edit mode (live, parser-driven)
 - **Formatting toolbar** (heading, bold, italic, strikethrough, link, quotes, lists, code)
-- Edit/Preview toggle + **ESC** both ways, click-to-source (macOS; Windows pending)
+- Edit/Preview toggle + **ESC** both ways, click-to-source from the rendered preview
 - Find, zoom, word wrap, file drag & drop (including onto the preview)
 - Print of the rendered Markdown preview in color
 - Status bar like the original (line/column, characters, file type, zoom, line ending, encoding)
@@ -51,25 +51,32 @@ swift build -c release
 - `macos/` — SwiftUI app (`Sources/`, `Package.swift`), packaging, product `README.md`, `AGENTS.md`
 - `BENCH.md` — shared sample file; `AGENTS.md` — shared intents, versioning, releases
 
-## Changelog — Windows
+## Changelog
 
-Next shared version: `2.5.0` (same features as macOS `2.5.0` when it lands).
+Same version number = same features everywhere. Next: `2.5.0`.
 
 - **2.4.2** — No more background flash when hovering the editor (template hover/focus brushes neutralized).
 - **2.4.1** — Fixed edit-mode highlighting not rendering on file open (repaint on editor load) and black bars behind text (opaque editor background instead of transparent).
-- **2.4.0** — Multiple windows (File → New window, Ctrl+Shift+N, cascaded); ESC toggles Edit/Preview on Markdown docs; files dropped onto the preview open as tabs instead of navigating away (all like FluentNotepadMac).
-- **2.3.0** — Syntax highlighting in edit mode for Markdown files (same VS-style colors as the preview, like FluentNotepadMac), applied live while typing.
-- Older: see `windows/README.md`.
-
-## Changelog — macOS
-
-Next shared version: `2.5.0` (same features as Windows `2.5.0`).
-
+- **2.4.0** — Multiple windows (New window, cascaded); ESC toggles Edit/Preview on Markdown docs; files dropped onto the preview open as tabs instead of navigating away.
+- **2.3.0** — Syntax highlighting in edit mode (same VS-style colors as the preview), applied live while typing.
+- **2.2.2** — Fixed Markdown tables with `$` in cells (single-dollar math merged cells across `|`); dollars now stay literal.
+- **2.2.1** — Fixed printing from dark mode (page no longer gets a dark frame) and the print header now shows the file name instead of `about:blank`.
+- **2.2.0** — File → Print: prints the rendered Markdown preview in color via browser print dialog, always with the light theme on paper; plain text shows an info message.
+- **2.1.1** — Fixed spurious `Ctrl++` tooltip over the editor (accelerator display hidden, shortcuts unchanged); fixed window geometry not being restored (settings JSON casing mismatch).
+- **2.1.0** — Window remembers position, size and maximized state; renamed `avvia-debug.bat` → `start-debug.bat`.
 - **1.3.3** — ESC now toggles Edit/Preview in both directions (previously Edit → Preview only); handled at window level so it works with focus anywhere except text fields and IME composition.
 - **1.3.2** — Dropped files open as tabs from every surface: the editor and the preview now claim file drops themselves instead of relying on event bubbling (which left drops over the body with nowhere to go).
 - **1.3.1** — Files dropped onto the editor open as tabs (the editor no longer eats the drop and pastes the file name).
-- **1.3.0** — Multiple windows (⇧⌘N), each with its own tabs; ESC returns from Edit to Preview; files dropped onto the preview open as tabs instead of navigating away.
-- Older: see `macos/README.md`.
+- **1.3.0** — Multiple windows, each with its own tabs; ESC returns from Edit to Preview; files dropped onto the preview open as tabs instead of navigating away.
+- **1.2.2** — Standard save-changes sheets (tab close, window close, quit) instead of the custom alert.
+- **1.2.1** — Edit highlighting is parser-driven (no more emphasis leaking across table cells); structural pipes, bold table headers.
+- **1.2.0** — Click-to-source: click a rendered block to jump to its source line.
+- **1.1.2** — Highlighting covers raw HTML too (tags, attributes, comments).
+- **1.1.1** — Fixed highlighting not appearing (font resets wiped the colors).
+- **1.1.0** — Markdown syntax highlighting in Edit mode.
+- **1.0.2** — Full-bleed vector app icon, crisp at every size.
+- **1.0.1** — Fixed the light/dark theme toggle.
+- **1.0.0** — First native release.
 
 ## License
 
