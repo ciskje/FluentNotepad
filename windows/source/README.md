@@ -58,4 +58,8 @@ Mica on Windows 11.
   (the find box keeps its own ESC); a file dropped onto the WebView2 preview
   would navigate away like Edge, so `NavigationStarting` cancels `file://`
   navigations and opens the file as a tab instead
+- Click-to-source (like the Mac): `MarkdownHtml` annotates every rendered block
+  with `data-src-line` in AST order (raw HTML blanked first); a document-start
+  script posts the nearest one, `WebMessageReceived` jumps the caret there.
+  Preview links jump to source instead of navigating (same tradeoff as the Mac).
 - `AppWindow.Closing` has no deferral: confirm-with-`Cancel=true` + `Close()` pattern after dialogs

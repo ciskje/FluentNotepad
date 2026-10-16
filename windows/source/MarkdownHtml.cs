@@ -1,5 +1,7 @@
 using System.Text.RegularExpressions;
 using Markdig;
+using Markdig.Extensions.Tables;
+using Markdig.Syntax;
 
 namespace FluentNotepad;
 
@@ -8,6 +10,8 @@ namespace FluentNotepad;
 /// Local images -&gt; data-URI (no virtual server), remote/data-URI natively,
 /// SVG supported by the browser, missing files -&gt; graceful placeholder via onerror.
 /// Query (?raw=true) and fragments (#...) ignored in file lookup.
+/// Click-to-source (like FluentNotepadMac): every rendered block carries
+/// data-src-line (1-based), see RenderWithSrcLines.
 /// </summary>
 public static class MarkdownHtml
 {
@@ -26,11 +30,119 @@ public static class MarkdownHtml
 
     private const long MaxImageBytes = 20L * 1024 * 1024;
 
+    // Click-to-source: annotate every rendered block tag with data-src-line
+    // (1-based, like FluentNotepadMac) in AST order. Raw HTML blocks are
+    // blanked first (they may contain lookalike tags) and restored verbatim.
+    // Tight list items and table cells render without <p>: those paragraphs
+    // are skipped, mirroring the emitted tags. Unknown containers (e.g.
+    // footnotes) are recursed without entry; their tags are skipped by the
+    // expected-tag scan, so worst case a click there jumps nearby.
+    private static readonly Dictionary<string, Regex> _tagRes = new();
+
+    private static Regex TagRe(string tag)
+    {
+        if (!_tagRes.TryGetValue(tag, out var re))
+        {
+            re = new Regex("<" + tag + "\\b", RegexOptions.Compiled);
+            _tagRes[tag] = re;
+        }
+        return re;
+    }
+
+    private static string RenderWithSrcLines(string markdown)
+    {
+        MarkdownDocument doc;
+        try { doc = Markdown.Parse(markdown, _pipeline); }
+        catch { return Markdown.ToHtml(markdown, _pipeline); }
+        string html;
+        try { html = Markdown.ToHtml(doc, _pipeline); }
+        catch { return Markdown.ToHtml(markdown, _pipeline); }
+        try
+        {
+            var raws = new List<string>();
+            foreach (var b in doc) CollectHtmlRaws(b, raws);
+            for (int i = 0; i < raws.Count; i++)
+            {
+                int idx = html.IndexOf(raws[i], StringComparison.Ordinal);
+                if (idx >= 0)
+                    html = html[..idx] + $"\uE000{i}\uE001" + html[(idx + raws[i].Length)..];
+            }
+            var entries = new List<(string Tag, int Line)>();
+            foreach (var b in doc) CollectSrcEntries(b, entries);
+            int cursor = 0;
+            foreach (var (tag, line) in entries)
+            {
+                var m = TagRe(tag).Match(html, cursor);
+                if (!m.Success) continue;
+                string inject = $"<{tag} data-src-line=\"{line}\"";
+                html = html[..m.Index] + inject + html[(m.Index + tag.Length + 1)..];
+                cursor = m.Index + inject.Length;
+            }
+            for (int i = 0; i < raws.Count; i++)
+                html = html.Replace($"\uE000{i}\uE001", raws[i]);
+        }
+        catch { /* best effort: return the render as-is */ }
+        return html;
+    }
+
+    private static void CollectHtmlRaws(Block block, List<string> raws)
+    {
+        if (block is HtmlBlock hb)
+        {
+            string raw = hb.Lines.ToString();
+            if (!string.IsNullOrEmpty(raw)) raws.Add(raw);
+        }
+        if (block is ContainerBlock cb)
+            foreach (var c in cb) CollectHtmlRaws(c, raws);
+    }
+
+    private static void CollectSrcEntries(Block block, List<(string Tag, int Line)> entries)
+    {
+        int line = block.Line + 1; // Markdig lines are 0-based; Mac uses 1-based
+        switch (block)
+        {
+            case HeadingBlock hb:
+                entries.Add(($"h{hb.Level}", line));
+                break;
+            case QuoteBlock:
+                entries.Add(("blockquote", line));
+                break;
+            case CodeBlock:
+                entries.Add(("pre", line));
+                break;
+            case ThematicBreakBlock:
+                entries.Add(("hr", line));
+                break;
+            case ListBlock lb:
+                entries.Add((lb.IsOrdered ? "ol" : "ul", line));
+                break;
+            case ListItemBlock:
+                entries.Add(("li", line));
+                break;
+            case Table:
+                entries.Add(("table", line));
+                break;
+            case TableRow:
+                entries.Add(("tr", line));
+                break;
+            case ParagraphBlock:
+                // Tight list items and table cells render without <p>
+                if (block.Parent is TableCell) break;
+                if (block.Parent is ListItemBlock && block.Parent.Parent is ListBlock lb2 && !lb2.IsLoose) break;
+                entries.Add(("p", line));
+                break;
+            default:
+                break; // HtmlBlock (blanked above) and anything unknown: recurse only
+        }
+        if (block is ContainerBlock cb)
+            foreach (var c in cb) CollectSrcEntries(c, entries);
+    }
+
     public static string Build(string markdown, string? baseDir, bool dark, double fontSize, string? title = null)
     {
         string body = string.IsNullOrWhiteSpace(markdown)
             ? "<p class='empty-hint'>" + MainWindow.Str("EmptyHint") + "</p>"
-            : Markdig.Markdown.ToHtml(markdown, _pipeline);
+            : RenderWithSrcLines(markdown);
         body = ProcessImages(body, baseDir);
         string css = dark ? DarkCss(fontSize) : LightCss(fontSize);
         // 'busy' class on the root: the page is born "busy" (ring cursor) and the

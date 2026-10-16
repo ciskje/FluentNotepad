@@ -55,7 +55,7 @@ implemented those intents; if the other lags, its release waits.
 
 - Z = bugfix/tweak, Y = new feature/behavior, X = upheaval.
 - Docs/refactor/build never change the version.
-- Current: Windows `2.5.0`, macOS `2.5.0` (click-to-source pending on Windows).
+- Current: Windows `2.6.0`, macOS `2.5.0` (macOS 2.6.0 pending, version-only).
 - Version locations: `<Version>` in `windows/source/FluentNotepad.WinUI.csproj`
   (+ `installer/FluentNotepad.iss`, setup name in `windows/README.md`);
   `CFBundleShortVersionString` in `macos/packaging/Info.plist`.

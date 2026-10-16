@@ -14,7 +14,8 @@ Legend per row: `win:[x]` / `mac:[x]` = shipped on that platform.
 
 ## Pending
 
-- [ ] [generic] Click-to-source (click a rendered block to jump to its source line) — win:[ ] mac:[x]
+- [ ] [macos] Publish 2.6.0 (version-only: click-to-source already shipped) — mac:[ ]
+- [ ] [generic] Click-to-source (click a rendered block to jump to its source line) — win:[x] mac:[x]
 
 ## Done
 

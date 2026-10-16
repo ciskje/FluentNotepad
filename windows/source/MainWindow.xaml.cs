@@ -501,6 +501,18 @@ public sealed partial class MainWindow : Window
                     _hookedCore = core;
                     core.NavigationCompleted += (_, _) => SetBusy(false);
                     core.NavigationStarting += Preview_NavigationStarting;
+                    // Click-to-source (like FluentNotepadMac): the HTML carries
+                    // data-src-line (see MarkdownHtml); a document-start script
+                    // forwards the nearest one, jumping selects the source line.
+                    // Links jump to source instead of navigating (same tradeoff
+                    // as the Mac); a real text selection is left alone for copy.
+                    await core.AddScriptToExecuteOnDocumentCreatedAsync(
+                        "document.addEventListener('click',function(e){try{" +
+                        "if(window.getSelection&&!window.getSelection().isCollapsed)return;" +
+                        "var t=e.target,el=(t&&t.closest)?t.closest('[data-src-line]'):null;" +
+                        "if(el){e.preventDefault();window.chrome.webview.postMessage(el.getAttribute('data-src-line'));}" +
+                        "}catch(err){}},false);");
+                    core.WebMessageReceived += Preview_WebMessage;
                 }
             }
             string? baseDir = doc.Path != null ? Path.GetDirectoryName(doc.Path) : null;
@@ -525,6 +537,29 @@ public sealed partial class MainWindow : Window
     private void PreviewRetry_Click(object s, RoutedEventArgs e)
     {
         if (GetActiveDoc() is { } d) RenderPreview(d);
+    }
+
+    // Click on a rendered block -> caret on its source line (1-based).
+    private void Preview_WebMessage(object? sender, Microsoft.Web.WebView2.Core.CoreWebView2WebMessageReceivedEventArgs e)
+    {
+        string msg;
+        try { msg = e.TryGetWebMessageAsString(); }
+        catch (Exception ex) { Debug.WriteLine($"WebMsg: {ex.Message}"); return; }
+        if (!int.TryParse(msg.Trim(), out int line) || line < 1) return;
+        var d = GetActiveDoc();
+        if (d is not { IsMarkdown: true, PreviewVisible: true }) return;
+        if (d.PreviewVisible) ShowPreview(d, false);
+        string text = GetEditorText(d.Editor);
+        int off = 0;
+        for (int cur = 1; cur < line && off < text.Length; cur++)
+        {
+            int nl = text.IndexOf('\n', off);
+            if (nl < 0) { off = text.Length; break; }
+            off = nl + 1;
+        }
+        var b = d.Editor;
+        SetSelection(b, off, 0);
+        b.Focus(FocusState.Programmatic);
     }
 
     // A file dropped onto the preview makes WebView2 navigate to it (like Edge),

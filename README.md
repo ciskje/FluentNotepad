@@ -28,7 +28,7 @@ from one repo, same features on both platforms.
 The repo contains sources only (builds and setups are **not** versioned). Same
 version number = same features on both platforms (see Changelogs below).
 
-- **Windows**: [Releases](../../releases) page → `FluentNotepad-Setup-2.5.0-win-x64.exe` (per-machine install in Program Files, optional `.md` association)
+- **Windows**: [Releases](../../releases) page → `FluentNotepad-Setup-2.6.0-win-x64.exe` (per-machine install in Program Files, optional `.md` association)
 - **macOS**: [Releases](../../releases) page → `FluentNotepad.dmg` from a `macos-vX.Y.Z` release → drag `FluentNotepad.app` into Applications. First launch: right-click → Open (ad-hoc signature).
 
 Or build it yourself:
@@ -54,9 +54,9 @@ swift build -c release
 
 ## Changelog
 
-Same version number = same features everywhere. Windows and macOS are at `2.5.0` (click-to-source pending on Windows).
+Same version number = same features everywhere. Windows is at `2.6.0`, macOS at `2.5.0` (2.6.0 pending there, version-only).
 
-- **2.5.0** — Quick-save button in the toolbar (disabled unless the tab is dirty).
+- **2.6.0** — Click-to-source: click a rendered block to jump back to its source line.
 - **2.4.2** — No more background flash when hovering the editor (template hover/focus brushes neutralized).
 - **2.4.1** — Fixed edit-mode highlighting not rendering on file open (repaint on editor load) and black bars behind text (opaque editor background instead of transparent).
 - **2.4.0** — Multiple windows (New window, cascaded); ESC toggles Edit/Preview on Markdown docs; files dropped onto the preview open as tabs instead of navigating away.
