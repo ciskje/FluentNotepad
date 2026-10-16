@@ -7,7 +7,7 @@
 ; Build:
 ;   1. dotnet publish source\FluentNotepad.WinUI.csproj -c Release -p:Platform=x64
 ;   2. iscc installer\FluentNotepad.iss
-;      (from the repo root; requires Inno Setup 6)
+;      (from windows/; requires Inno Setup 6)
 ; Output: installer\dist\FluentNotepad-Setup-<version>-win-x64.exe
 ; ============================================================
 

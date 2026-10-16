@@ -1,70 +1,75 @@
 # FluentNotepad
 
-A Windows 11 Notepad clone in WinUI 3, with built-in Markdown preview.
+A Windows 11 Notepad clone with built-in Markdown preview — two native builds
+from one repo, same features on both platforms.
 
-![Markdown preview of BENCH.md (dark theme)](screenshot-dark.png)
+![Markdown preview of BENCH.md, Windows dark theme](windows/screenshot-dark.png)
 
-## Features
+## Features (both platforms)
 
-- Drag-reorderable **tabs**, `+` for a new tab, `*` for unsaved changes
-- **Markdown preview** (WebView2 + Markdig): tables, task lists, code, quotes, links, local/remote/data-URI/SVG images — `.md` files open directly in Preview
-- **Visual Studio-style colors** for headings, links, code, bold/italic, quotes and tables (light and dark themes), in Preview and in edit mode (live syntax highlighting while typing)
+- Drag-reorderable **tabs**, `+` for a new tab, dirty marker, multiple **windows**
+- **Markdown preview**: tables, task lists, code, quotes, links, local/remote images — `.md` files open directly in Preview
+- **Visual Studio-style colors** for headings, links, code, bold/italic, quotes and tables (light and dark themes), in Preview and in edit mode (live, parser-driven)
 - **Formatting toolbar** (heading, bold, italic, strikethrough, link, quotes, lists, code)
-- System **Mica**, extended title bar with tabs inside, Edit/Preview toggle (Ctrl+Shift+V)
-- Find (Ctrl+F), zoom, word wrap, file drag & drop (including onto the preview), **ESC** toggles Edit/Preview
-- Multiple independent **windows** (File → New window, Ctrl+Shift+N)
-- Print (Ctrl+P) of the rendered Markdown preview in color, always with the light theme on paper (WebView2 print dialog)
-- Status bar like the original (line/column, characters, file type, zoom, CRLF/LF, UTF-8)
-- Interface in **English and Italian** (follows the Windows display language)
+- Edit/Preview toggle + **ESC** both ways, click-to-source (macOS; Windows pending)
+- Find, zoom, word wrap, file drag & drop (including onto the preview)
+- Print of the rendered Markdown preview in color
+- Status bar like the original (line/column, characters, file type, zoom, line ending, encoding)
+- Interface in **English and Italian**
 
 ## Requirements
 
-- Windows 10 1809+ (Mica on Windows 11)
-- WebView2 evergreen (preinstalled on Windows 11)
-- To build: .NET 8 SDK
+- Windows 10 1809+ (Mica on Windows 11) + WebView2 evergreen (preinstalled on Windows 11). To build: .NET 8 SDK.
+- macOS 14+, Apple Silicon. To build: Swift 6 toolchain.
 
 ## Download
 
-The repo contains sources only (builds and setup are **not** versioned). Two options:
+The repo contains sources only (builds and setups are **not** versioned). Same
+version number = same features on both platforms (see Changelogs below).
 
-- **Ready-made setup**: [Releases](../../releases) page → `FluentNotepad-Setup-2.4.2-win-x64.exe` (per-machine install in Program Files, optional `.md` association)
-- **Build it yourself**:
+- **Windows**: [Releases](../../releases) page → `FluentNotepad-Setup-2.4.2-win-x64.exe` (per-machine install in Program Files, optional `.md` association)
+- **macOS**: [Releases](../../releases) page → `FluentNotepad.dmg` from a `macos-vX.Y.Z` release → drag `FluentNotepad.app` into Applications. First launch: right-click → Open (ad-hoc signature).
+
+Or build it yourself:
 
 ```bash
+# Windows (from windows/)
 dotnet publish source\FluentNotepad.WinUI.csproj -c Release -p:Platform=x64
-iscc installer\FluentNotepad.iss
+iscc installer\FluentNotepad.iss   # installer\dist\ (requires Inno Setup 6)
 ```
 
-The installer lands in `installer\dist\` (requires Inno Setup 6).
-
-## Try without installing
-
 ```bash
-# double-click start-debug.bat, or:
-dotnet build source\FluentNotepad.WinUI.csproj -c Debug
+# macOS (from macos/, on SSD — never build on the NAS)
+swift build -c release
+./packaging/bundle.sh   # dist/FluentNotepad.app (no Xcode needed)
+./packaging/dmg.sh      # dist/FluentNotepad.dmg with /Applications symlink
 ```
 
 ## Structure
 
-- `source/` — source code (WinUI 3, .NET 8): `MainWindow.*` (shell, tabs, editor, themes), `MarkdownHtml.cs` (Markdown → HTML), `MarkdownHighlight.cs` (edit-mode colors), `CursorGrid.cs`, `Assets/`, `Properties/`, `Strings/` (EN/IT UI resources)
-- `installer/` — Inno Setup 6 script (per-machine install in Program Files, optional `.md` association)
-- `app/` — ready-to-run published build (**not versioned**, see `.gitignore`)
-- `BENCH.md` — sample file to try the preview (tables included)
-- `screenshot-dark.png` — the BENCH.md preview shown above
+- `windows/` — WinUI 3 app (`source/`), installer, product `README.md`, `AGENTS.md`
+- `macos/` — SwiftUI app (`Sources/`, `Package.swift`), packaging, product `README.md`, `AGENTS.md`
+- `BENCH.md` — shared sample file; `AGENTS.md` — shared intents, versioning, releases
 
-Technical details (in Italian) in [`source/README.md`](source/README.md).
+## Changelog — Windows
 
-## Changelog
+Next shared version: `2.5.0` (same features as macOS `2.5.0` when it lands).
 
 - **2.4.2** — No more background flash when hovering the editor (template hover/focus brushes neutralized).
 - **2.4.1** — Fixed edit-mode highlighting not rendering on file open (repaint on editor load) and black bars behind text (opaque editor background instead of transparent).
 - **2.4.0** — Multiple windows (File → New window, Ctrl+Shift+N, cascaded); ESC toggles Edit/Preview on Markdown docs; files dropped onto the preview open as tabs instead of navigating away (all like FluentNotepadMac).
 - **2.3.0** — Syntax highlighting in edit mode for Markdown files (same VS-style colors as the preview, like FluentNotepadMac), applied live while typing.
-- **2.2.2** — Fixed Markdown tables with `$` in cells (single-dollar math merged cells across `|`); dollars now stay literal.
-- **2.2.1** — Fixed printing from dark mode (page no longer gets a dark frame) and the print header now shows the file name instead of `about:blank`.
-- **2.2.0** — File → Print (Ctrl+P): prints the rendered Markdown preview in color via WebView2 (browser print dialog), always with the light theme on paper; plain text shows an info message.
-- **2.1.1** — Fixed spurious `Ctrl++` tooltip over the editor (accelerator display hidden, shortcuts unchanged); fixed window geometry not being restored (settings JSON casing mismatch).
-- **2.1.0** — Window remembers position, size and maximized state; renamed `avvia-debug.bat` → `start-debug.bat`.
+- Older: see `windows/README.md`.
+
+## Changelog — macOS
+
+Next shared version: `2.5.0` (same features as Windows `2.5.0`).
+
+- **1.3.3** — ESC now toggles Edit/Preview in both directions (previously Edit → Preview only); handled at window level so it works with focus anywhere except text fields and IME composition.
+- **1.3.2** — Dropped files open as tabs from every surface: the editor and the preview now claim file drops themselves instead of relying on event bubbling (which left drops over the body with nowhere to go).
+- **1.3.1** — Files dropped onto the editor open as tabs (the editor no longer eats the drop and pastes the file name).
+- **1.3.0** — Multiple windows (⇧⌘N), each with its own tabs; ESC returns from Edit to Preview; files dropped onto the preview open as tabs instead of navigating away.
+- Older: see `macos/README.md`.
 
 ## License
 

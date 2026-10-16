@@ -1,17 +1,25 @@
-# Build
+# Windows (dotnet / MSBuild)
 bin/
 obj/
 out/
-# App pubblicata (self-contained, non versionata)
-app/
-# Output installer Inno Setup (non versionato: ricreabile con iscc)
-installer/dist/
-installer/Output/
+# Published app (self-contained, rebuildable, not versioned)
+windows/app/
+# Inno Setup output (not versioned: rebuild with iscc)
+windows/installer/dist/
+windows/installer/Output/
 # VS / Rider
 .vs/
 .idea/
 *.user
 *.suo
-# OS
+
+# macOS (SwiftPM)
+.build/
+macos/dist/
+*.o
+
+# OS / junk (all platforms)
 Thumbs.db
 Desktop.ini
+.DS_Store
+._*

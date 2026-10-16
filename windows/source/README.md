@@ -14,7 +14,7 @@ For any other reason (docs, internal refactors, build) the version is **not** to
 ## Run
 
 ```bash
-# double-click start-debug.bat (repo root), or from the repo root:
+# double-click start-debug.bat (windows/), or from windows/:
 dotnet build source/FluentNotepad.WinUI.csproj -c Debug
 source/bin/Debug/net8.0-windows10.0.26100.0/win-x64/FluentNotepad.exe [file]
 ```

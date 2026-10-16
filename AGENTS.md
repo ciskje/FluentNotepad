@@ -1,121 +1,86 @@
-# AGENTS.md — FluentNotepad
+# AGENTS.md — FluentNotepad (Windows + macOS)
 
-WinUI 3 / .NET 8, unpackaged (no MSIX). Clone del Notepad di Win11 con anteprima Markdown (WebView2 + Markdig).
+One repo, two native builds of the same Windows 11 Notepad clone with Markdown preview:
 
-## Build / run
+- `windows/` — WinUI 3 / .NET 8, unpackaged (no MSIX).
+- `macos/` — SwiftUI + WKWebView, Swift 6, macOS 14+, Apple Silicon.
+
+Platform details (build, gotchas, paths) live in `windows/AGENTS.md` and
+`macos/AGENTS.md`. This file holds only what is shared: intents, workflow,
+versioning and releases. Build on each machine **only for its own platform**.
+
+## Feature intents (parity checklist)
+
+Both builds implement the same intents; platform-native details may differ
+(Mica on Windows, save sheets on macOS):
+
+- Drag-reorderable tabs, `+` for a new tab, dirty marker, multi-window
+- Markdown preview (tables, task lists, code, quotes, links, local/remote images)
+- `.md` files open directly in Preview; Edit/Preview toggle (+ ESC both ways)
+- Parser-driven edit-mode highlighting, same VS tones as the preview
+  (only real syntax nodes; never leaks across cells/spans)
+- Formatting toolbar (heading, bold, italic, strikethrough, link, quote,
+  bullet/numbered lists, code) operating on the remembered selection
+- Find, zoom, word wrap, file drag & drop (including onto the preview)
+- Print of the rendered Markdown preview in color
+- Status bar (line/column, characters, file type, zoom, line ending, encoding)
+- Light/dark/system theme, interface in English and Italian
+- Click-to-source: click a rendered block to jump to its source line
+  (macOS done; Windows pending)
+
+## Change workflow
+
+1. A change request updates the intents above first (this file).
+2. Implement **only for the local platform**; the other platform implements
+   the same intent later on its own machine.
+3. Same rule for fixes: if the bug is in a shared intent, mirror the fix.
+
+## Versioning (lockstep X.Y.Z)
+
+Same version number on both platforms so changelogs stay comparable:
+`X.Y.Z` = the same intent set. A platform publishes `X.Y.Z` when it has
+implemented those intents; if the other lags, its release waits.
+
+- Z = bugfix/tweak, Y = new feature/behavior, X = upheaval.
+- Docs/refactor/build never change the version.
+- Current: Windows `2.4.2`, macOS `1.3.3`; next shared version: `2.5.0`.
+- Version locations: `<Version>` in `windows/source/FluentNotepad.WinUI.csproj`
+  (+ `installer/FluentNotepad.iss`, setup name in `windows/README.md`);
+  `CFBundleShortVersionString` in `macos/packaging/Info.plist`.
+
+## Tags & releases
+
+One channel per platform, tags always carry the platform prefix:
+
+- Windows: tag `windows-vX.Y.Z` + `FluentNotepad-Setup-X.Y.Z-win-x64.exe`
+  (per-machine install in Program Files, optional `.md` association).
+- macOS: tag `macos-vX.Y.Z` + `FluentNotepad.dmg` (drag into Applications).
+- Old prefix-less tags (`v2.x`, `v1.x`, `mac-v*`) stay as history.
+- Every version bump is published (tag + release with artifact), otherwise
+  Latest lags behind the code. Keep the **last 2 releases per platform**.
+- Release notes **always in English**: standard install line + changelog
+  entries since the previous release of that platform (same text as the
+  Changelog in the READMEs, which are in English).
 
 ```bash
-dotnet build source/FluentNotepad.WinUI.csproj -c Debug
-# oppure doppio clic su start-debug.bat (nella root)
-source/bin/Debug/net8.0-windows10.0.26100.0/win-x64/FluentNotepad.exe [file]
+git tag windows-vX.Y.Z && git push origin windows-vX.Y.Z
+gh release create windows-vX.Y.Z "windows/installer/dist/FluentNotepad-Setup-X.Y.Z-win-x64.exe" \
+  --title "windows-vX.Y.Z" --latest --notes "<changelog>"
+gh release create macos-vX.Y.Z "macos/dist/FluentNotepad.dmg" \
+  --title "macos-vX.Y.Z" --latest --notes "<changelog>"
 ```
 
-Release + installer:
+## Source language
 
-```bash
-dotnet publish source\FluentNotepad.WinUI.csproj -c Release -p:Platform=x64
-iscc installer\FluentNotepad.iss   # richiede Inno Setup 6, output in installer\dist\
-```
+Source everything in English: comments, docs, sample file names.
+Exception: UI strings (WinUI `.resw` it-IT/en-US, macOS `.lproj`), localized;
+code-side strings go through the platform loader (`Str()` / `L()`).
 
-- `app/` (build published) e `installer/dist/` **non** sono versionati (vedi `.gitignore`).
-- `dotnet build` dalla root del repo; il `RuntimeIdentifier` di default segue l'architettura host.
+## Structure
 
-## Versionamento (X.Y.Z)
-
-Policy in `source/README.md`: si tocca **solo** per modifiche al codice.
-
-- Z = bugfix/ritocchi, Y = nuove funzioni/cambi di comportamento, X = stravolgimenti.
-- Docs/refactor/build non cambiano la versione.
-- Allineare in 3 punti: `<Version>` in `source/FluentNotepad.WinUI.csproj`, `#define MyAppVersion` in `installer/FluentNotepad.iss`, nome setup in `README.md`.
-
-## Release su GitHub
-
-La pagina Releases è il canale "ready-made setup" citato nel `README.md`:
-**ogni bump di versione va pubblicato anche lì** (tag + release con setup allegato),
-altrimenti la release Latest resta indietro rispetto al codice.
-
-```bash
-git tag vX.Y.Z && git push origin vX.Y.Z
-gh release create vX.Y.Z "installer/dist/FluentNotepad-Setup-X.Y.Z-win-x64.exe" \
-  --title "vX.Y.Z" --latest --notes "<riepilogo changelog>"
-```
-
-- L'exe va ricostruito prima se manca o è stale: `dotnet publish` + `iscc` (vedi sopra).
-- Nelle note: riga install standard (Program Files per-machine, `.md` opzionale, WebView2) + novità rispetto alla release precedente (voci dal Changelog nel `README.md`).
-- Note release **sempre in inglese** (stesso testo del Changelog nel `README.md`, che è in inglese).
-- Stessa policy del versionamento: niente release per docs/refactor/build.
-- Allineare il nome setup nella sezione Download del `README.md`.
-
-## Lingua del sorgente
-
-Sorgente tutto in inglese: commenti, docs (`source/README.md`), nomi file di prova.
-Eccezione: le stringhe di interfaccia (`.resw` it-IT/en-US + fallback `x:Uid` in XAML),
-che restano localizzate; le stringhe da codice passano da `Str()` + chiavi resw.
-
-## Vincoli unpackaged (niente package identity)
-
-- **Niente MRT/`ResourceLoader` da codice**: il costruttore lancia `FileNotFoundException`. Le stringhe da codice in `MainWindow.xaml.cs` (`Str()`, `LoadResw()`) leggono i `.resw` come XML da `Strings/<lingua>/` accanto all'exe. Gli `x:Uid` in XAML invece funzionano (MRT interno).
-- **Niente `ApplicationData.LocalSettings`**: le impostazioni sono un file JSON in `%LocalAppData%\FluentNotepad\settings.json`.
-- **WebView2**: `WEBVIEW2_USER_DATA_FOLDER` va impostato su `%LocalAppData%\FluentNotepad\WebView2` nel costruttore **prima** di qualunque inizializzazione, altrimenti in Program Files (non scrivibile) non parte mai.
-
-## settings.json
-
-Schema (indentato): `{theme, x, y, width, height, maximized, hasWindow}`.
-Condiviso tra le finestre (last-wins): due finestre aperte salvano a turno,
-la geometria ripristinata è quella dell'ultima; le nuove finestre aprono in
-cascata +36px per non impilarsi perfette (`App.NewWindow()`).
-
-- `theme`: `light|dark|system` (default `system` = segue Windows via registro `AppsUseLightTheme`).
-- Geometria: salvata su `AppWindow.Changed` (debounce 1s via `DispatcherQueueTimer`) e su `AppWindow.Closing` in tutti i percorsi. Il vecchio file solo-`{"theme"}` resta leggibile.
-- Ripristino in `RestoreWindowGeometry()` prima di `Activate()`: `MoveAndResize()` o `Maximize()`; fallback 1000x650 se assente/non valido/fuori da tutti gli schermi (`DisplayArea.FindAll()` vs `WorkArea`).
-- Quando massimizzata, `AppWindow.Size/Position` riportano il monitor: i bounds di restore sono tenuti in cache (`_restoreBounds`, aggiornati su `Changed` solo con `OverlappedPresenter.State == Restored`). Lo stato minimizzato non viene mai persistito.
-
-## Gotcha WinUI imparati
-
-- L'editor è un `RichEditBox`, non `TextBox` (`TextBox` non colora singoli range):
-  testo via `ITextDocument` (`GetText` accoda un `\r` di fine storia e usa `\r`
-  per gli a capo; normalizzare a `\n` per lavorare con gli span Markdig 1:1,
-  riconvertire in CRLF/LF al salvataggio).
-- Highlight edit-mode (`MarkdownHighlight.cs`, AST Markdig, stessa palette del
-  preview) applicato in `TextChanging` (equivalente di EN_UPDATE): la
-  formattazione entra nella stessa unità di undo della digitazione. Cache per
-  chiave; skip in composizione IME, oltre 300.000 caratteri (come il Mac) e a
-  controllo fuori dal visual tree.
-- Formattazione applicata prima del primo `Loaded` non renderizza (il modello
-  risulta colorato ma lo schermo resta bianco): repaint forzato sull'evento
-  `Loaded` dell'editor, che scatta a ogni hosting.
-- Mai sfondo `Transparent` sui range (`Color.FromArgb(0,0,0,0)`): RichEdit
-  ignora l'alfa e lo rende nero (barre nere dietro ogni riga). Dipingere il
-  colore di sfondo dell'editor (`#282828`/bianco, come `ApplyTheme`); i repaint
-  su cambio tema lo riallineano.
-- Anche i brush hover/focus del template (`TextControlBackgroundPointerOver`,
-  `...Focused` + bordi) vanno neutralizzati per-controllo, altrimenti lo
-  sfondo dell'editor lampeggia al passaggio del mouse.
-- `ESC` è un acceleratore a livello finestra che flippa Modifica/Anteprima sui
-  doc Markdown; cede se il focus è sulla find box (`FocusManager`) o IME attivo.
-  I `ContentDialog` vivono fuori dall'albero di `Root`, il loro ESC non collide.
-- File trascinato sopra il `WebView2` (che naviga via come Edge, prima degli
-  handler XAML): `NavigationStarting` cancella le navigazioni `file://` (tranne
-  il temp interno dell'anteprima) e apre il file come scheda.
-- Ogni `MainWindow` è indipendente (schede, highlight, busy); condivide solo
-  `settings.json` e il temp di anteprima (`fluent_preview_<pid>.html`).
-- `TabView` non rimuove la tab da solo: rimozione manuale (vale anche per Annulla).
-- `AppWindow.Closing` non ha deferral: pattern conferma con `Cancel=true` + `Close()` dopo i dialoghi (`_closeConfirmed`).
-- `Microsoft.UI.Dispatching.DispatcherQueueTimer` va qualificato per esteso: `DispatcherQueueTimer` da solo risolve `Windows.System` e rompe la build (CS0029).
-- Se la build C# fallisce, il compilatore XAML riporta errori a cascata fasulli (es. `Unknown type 'CursorGrid'`): guardare prima gli errori CS.
-- Presenter di default di `Window` è già `OverlappedPresenter`; verificare `IsMaximizable` prima di `Maximize()`.
-- Gli acceleratori da tastiera su un contenitore (es. `Root.KeyboardAccelerators`) mostrano il primo in un tooltip all'hover su tutta l'area: impostare `KeyboardAcceleratorPlacementMode.Hidden` sullo scope, gli shortcut restano attivi.
-- Lingua UI: `PrimaryLanguageOverride = "it-IT"` per tag non it/en; en solo se sistema inglese (`MainWindow` ctor + `Str()`).
-
-## Struttura
-
-- `source/MainWindow.xaml(.cs)` — shell, tab, editor (`RichEditBox`), menu, status, temi, geometria finestra.
-- `source/MarkdownHtml.cs` — Markdown → HTML (Markdig + CSS chiaro/scuro + immagini data-URI).
-- `source/MarkdownHighlight.cs` — colori Markdown in edit mode (AST Markdig → range `ITextDocument`, stessa palette del preview).
-- `source/CursorGrid.cs` — cursore busy per i render anteprima.
-- `source/App.xaml(.cs)` — avvio + apertura file da riga di comando + finestre extra in cascata.
-- `source/CursorGrid.cs` — cursore busy per i render anteprima.
-- `source/App.xaml(.cs)` — avvio + apertura file da riga di comando.
-- `source/Strings/it-IT|en-US/Resources.resw` — risorse UI (copiate accanto all'exe via `.csproj`).
-- `source/Assets/AppIcon.ico` — icona exe (Explorer) + `AppWindow.SetIcon` (runtime).
-- `BENCH.md`, `dati-inventati.md` — file di prova per l'anteprima.
+- `windows/` — `source/` (app), `installer/` (Inno Setup 6), `README.md`
+  (product), `AGENTS.md` (platform notes), `start-debug.bat`.
+- `macos/` — `Sources/` (app), `packaging/` (bundle/dmg scripts),
+  `Package.swift`, `README.md` (product), `AGENTS.md` (platform notes).
+- Root: `BENCH.md` (shared preview sample), `LICENSE` (MIT),
+  `screenshot-*.png`.
