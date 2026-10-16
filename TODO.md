@@ -14,7 +14,8 @@ Legend per row: `win:[x]` / `mac:[x]` = shipped on that platform.
 
 ## Pending
 
-- [x] [windows] Double paste/cut/undo from Edit menu accelerators firing on top of native RichEditBox keys — win:[x] mac:[n/a]
+(none)
+
 ## Done
 
 - [x] [macos] Publish 2.6.1 (undo/redo Doc-sync fix) — mac:[x]
