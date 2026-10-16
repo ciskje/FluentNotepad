@@ -20,7 +20,8 @@ Both builds implement the same intents; platform-native details may differ
 - Parser-driven edit-mode highlighting, same VS tones as the preview
   (only real syntax nodes; never leaks across cells/spans)
 - Formatting toolbar (heading, bold, italic, strikethrough, link, quote,
-  bullet/numbered lists, code) operating on the remembered selection
+  bullet/numbered lists, code) operating on the remembered selection,
+  plus a quick-save button (disabled unless the tab is dirty)
 - Find, zoom, word wrap, file drag & drop (including onto the preview)
 - Print of the rendered Markdown preview in color
 - Status bar (line/column, characters, file type, zoom, line ending, encoding)
@@ -54,7 +55,7 @@ implemented those intents; if the other lags, its release waits.
 
 - Z = bugfix/tweak, Y = new feature/behavior, X = upheaval.
 - Docs/refactor/build never change the version.
-- Current: Windows `2.4.2`, macOS `1.3.3`; next shared version: `2.5.0`.
+- Current: Windows `2.4.2`, macOS `2.5.0`; next shared version: `2.5.0` on Windows (click-to-source, quick-save pending).
 - Version locations: `<Version>` in `windows/source/FluentNotepad.WinUI.csproj`
   (+ `installer/FluentNotepad.iss`, setup name in `windows/README.md`);
   `CFBundleShortVersionString` in `macos/packaging/Info.plist`.

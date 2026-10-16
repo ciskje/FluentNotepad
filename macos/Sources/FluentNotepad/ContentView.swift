@@ -137,6 +137,11 @@ struct ContentView: View {
             fmtButtons
         }
         ToolbarItemGroup(placement: .navigation) {
+            Button { if let doc { store.save(doc) } } label: {
+                Label(L("save"), systemImage: "square.and.arrow.down")
+            }
+            .help(L("save"))
+            .disabled(doc?.dirty != true)
             Button { findShown.toggle() } label: {
                 Label(L("find"), systemImage: "magnifyingglass")
             }

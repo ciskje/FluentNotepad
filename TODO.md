@@ -14,11 +14,13 @@ Legend per row: `win:[x]` / `mac:[x]` = shipped on that platform.
 
 ## Pending
 
-- [ ] [macos] DMG volume icon (app icon on the mounted volume via .VolumeIcon.icns + SetFile) — mac:[ ]
 - [ ] [generic] Click-to-source (click a rendered block to jump to its source line) — win:[ ] mac:[x]
-- [ ] [macos] Align to shared version 2.5.0 (lockstep rule, see AGENTS.md) — mac:[ ]
+- [ ] [generic] Quick-save button in the toolbar (disabled unless the tab is dirty) — win:[ ] mac:[x]
 
 ## Done
+
+- [x] [macos] DMG volume icon (app icon on the mounted volume via .VolumeIcon.icns + SetFile) — mac:[x]
+- [x] [macos] Align to shared version 2.5.0 (lockstep rule, see AGENTS.md) — mac:[x]
 
 - [x] [generic] Parser-driven edit-mode highlighting, same VS tones as preview — win:[x] mac:[x]
 - [x] [generic] ESC toggles Edit/Preview both ways (yields to find field and IME) — win:[x] mac:[x]

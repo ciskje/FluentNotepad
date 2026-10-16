@@ -53,8 +53,9 @@ swift build -c release
 
 ## Changelog
 
-Same version number = same features everywhere. Next: `2.5.0`.
+Same version number = same features everywhere. macOS is at `2.5.0`, Windows at `2.4.2` (click-to-source and quick-save pending there).
 
+- **2.5.0** — Quick-save button in the toolbar (disabled unless the tab is dirty); version aligned to the shared numbering (same feature set as Windows 2.4.2, plus click-to-source).
 - **2.4.2** — No more background flash when hovering the editor (template hover/focus brushes neutralized).
 - **2.4.1** — Fixed edit-mode highlighting not rendering on file open (repaint on editor load) and black bars behind text (opaque editor background instead of transparent).
 - **2.4.0** — Multiple windows (New window, cascaded); ESC toggles Edit/Preview on Markdown docs; files dropped onto the preview open as tabs instead of navigating away.
