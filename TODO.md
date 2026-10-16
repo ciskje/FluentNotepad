@@ -15,7 +15,10 @@ Legend per row: `win:[x]` / `mac:[x]` = shipped on that platform.
 ## Pending
 
 - [x] [windows] Double paste/cut/undo from Edit menu accelerators firing on top of native RichEditBox keys — win:[x] mac:[n/a]
-- [ ] [macos] Copy-paste broken (symptoms TBD) — mac:[ ]
+- [ ] [macos] Copy-paste broken (symptoms TBD — which shortcut/menu, where) — mac:[ ]
+  pointers: EditorTextView.keyDown override (must call super), main-menu key
+  equivalents vs AppKit native Edit actions, firstResponder chain, pasteboard
+  access; compare with windows/AGENTS.md undo-grouping note for the dual-fire pattern
 
 - [ ] [macos] Publish 2.6.1 (version-only: no Mac code changes since 2.5.0) — mac:[ ]
 - [ ] [generic] Click-to-source (click a rendered block to jump to its source line) — win:[x] mac:[x]
