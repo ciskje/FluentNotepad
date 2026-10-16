@@ -1,7 +1,7 @@
 # FluentNotepad
 
-A Windows 11 Notepad clone with built-in Markdown preview — two native builds
-from one repo, same features on both platforms.
+A native Notepad-style editor with built-in Markdown preview — two builds
+from one repo, same features on both platforms (Windows 11 look and feel).
 
 ![Markdown preview of BENCH.md, Windows dark theme](windows/screenshot-dark.png)
 
