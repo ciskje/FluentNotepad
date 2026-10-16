@@ -8,7 +8,7 @@ A Windows 11 Notepad clone in WinUI 3, with built-in Markdown preview.
 
 - Drag-reorderable **tabs**, `+` for a new tab, `*` for unsaved changes
 - **Markdown preview** (WebView2 + Markdig): tables, task lists, code, quotes, links, local/remote/data-URI/SVG images — `.md` files open directly in Preview
-- **Visual Studio-style colors** for headings, links, code, bold/italic, quotes and tables (light and dark themes)
+- **Visual Studio-style colors** for headings, links, code, bold/italic, quotes and tables (light and dark themes), in Preview and in edit mode (live syntax highlighting while typing)
 - **Formatting toolbar** (heading, bold, italic, strikethrough, link, quotes, lists, code)
 - System **Mica**, extended title bar with tabs inside, Edit/Preview toggle (Ctrl+Shift+V)
 - Find (Ctrl+F), zoom, word wrap, file drag & drop
@@ -26,7 +26,7 @@ A Windows 11 Notepad clone in WinUI 3, with built-in Markdown preview.
 
 The repo contains sources only (builds and setup are **not** versioned). Two options:
 
-- **Ready-made setup**: [Releases](../../releases) page → `FluentNotepad-Setup-2.2.2-win-x64.exe` (per-machine install in Program Files, optional `.md` association)
+- **Ready-made setup**: [Releases](../../releases) page → `FluentNotepad-Setup-2.3.0-win-x64.exe` (per-machine install in Program Files, optional `.md` association)
 - **Build it yourself**:
 
 ```bash
@@ -45,7 +45,7 @@ dotnet build source\FluentNotepad.WinUI.csproj -c Debug
 
 ## Structure
 
-- `source/` — source code (WinUI 3, .NET 8): `MainWindow.*` (shell, tabs, editor, themes), `MarkdownHtml.cs` (Markdown → HTML), `CursorGrid.cs`, `Assets/`, `Properties/`, `Strings/` (EN/IT UI resources)
+- `source/` — source code (WinUI 3, .NET 8): `MainWindow.*` (shell, tabs, editor, themes), `MarkdownHtml.cs` (Markdown → HTML), `MarkdownHighlight.cs` (edit-mode colors), `CursorGrid.cs`, `Assets/`, `Properties/`, `Strings/` (EN/IT UI resources)
 - `installer/` — Inno Setup 6 script (per-machine install in Program Files, optional `.md` association)
 - `app/` — ready-to-run published build (**not versioned**, see `.gitignore`)
 - `BENCH.md`, `dati-inventati.md` — sample files to try the preview (tables included)
@@ -55,6 +55,7 @@ Technical details (in Italian) in [`source/README.md`](source/README.md).
 
 ## Changelog
 
+- **2.3.0** — Syntax highlighting in edit mode for Markdown files (same VS-style colors as the preview, like FluentNotepadMac), applied live while typing.
 - **2.2.2** — Fixed Markdown tables with `$` in cells (single-dollar math merged cells across `|`); dollars now stay literal.
 - **2.2.1** — Fixed printing from dark mode (page no longer gets a dark frame) and the print header now shows the file name instead of `about:blank`.
 - **2.2.0** — File → Print (Ctrl+P): prints the rendered Markdown preview in color via WebView2 (browser print dialog), always with the light theme on paper; plain text shows an info message.

@@ -67,13 +67,18 @@ public sealed partial class MainWindow : Window
     private sealed class DocumentInfo
     {
         public TabViewItem Tab = null!;
-        public TextBox Editor = null!;
+        public RichEditBox Editor = null!;
         public string? Path;
         public bool IsMarkdown;
         public bool PreviewVisible;
         public bool Dirty;
         public string LineEnding = "Windows (CRLF)";
         public string FileEncoding = "UTF-8";
+        // Edit-mode highlight cache (hash of the inputs, like FluentNotepadMac)
+        // and text snapshot (RichEditBox fires TextChanged for formatting too).
+        public string HighlightKey = "";
+        public int TextLen = -1;
+        public int TextHash;
     }
 
     public MainWindow()
@@ -156,15 +161,66 @@ public sealed partial class MainWindow : Window
 
     // ================= DOCUMENTS / TABS =================
     private DocumentInfo? GetActiveDoc() => Tabs.SelectedItem as TabViewItem is { Tag: DocumentInfo d } ? d : null;
-    private TextBox? GetActiveBox() => GetActiveDoc()?.Editor;
+    private RichEditBox? GetActiveBox() => GetActiveDoc()?.Editor;
 
     // "Remembered" selection: clicking a button/menu moves focus and the
-    // live TextBox state in the handler is unreliable — the cache is updated on every SelectionChanged.
-    private (int Start, int Length) CachedSelection(TextBox b)
+    // live RichEditBox state in the handler is unreliable — the cache is updated on every SelectionChanged.
+    private (int Start, int Length) CachedSelection(RichEditBox b)
     {
-        int textLen = b.Text.Length;
+        int textLen = GetEditorText(b).Length;
         int start = Math.Clamp(_selStart, 0, textLen);
         return (start, Math.Clamp(_selLen, 0, textLen - start));
+    }
+
+    // RichEditBox stores breaks as \r (plus a story-final \r): normalize to
+    // \n so offsets match the Markdig spans 1:1 and find/status/toolbar work
+    // on a single line-break style. Save converts back to the file's style.
+    internal static string GetEditorText(RichEditBox b)
+    {
+        b.Document.GetText(TextGetOptions.None, out string raw);
+        if (raw.Length > 0 && raw[^1] == '\r') raw = raw[..^1];
+        return raw.Replace('\r', '\n');
+    }
+
+    private static (int Start, int Length) GetSelection(RichEditBox b)
+    {
+        var s = b.Document.Selection;
+        return (s.StartPosition, Math.Max(0, s.EndPosition - s.StartPosition));
+    }
+
+    private static void SetSelection(RichEditBox b, int start, int length)
+    {
+        int textLen = GetEditorText(b).Length;
+        start = Math.Clamp(start, 0, textLen);
+        length = Math.Clamp(length, 0, textLen - start);
+        b.Document.Selection.SetRange(start, start + length);
+    }
+
+    // Editor (\n) -> file bytes: restore the file's line-ending style.
+    private static string ToSaveText(DocumentInfo doc) =>
+        GetEditorText(doc.Editor).Replace("\n", doc.LineEnding.StartsWith("Unix") ? "\n" : "\r\n");
+
+    private float EffectiveFontSize() => (float)((FontSlider?.Value ?? 15) * _zoom);
+    private Windows.UI.Color BaseTextColor() =>
+        _dark ? Colors.White : Windows.UI.Color.FromArgb(255, 38, 38, 38);
+
+    private bool _highlighting;
+    private bool _composing; // IME composition: don't fight it (like the Mac skip on marked text)
+
+    // Parser-driven Markdown colors in edit mode (like FluentNotepadMac):
+    // runs from TextChanging (the EN_UPDATE equivalent), so the formatting
+    // joins the user's own undo unit instead of becoming a separate undo step.
+    private void RefreshHighlight(DocumentInfo d)
+    {
+        if (_highlighting || _composing) return;
+        string text = GetEditorText(d.Editor);
+        string key = $"{text.Length}-{text.GetHashCode()}-{EffectiveFontSize()}-{_dark}-{d.IsMarkdown}";
+        if (key == d.HighlightKey) return;
+        d.HighlightKey = key;
+        _highlighting = true;
+        try { MarkdownHighlight.Apply(d.Editor, d.IsMarkdown, _dark, EffectiveFontSize(), BaseTextColor()); }
+        catch (Exception ex) { Debug.WriteLine($"Highlight: {ex.Message}"); }
+        finally { _highlighting = false; }
     }
 
     public static bool IsMarkdownFile(string? path) =>
@@ -202,49 +258,72 @@ public sealed partial class MainWindow : Window
 
     private void NewTab(string? path, string content = "")
     {
-        var box = new TextBox
+        var box = new RichEditBox
         {
             AcceptsReturn = true,
             TextWrapping = WrapCheck?.IsChecked == true ? TextWrapping.Wrap : TextWrapping.NoWrap,
             FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Cascadia Mono, Cascadia Code, Consolas"),
-            FontSize = 15,
+            FontSize = 15 * _zoom,
             Padding = new Thickness(16),
             BorderThickness = new Thickness(0),
             Background = new SolidColorBrush(Colors.Transparent)
         };
-        // NOTE: Text AFTER AcceptsReturn, otherwise WinUI cuts everything after the first \n
-        box.Text = content;
         var doc = new DocumentInfo { Editor = box, Path = path, IsMarkdown = IsMarkdownFile(path) };
         var tab = new TabViewItem { Tag = doc };
         doc.Tab = tab;
         RefreshHeader(doc);
         box.Tag = doc;
+        box.TextChanging += (_, _) =>
+        {
+            if (box.Tag is DocumentInfo dd) RefreshHighlight(dd);
+        };
         box.TextChanged += (_, _) =>
         {
-            if (box.Tag is DocumentInfo d)
-            {
-                d.Dirty = true;
-                RefreshHeader(d);
-                if (d.IsMarkdown && d.PreviewVisible) { _previewTimer.Stop(); _previewTimer.Start(); }
-            }
+            if (_highlighting) return;
+            if (box.Tag is not DocumentInfo d) return;
+            // TextChanged also fires for formatting-only changes: dirty the
+            // tab only when the text itself changed.
+            string t = GetEditorText(box);
+            int h = t.GetHashCode();
+            if (t.Length == d.TextLen && h == d.TextHash) return;
+            d.TextLen = t.Length;
+            d.TextHash = h;
+            d.Dirty = true;
+            RefreshHeader(d);
+            if (d.IsMarkdown && d.PreviewVisible) { _previewTimer.Stop(); _previewTimer.Start(); }
             UpdateStatus();
         };
         box.SelectionChanged += (_, _) =>
         {
-            _selStart = box.SelectionStart;
-            _selLen = box.SelectionLength;
+            var (s, l) = GetSelection(box);
+            _selStart = s;
+            _selLen = l;
             UpdateStatus();
         };
         // Snapshot when focus leaves the editor: the button/menu Click arrives later,
         // when the live selection state is no longer reliable
         box.LosingFocus += (_, _) =>
         {
-            _selStart = box.SelectionStart;
-            _selLen = box.SelectionLength;
+            var (s, l) = GetSelection(box);
+            _selStart = s;
+            _selLen = l;
         };
+        box.TextCompositionStarted += (_, _) => _composing = true;
+        box.TextCompositionEnded += (_, _) =>
+        {
+            _composing = false;
+            if (box.Tag is DocumentInfo dd) RefreshHighlight(dd);
+        };
+        // NOTE: text set AFTER the handlers are attached, so the first
+        // highlight runs from TextChanging with the doc already in place
+        box.Document.SetText(TextSetOptions.None, content);
 
         Tabs.TabItems.Add(tab);
         Tabs.SelectedItem = tab;
+        string init = GetEditorText(box);
+        doc.TextLen = init.Length;
+        doc.TextHash = init.GetHashCode();
+        RefreshHighlight(doc);
         UpdateStatus();
         RefreshFileLabels();
         RefreshMdUi();
@@ -391,7 +470,7 @@ public sealed partial class MainWindow : Window
             }
             string? baseDir = doc.Path != null ? Path.GetDirectoryName(doc.Path) : null;
             double size = (FontSlider?.Value ?? 15) * _zoom;
-            string html = MarkdownHtml.Build(doc.Editor.Text, baseDir, _dark, size,
+            string html = MarkdownHtml.Build(GetEditorText(doc.Editor), baseDir, _dark, size,
                 DisplayName(doc).TrimStart('*'));
             if (html.Length > 1500000)
             {
@@ -530,14 +609,18 @@ public sealed partial class MainWindow : Window
             doc.IsMarkdown = IsMarkdownFile(doc.Path);
             RefreshHeader(doc);
             RefreshMdUi();
-            await FileIO.WriteTextAsync(file, doc.Editor.Text);
+            await FileIO.WriteTextAsync(file, ToSaveText(doc));
         }
         else
         {
-            File.WriteAllText(doc.Path, doc.Editor.Text);
+            File.WriteAllText(doc.Path, ToSaveText(doc));
         }
         doc.Dirty = false;
-        doc.LineEnding = DetectLineEnding(doc.Editor.Text);
+        string saved = ToSaveText(doc);
+        doc.LineEnding = DetectLineEnding(saved);
+        string cur = GetEditorText(doc.Editor);
+        doc.TextLen = cur.Length;
+        doc.TextHash = cur.GetHashCode();
         doc.FileEncoding = "UTF-8"; // FileIO.WriteTextAsync and File.WriteAllText write UTF-8 without BOM
         RefreshHeader(doc);
         RefreshFileLabels();
@@ -547,7 +630,7 @@ public sealed partial class MainWindow : Window
     private void OpenFile(string path, string content)
     {
         if (Tabs.SelectedItem is TabViewItem cur && cur.Tag is DocumentInfo cd &&
-            cd.Editor.Text == "" && cd.Path == null && !cd.Dirty)
+            GetEditorText(cd.Editor) == "" && cd.Path == null && !cd.Dirty)
             Tabs.TabItems.Remove(cur);
         NewTab(path, content);
         if (GetActiveDoc() is { } d)
@@ -663,14 +746,19 @@ public sealed partial class MainWindow : Window
     {
         ShowActiveContent();
         var ab = GetActiveBox();
-        if (ab != null) { _selStart = ab.SelectionStart; _selLen = ab.SelectionLength; }
+        if (ab != null)
+        {
+            var (s0, l0) = GetSelection(ab);
+            _selStart = s0;
+            _selLen = l0;
+        }
         UpdateStatus();
         RefreshFileLabels();
         RefreshMdUi();
     }
 
     // ================= EDIT =================
-    private TextBox? EditableBox()
+    private RichEditBox? EditableBox()
     {
         var d = GetActiveDoc();
         if (d == null) return null;
@@ -678,14 +766,23 @@ public sealed partial class MainWindow : Window
         return d.Editor;
     }
 
-    private void Undo_Click(object s, RoutedEventArgs e) { var b = GetActiveBox(); if (b?.CanUndo == true) b.Undo(); }
-    private void Redo_Click(object s, RoutedEventArgs e) { var b = GetActiveBox(); if (b?.CanRedo == true) b.Redo(); }
-    private void CopySelection(TextBox b)
+    private void Undo_Click(object s, RoutedEventArgs e)
+    {
+        var b = GetActiveBox();
+        if (b?.Document.CanUndo() == true) b.Document.Undo();
+    }
+    private void Redo_Click(object s, RoutedEventArgs e)
+    {
+        var b = GetActiveBox();
+        if (b?.Document.CanRedo() == true) b.Document.Redo();
+    }
+    private void CopySelection(RichEditBox b)
     {
         var (start, len) = CachedSelection(b);
         if (len == 0) return;
         var dp = new DataPackage();
-        dp.SetText(b.Text.Substring(start, len));
+        // CRLF on the clipboard: plain \n pastes as one line in some apps
+        dp.SetText(GetEditorText(b).Substring(start, len).Replace("\n", "\r\n"));
         Clipboard.SetContent(dp);
     }
     private void Cut_Click(object s, RoutedEventArgs e)
@@ -694,8 +791,13 @@ public sealed partial class MainWindow : Window
         var (start, len) = CachedSelection(b);
         if (len == 0) return;
         CopySelection(b);
-        b.Select(start, len);
-        b.SelectedText = "";
+        b.Document.BeginUndoGroup();
+        try
+        {
+            SetSelection(b, start, len);
+            b.Document.Selection.Text = "";
+        }
+        finally { try { b.Document.EndUndoGroup(); } catch (Exception ex) { Debug.WriteLine($"UndoGroup: {ex.Message}"); } }
     }
     private void Copy_Click(object s, RoutedEventArgs e)
     {
@@ -709,10 +811,19 @@ public sealed partial class MainWindow : Window
         string t;
         try { t = await dv.GetTextAsync(); } catch (Exception ex) { Debug.WriteLine($"Paste: {ex.Message}"); return; }
         var (ps, pl) = CachedSelection(b);
-        b.Select(ps, pl);
-        b.SelectedText = t;
+        b.Document.BeginUndoGroup();
+        try
+        {
+            SetSelection(b, ps, pl);
+            b.Document.Selection.Text = t;
+        }
+        finally { try { b.Document.EndUndoGroup(); } catch (Exception ex) { Debug.WriteLine($"UndoGroup: {ex.Message}"); } }
     }
-    private void SelectAll_Click(object s, RoutedEventArgs e) => GetActiveBox()?.SelectAll();
+    private void SelectAll_Click(object s, RoutedEventArgs e)
+    {
+        var b = GetActiveBox();
+        if (b != null) SetSelection(b, 0, GetEditorText(b).Length);
+    }
 
     // ================= FIND =================
     private void ShowFind()
@@ -744,22 +855,25 @@ public sealed partial class MainWindow : Window
     {
         var b = GetActiveBox();
         if (b == null || string.IsNullOrEmpty(FindBox.Text)) return;
-        var text = b.Text; var q = FindBox.Text;
+        var text = GetEditorText(b); var q = FindBox.Text;
         var (cs, cl) = CachedSelection(b);
         int start = up ? Math.Max(0, cs - 1) : cs + cl;
         int i = up ? text.LastIndexOf(q, start, StringComparison.OrdinalIgnoreCase)
                    : text.IndexOf(q, start, StringComparison.OrdinalIgnoreCase);
         if (i < 0 && !up) i = text.IndexOf(q, 0, StringComparison.OrdinalIgnoreCase);
         if (i < 0 && up && text.Length > 0) i = text.LastIndexOf(q, text.Length - 1, StringComparison.OrdinalIgnoreCase);
-        if (i >= 0) { b.Select(i, q.Length); if (focusEditor) b.Focus(FocusState.Programmatic); }
+        if (i >= 0) { SetSelection(b, i, q.Length); if (focusEditor) b.Focus(FocusState.Programmatic); }
     }
 
     // ================= ZOOM / STATUS =================
     private void SetZoom(double z, bool renderPreview = true)
     {
         _zoom = Math.Clamp(z, 0.5, 3.0);
-        var b = GetActiveBox();
-        if (b != null) b.FontSize = (FontSlider?.Value ?? 15) * _zoom;
+        if (GetActiveDoc() is { } dd)
+        {
+            dd.Editor.FontSize = EffectiveFontSize();
+            RefreshHighlight(dd); // sizes are baked into the highlight ranges
+        }
         if (ZoomLabel != null) ZoomLabel.Text = $"{(int)(_zoom * 100)}%";
         if (!renderPreview) return;
         var d = GetActiveDoc();
@@ -786,9 +900,9 @@ public sealed partial class MainWindow : Window
             CharCount.Text = string.Format(Str("StatusChars"), 0);
             return;
         }
-        var text = b.Text ?? "";
+        var text = GetEditorText(b) ?? "";
         CharCount.Text = string.Format(Str("StatusChars"), text.Length);
-        int caret = Math.Clamp(b.SelectionStart, 0, text.Length);
+        int caret = Math.Clamp(GetSelection(b).Start, 0, text.Length);
         int line = 1, col = 1;
         for (int k = 0; k < caret; k++)
         {
@@ -834,6 +948,9 @@ public sealed partial class MainWindow : Window
             : Windows.UI.Color.FromArgb(255, 225, 221, 221));
         RefreshMdUi();
         ThemeIcon.Glyph = dark ? "\uE706" : "\uE708";
+        // Highlight colors follow the theme: recolor every tab
+        foreach (var t in Tabs.TabItems.OfType<TabViewItem>())
+            if (t.Tag is DocumentInfo dd) RefreshHighlight(dd);
         var tb = AppWindow.TitleBar;
         tb.ButtonBackgroundColor = Colors.Transparent;
         tb.ButtonInactiveBackgroundColor = Colors.Transparent;
@@ -1025,7 +1142,7 @@ public sealed partial class MainWindow : Window
     private void ApplyWrap()
     {
         foreach (var t in Tabs.TabItems.OfType<TabViewItem>())
-            if ((t.Tag as DocumentInfo)?.Editor is TextBox b)
+            if ((t.Tag as DocumentInfo)?.Editor is RichEditBox b)
                 b.TextWrapping = WrapCheck?.IsChecked == true ? TextWrapping.Wrap : TextWrapping.NoWrap;
     }
     private void FontSlider_Changed(object s, RangeBaseValueChangedEventArgs e)
@@ -1057,14 +1174,25 @@ public sealed partial class MainWindow : Window
     }
 
     // ================= FORMATTING TOOLBAR =================
+    private static void ReplaceSelection(RichEditBox b, int start, int length, string insert)
+    {
+        b.Document.BeginUndoGroup();
+        try
+        {
+            SetSelection(b, start, length);
+            b.Document.Selection.Text = insert;
+        }
+        finally { try { b.Document.EndUndoGroup(); } catch (Exception ex) { Debug.WriteLine($"UndoGroup: {ex.Message}"); } }
+    }
+
     private void WrapSelection(string before, string after, string? placeholder = null)
     {
         var b = EditableBox(); if (b == null) return;
         var (start, len) = CachedSelection(b);
-        string sel = len > 0 ? b.Text.Substring(start, len) : (placeholder ?? Str("PlaceholderText"));
-        b.Select(start, len);
-        b.SelectedText = before + sel + after;
-        if (len == 0) b.Select(start + before.Length, sel.Length);
+        string full = GetEditorText(b);
+        string sel = len > 0 ? full.Substring(start, len) : (placeholder ?? Str("PlaceholderText"));
+        ReplaceSelection(b, start, len, before + sel + after);
+        if (len == 0) SetSelection(b, start + before.Length, sel.Length);
         b.Focus(FocusState.Programmatic);
     }
 
@@ -1072,18 +1200,18 @@ public sealed partial class MainWindow : Window
     {
         var b = EditableBox(); if (b == null) return;
         var (start, len) = CachedSelection(b);
+        string full = GetEditorText(b);
         int lineStart = start;
-        while (lineStart > 0 && b.Text[lineStart - 1] != '\n') lineStart--;
+        while (lineStart > 0 && full[lineStart - 1] != '\n') lineStart--;
         int lineEnd = start + len;
-        while (lineEnd < b.Text.Length && b.Text[lineEnd] != '\n') lineEnd++;
-        var chunk = b.Text[lineStart..lineEnd];
+        while (lineEnd < full.Length && full[lineEnd] != '\n') lineEnd++;
+        var chunk = full[lineStart..lineEnd];
         var lines = chunk.Split('\n');
         for (int k = 0; k < lines.Length; k++)
             lines[k] = lines[k].StartsWith(prefix) ? lines[k][prefix.Length..] : prefix + lines[k];
         var joined = string.Join('\n', lines);
-        b.Select(lineStart, lineEnd - lineStart);
-        b.SelectedText = joined;
-        b.Select(lineStart, joined.Length);
+        ReplaceSelection(b, lineStart, lineEnd - lineStart, joined);
+        SetSelection(b, lineStart, joined.Length);
         b.Focus(FocusState.Programmatic);
     }
 
@@ -1091,11 +1219,11 @@ public sealed partial class MainWindow : Window
     {
         var b = EditableBox(); if (b == null) return;
         var (caret, _) = CachedSelection(b);
+        string full = GetEditorText(b);
         int ls = caret;
-        while (ls > 0 && b.Text[ls - 1] != '\n') ls--;
-        b.Select(ls, 0);
-        b.SelectedText = "# ";
-        b.Select(caret + 2, 0);
+        while (ls > 0 && full[ls - 1] != '\n') ls--;
+        ReplaceSelection(b, ls, 0, "# ");
+        SetSelection(b, caret + 2, 0);
         b.Focus(FocusState.Programmatic);
     }
     private void FormatBold_Click(object s, RoutedEventArgs e) => WrapSelection("**", "**");
@@ -1106,10 +1234,10 @@ public sealed partial class MainWindow : Window
     {
         var b = EditableBox(); if (b == null) return;
         var (start, len) = CachedSelection(b);
-        string sel = len > 0 ? b.Text.Substring(start, len) : Str("PlaceholderText");
-        b.Select(start, len);
-        b.SelectedText = $"[{sel}](https://)";
-        b.Select(start + 1, sel.Length);
+        string full = GetEditorText(b);
+        string sel = len > 0 ? full.Substring(start, len) : Str("PlaceholderText");
+        ReplaceSelection(b, start, len, $"[{sel}](https://)");
+        SetSelection(b, start + 1, sel.Length);
         b.Focus(FocusState.Programmatic);
     }
     private void FormatQuote_Click(object s, RoutedEventArgs e) => PrefixLines("> ");

@@ -29,6 +29,8 @@ Mica on Windows 11.
 - **Markdown**: opens `.md` with a **WebView2 + Markdig** preview (tables, task lists,
   code, quotes, links, **local/remote/data-URI/SVG images**), Edit/Preview
   toggle (Ctrl+Shift+V), live preview, light/dark themes
+- **Edit-mode highlighting**: same VS-style colors as the preview, applied live
+  while typing (Markdig AST, `RichEditBox`)
 - **Formatting toolbar** (H/B/I/S/link/quote/lists/code) inserting syntax
 - **System Mica** (`MicaBackdrop` BaseAlt, tinted, zero P/Invoke), extended title bar with tabs inside
 - File/Edit/View menus with shortcuts, find (Ctrl+F), zoom, word wrap, drag & drop
@@ -39,12 +41,17 @@ Mica on Windows 11.
 
 - `MainWindow.xaml` / `.xaml.cs` — shell, tabs, editor, menus, status, themes, shortcuts
 - `MarkdownHtml.cs` — Markdown → HTML (Markdig + light/dark CSS + data-URI images)
+- `MarkdownHighlight.cs` — Markdown colors in edit mode (Markdig AST → `RichEditBox` ranges, same palette as the preview)
 - `App.xaml(.cs)` — startup + command-line file open
 - `example.md` / `example.png` — sample files
 
 ## Technical notes
 
-- WinUI `TextBox.Text` must be assigned **after** `AcceptsReturn=true`, otherwise it cuts at the first `\n`
-- No `FlowDocument`: the clipboard APIs (`Cut`/`Copy`/`Paste`) don't exist on WinUI `TextBox`,
-  implemented via `Windows.ApplicationModel.DataTransfer`
+- The editor is a WinUI `RichEditBox` (a plain `TextBox` cannot color individual
+  ranges): Markdown colors come from the Markdig AST (`MarkdownHighlight.cs`,
+  same VS palette as the preview) and are applied in `TextChanging`, so the
+  formatting joins the user's undo unit instead of becoming a separate undo step
+- No `FlowDocument`: the menu/toolbar `Cut`/`Copy`/`Paste` use
+  `Windows.ApplicationModel.DataTransfer` with the remembered selection
+  (clicking a button moves focus, so the live selection is cached)
 - `AppWindow.Closing` has no deferral: confirm-with-`Cancel=true` + `Close()` pattern after dialogs
