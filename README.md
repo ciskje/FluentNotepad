@@ -4,6 +4,7 @@ A native Notepad-style editor with built-in Markdown preview — two builds
 from one repo, same features on both platforms.
 
 ![Markdown preview of BENCH.md, Windows dark theme](windows/screenshot-dark.png)
+![Markdown preview of BENCH.md, macOS dark theme](macos/screenshot.png)
 
 ## Features (both platforms)
 
