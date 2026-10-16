@@ -11,7 +11,8 @@ A Windows 11 Notepad clone in WinUI 3, with built-in Markdown preview.
 - **Visual Studio-style colors** for headings, links, code, bold/italic, quotes and tables (light and dark themes), in Preview and in edit mode (live syntax highlighting while typing)
 - **Formatting toolbar** (heading, bold, italic, strikethrough, link, quotes, lists, code)
 - System **Mica**, extended title bar with tabs inside, Edit/Preview toggle (Ctrl+Shift+V)
-- Find (Ctrl+F), zoom, word wrap, file drag & drop
+- Find (Ctrl+F), zoom, word wrap, file drag & drop (including onto the preview), **ESC** toggles Edit/Preview
+- Multiple independent **windows** (File → New window, Ctrl+Shift+N)
 - Print (Ctrl+P) of the rendered Markdown preview in color, always with the light theme on paper (WebView2 print dialog)
 - Status bar like the original (line/column, characters, file type, zoom, CRLF/LF, UTF-8)
 - Interface in **English and Italian** (follows the Windows display language)
@@ -26,7 +27,7 @@ A Windows 11 Notepad clone in WinUI 3, with built-in Markdown preview.
 
 The repo contains sources only (builds and setup are **not** versioned). Two options:
 
-- **Ready-made setup**: [Releases](../../releases) page → `FluentNotepad-Setup-2.3.0-win-x64.exe` (per-machine install in Program Files, optional `.md` association)
+- **Ready-made setup**: [Releases](../../releases) page → `FluentNotepad-Setup-2.4.0-win-x64.exe` (per-machine install in Program Files, optional `.md` association)
 - **Build it yourself**:
 
 ```bash
@@ -55,6 +56,7 @@ Technical details (in Italian) in [`source/README.md`](source/README.md).
 
 ## Changelog
 
+- **2.4.0** — Multiple windows (File → New window, Ctrl+Shift+N, cascaded); ESC toggles Edit/Preview on Markdown docs; files dropped onto the preview open as tabs instead of navigating away (all like FluentNotepadMac).
 - **2.3.0** — Syntax highlighting in edit mode for Markdown files (same VS-style colors as the preview, like FluentNotepadMac), applied live while typing.
 - **2.2.2** — Fixed Markdown tables with `$` in cells (single-dollar math merged cells across `|`); dollars now stay literal.
 - **2.2.1** — Fixed printing from dark mode (page no longer gets a dark frame) and the print header now shows the file name instead of `about:blank`.

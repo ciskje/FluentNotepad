@@ -61,6 +61,9 @@ che restano localizzate; le stringhe da codice passano da `Str()` + chiavi resw.
 ## settings.json
 
 Schema (indentato): `{theme, x, y, width, height, maximized, hasWindow}`.
+Condiviso tra le finestre (last-wins): due finestre aperte salvano a turno,
+la geometria ripristinata è quella dell'ultima; le nuove finestre aprono in
+cascata +36px per non impilarsi perfette (`App.NewWindow()`).
 
 - `theme`: `light|dark|system` (default `system` = segue Windows via registro `AppsUseLightTheme`).
 - Geometria: salvata su `AppWindow.Changed` (debounce 1s via `DispatcherQueueTimer`) e su `AppWindow.Closing` in tutti i percorsi. Il vecchio file solo-`{"theme"}` resta leggibile.
@@ -69,7 +72,22 @@ Schema (indentato): `{theme, x, y, width, height, maximized, hasWindow}`.
 
 ## Gotcha WinUI imparati
 
-- `TextBox.Text` assegnare **dopo** `AcceptsReturn=true`, altrimenti taglia al primo `\n`.
+- L'editor è un `RichEditBox`, non `TextBox` (`TextBox` non colora singoli range):
+  testo via `ITextDocument` (`GetText` accoda un `\r` di fine storia e usa `\r`
+  per gli a capo; normalizzare a `\n` per lavorare con gli span Markdig 1:1,
+  riconvertire in CRLF/LF al salvataggio).
+- Highlight edit-mode (`MarkdownHighlight.cs`, AST Markdig, stessa palette del
+  preview) applicato in `TextChanging` (equivalente di EN_UPDATE): la
+  formattazione entra nella stessa unità di undo della digitazione. Cache per
+  chiave; skip in composizione IME e oltre 300.000 caratteri (come il Mac).
+- `ESC` è un acceleratore a livello finestra che flippa Modifica/Anteprima sui
+  doc Markdown; cede se il focus è sulla find box (`FocusManager`) o IME attivo.
+  I `ContentDialog` vivono fuori dall'albero di `Root`, il loro ESC non collide.
+- File trascinato sopra il `WebView2` (che naviga via come Edge, prima degli
+  handler XAML): `NavigationStarting` cancella le navigazioni `file://` (tranne
+  il temp interno dell'anteprima) e apre il file come scheda.
+- Ogni `MainWindow` è indipendente (schede, highlight, busy); condivide solo
+  `settings.json` e il temp di anteprima (`fluent_preview_<pid>.html`).
 - `TabView` non rimuove la tab da solo: rimozione manuale (vale anche per Annulla).
 - `AppWindow.Closing` non ha deferral: pattern conferma con `Cancel=true` + `Close()` dopo i dialoghi (`_closeConfirmed`).
 - `Microsoft.UI.Dispatching.DispatcherQueueTimer` va qualificato per esteso: `DispatcherQueueTimer` da solo risolve `Windows.System` e rompe la build (CS0029).
@@ -80,8 +98,11 @@ Schema (indentato): `{theme, x, y, width, height, maximized, hasWindow}`.
 
 ## Struttura
 
-- `source/MainWindow.xaml(.cs)` — shell, tab, editor, menu, status, temi, geometria finestra.
+- `source/MainWindow.xaml(.cs)` — shell, tab, editor (`RichEditBox`), menu, status, temi, geometria finestra.
 - `source/MarkdownHtml.cs` — Markdown → HTML (Markdig + CSS chiaro/scuro + immagini data-URI).
+- `source/MarkdownHighlight.cs` — colori Markdown in edit mode (AST Markdig → range `ITextDocument`, stessa palette del preview).
+- `source/CursorGrid.cs` — cursore busy per i render anteprima.
+- `source/App.xaml(.cs)` — avvio + apertura file da riga di comando + finestre extra in cascata.
 - `source/CursorGrid.cs` — cursore busy per i render anteprima.
 - `source/App.xaml(.cs)` — avvio + apertura file da riga di comando.
 - `source/Strings/it-IT|en-US/Resources.resw` — risorse UI (copiate accanto all'exe via `.csproj`).

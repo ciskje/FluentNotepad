@@ -143,6 +143,12 @@ public sealed partial class MainWindow : Window
         var minus = new KeyboardAccelerator { Key = (VirtualKey)189, Modifiers = VirtualKeyModifiers.Control };
         minus.Invoked += ZoomOutAccel_Invoked;
         Root.KeyboardAccelerators.Add(minus);
+        // ESC flips Edit/Preview (both directions, like FluentNotepadMac).
+        // The find box keeps its own Escape (closes the bar): yield when focused.
+        // ContentDialogs live outside Root's tree, so their ESC is unaffected.
+        var esc = new KeyboardAccelerator { Key = VirtualKey.Escape };
+        esc.Invoked += EscapeAccel_Invoked;
+        Root.KeyboardAccelerators.Add(esc);
 
         // Saved theme (light/dark/system): follows Windows by default
         string mode = LoadThemeSetting();
@@ -466,6 +472,7 @@ public sealed partial class MainWindow : Window
                 {
                     _hookedCore = core;
                     core.NavigationCompleted += (_, _) => SetBusy(false);
+                    core.NavigationStarting += Preview_NavigationStarting;
                 }
             }
             string? baseDir = doc.Path != null ? Path.GetDirectoryName(doc.Path) : null;
@@ -490,6 +497,35 @@ public sealed partial class MainWindow : Window
     private void PreviewRetry_Click(object s, RoutedEventArgs e)
     {
         if (GetActiveDoc() is { } d) RenderPreview(d);
+    }
+
+    // A file dropped onto the preview makes WebView2 navigate to it (like Edge),
+    // before the XAML drop handlers ever see it: cancel that and open it as a
+    // tab instead (like FluentNotepadMac). The only file:// navigation we ever
+    // start ourselves is the large-preview temp file, excluded below; our HTML
+    // has no file links (images are data-URI), so anything else is a drop.
+    private void Preview_NavigationStarting(Microsoft.Web.WebView2.Core.CoreWebView2 sender,
+        Microsoft.Web.WebView2.Core.CoreWebView2NavigationStartingEventArgs e)
+    {
+        try
+        {
+            string uri = e.Uri ?? "";
+            if (!uri.StartsWith("file://", StringComparison.OrdinalIgnoreCase)) return;
+            string local;
+            try { local = new Uri(uri).LocalPath; }
+            catch { return; }
+            if (_previewTmp != null &&
+                string.Equals(local, _previewTmp, StringComparison.OrdinalIgnoreCase)) return;
+            if (!File.Exists(local)) return;
+            e.Cancel = true;
+            // Deferred: we are inside the navigation callback, don't reshuffle tabs here.
+            _ = DispatcherQueue.TryEnqueue(() =>
+            {
+                try { OpenFile(local, File.ReadAllText(local)); }
+                catch (Exception ex) { Debug.WriteLine($"DropNav: {ex.Message}"); }
+            });
+        }
+        catch (Exception ex) { Debug.WriteLine($"NavStarting: {ex.Message}"); }
     }
 
     private void ShowActiveContent()
@@ -562,6 +598,19 @@ public sealed partial class MainWindow : Window
         if (d != null) ShowPreview(d, true);
     }
 
+    private void EscapeAccel_Invoked(KeyboardAccelerator s, KeyboardAcceleratorInvokedEventArgs e)
+    {
+        try
+        {
+            if (ReferenceEquals(Microsoft.UI.Xaml.Input.FocusManager.GetFocusedElement(Content.XamlRoot), FindBox))
+                return; // FindBox_KeyDown closes the bar itself
+        }
+        catch (Exception ex) { Debug.WriteLine($"Esc focus: {ex.Message}"); }
+        if (_composing) return; // IME composition owns the keystroke
+        var d = GetActiveDoc();
+        if (d?.IsMarkdown == true) { ShowPreview(d, !d.PreviewVisible); e.Handled = true; }
+    }
+
     private void PreviewToggle_Click(object s, RoutedEventArgs e) => TogglePreview();
 
     // ================= FILE =================
@@ -609,6 +658,7 @@ public sealed partial class MainWindow : Window
             doc.IsMarkdown = IsMarkdownFile(doc.Path);
             RefreshHeader(doc);
             RefreshMdUi();
+            RefreshHighlight(doc); // markdown-ness may have changed: recolor
             await FileIO.WriteTextAsync(file, ToSaveText(doc));
         }
         else
@@ -647,6 +697,7 @@ public sealed partial class MainWindow : Window
     }
 
     private void NewTab_Click(object s, RoutedEventArgs e) => NewTab(null);
+    private void NewWindow_Click(object s, RoutedEventArgs e) => (Application.Current as App)?.NewWindow();
     private void Tabs_AddTab(TabView s, object e) => NewTab(null);
     private void Open_Click(object s, RoutedEventArgs e) => OpenDialog();
     private async void Save_Click(object s, RoutedEventArgs e)

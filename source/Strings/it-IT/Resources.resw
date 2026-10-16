@@ -3,6 +3,7 @@
   <!-- Menu File -->
   <data name="MenuFile.Title"><value>File</value></data>
   <data name="FileNewTab.Text"><value>Nuova scheda</value></data>
+  <data name="FileNewWindow.Text"><value>Nuova finestra</value></data>
   <data name="FileOpen.Text"><value>Apri…</value></data>
   <data name="FileSave.Text"><value>Salva</value></data>
   <data name="FileSaveAs.Text"><value>Salva con nome…</value></data>

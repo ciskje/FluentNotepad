@@ -51,6 +51,11 @@
                             <KeyboardAccelerator Key="T" Modifiers="Control"/>
                         </MenuFlyoutItem.KeyboardAccelerators>
                     </MenuFlyoutItem>
+                    <MenuFlyoutItem x:Uid="FileNewWindow" Text="Nuova finestra" Click="NewWindow_Click">
+                        <MenuFlyoutItem.KeyboardAccelerators>
+                            <KeyboardAccelerator Key="N" Modifiers="Control,Shift"/>
+                        </MenuFlyoutItem.KeyboardAccelerators>
+                    </MenuFlyoutItem>
                     <MenuFlyoutItem x:Uid="FileOpen" Text="Apri…" Click="Open_Click">
                         <MenuFlyoutItem.KeyboardAccelerators>
                             <KeyboardAccelerator Key="O" Modifiers="Control"/>
