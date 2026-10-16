@@ -298,10 +298,26 @@ public sealed partial class MainWindow : Window
         {
             if (box.Tag is DocumentInfo dd) RefreshHighlight(dd);
         };
+        // Undo grouping (typing + highlight = one Ctrl+Z): TextChanging is too
+        // late (the keystroke is already in its own unit), so the group opens
+        // on KeyDown and closes on the resulting TextChanged. Unpaired
+        // Begin/End calls are no-ops; empty groups are discarded by TOM.
+        box.KeyDown += (_, _) =>
+        {
+            try { box.Document.BeginUndoGroup(); }
+            catch (Exception ex) { Debug.WriteLine($"UndoGroup: {ex.Message}"); }
+        };
+        box.LosingFocus += (_, _) =>
+        {
+            try { box.Document.EndUndoGroup(); }
+            catch (Exception ex) { Debug.WriteLine($"UndoGroup: {ex.Message}"); }
+        };
         box.TextChanged += (_, _) =>
         {
             if (_highlighting) return;
             if (box.Tag is not DocumentInfo d) return;
+            try { box.Document.EndUndoGroup(); } // closes the KeyDown group (no-op if none)
+            catch (Exception ex) { Debug.WriteLine($"UndoGroup: {ex.Message}"); }
             // TextChanged also fires for formatting-only changes: dirty the
             // tab only when the text itself changed.
             string t = GetEditorText(box);

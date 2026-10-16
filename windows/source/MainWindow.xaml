@@ -87,43 +87,23 @@
                     <MenuFlyoutItem x:Uid="FileExit" Text="Esci" Click="Exit_Click"/>
                 </MenuBarItem>
                 <MenuBarItem x:Uid="MenuEdit" Title="Modifica">
-                    <MenuFlyoutItem x:Uid="EditUndo" Text="Annulla" Click="Undo_Click">
-                        <MenuFlyoutItem.KeyboardAccelerators>
-                            <KeyboardAccelerator Key="Z" Modifiers="Control"/>
-                        </MenuFlyoutItem.KeyboardAccelerators>
-                    </MenuFlyoutItem>
-                    <MenuFlyoutItem x:Uid="EditRedo" Text="Ripeti" Click="Redo_Click">
-                        <MenuFlyoutItem.KeyboardAccelerators>
-                            <KeyboardAccelerator Key="Y" Modifiers="Control"/>
-                        </MenuFlyoutItem.KeyboardAccelerators>
-                    </MenuFlyoutItem>
+                    <!-- No Ctrl+Z/Y/X/C/V/A accelerators here on purpose: RichEditBox
+                         (and the find TextBox) already handle them natively, and a
+                         menu accelerator would fire IN ADDITION (double paste/cut/undo).
+                         Click handlers below stay for mouse/menu use. -->
+                    <MenuFlyoutItem x:Uid="EditUndo" Text="Annulla" Click="Undo_Click"/>
+                    <MenuFlyoutItem x:Uid="EditRedo" Text="Ripeti" Click="Redo_Click"/>
                     <MenuFlyoutSeparator/>
-                    <MenuFlyoutItem x:Uid="EditCut" Text="Taglia" Click="Cut_Click">
-                        <MenuFlyoutItem.KeyboardAccelerators>
-                            <KeyboardAccelerator Key="X" Modifiers="Control"/>
-                        </MenuFlyoutItem.KeyboardAccelerators>
-                    </MenuFlyoutItem>
-                    <MenuFlyoutItem x:Uid="EditCopy" Text="Copia" Click="Copy_Click">
-                        <MenuFlyoutItem.KeyboardAccelerators>
-                            <KeyboardAccelerator Key="C" Modifiers="Control"/>
-                        </MenuFlyoutItem.KeyboardAccelerators>
-                    </MenuFlyoutItem>
-                    <MenuFlyoutItem x:Uid="EditPaste" Text="Incolla" Click="Paste_Click">
-                        <MenuFlyoutItem.KeyboardAccelerators>
-                            <KeyboardAccelerator Key="V" Modifiers="Control"/>
-                        </MenuFlyoutItem.KeyboardAccelerators>
-                    </MenuFlyoutItem>
+                    <MenuFlyoutItem x:Uid="EditCut" Text="Taglia" Click="Cut_Click"/>
+                    <MenuFlyoutItem x:Uid="EditCopy" Text="Copia" Click="Copy_Click"/>
+                    <MenuFlyoutItem x:Uid="EditPaste" Text="Incolla" Click="Paste_Click"/>
                     <MenuFlyoutSeparator/>
                     <MenuFlyoutItem x:Uid="EditFind" Text="Trova…" Click="Find_Click">
                         <MenuFlyoutItem.KeyboardAccelerators>
                             <KeyboardAccelerator Key="F" Modifiers="Control"/>
                         </MenuFlyoutItem.KeyboardAccelerators>
                     </MenuFlyoutItem>
-                    <MenuFlyoutItem x:Uid="EditSelectAll" Text="Seleziona tutto" Click="SelectAll_Click">
-                        <MenuFlyoutItem.KeyboardAccelerators>
-                            <KeyboardAccelerator Key="A" Modifiers="Control"/>
-                        </MenuFlyoutItem.KeyboardAccelerators>
-                    </MenuFlyoutItem>
+                    <MenuFlyoutItem x:Uid="EditSelectAll" Text="Seleziona tutto" Click="SelectAll_Click"/>
                 </MenuBarItem>
                 <MenuBarItem x:Uid="MenuView" Title="Visualizza">
                     <MenuFlyoutItem x:Uid="ViewZoomIn" Text="Aumenta zoom" Click="ZoomIn_Click">

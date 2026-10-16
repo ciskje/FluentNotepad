@@ -76,6 +76,11 @@ cascata +36px per non impilarsi perfette (`App.NewWindow()`).
 - Anche i brush hover/focus del template (`TextControlBackgroundPointerOver`,
   `...Focused` + bordi) vanno neutralizzati per-controllo, altrimenti lo
   sfondo dell'editor lampeggia al passaggio del mouse.
+- Undo is one Ctrl+Z for typing+highlight: the group opens on `KeyDown` and
+  closes on `TextChanged` (`TextChanging` is too late, the keystroke is already
+  its own unit); unpaired `Begin`/`EndUndoGroup` are no-ops. Never put
+  Ctrl+Z/Y/X/C/V/A accelerators on menu items: they fire IN ADDITION to the
+  native `RichEditBox` keys (double paste/cut/undo) — Click handlers stay.
 - `ESC` è un acceleratore a livello finestra che flippa Modifica/Anteprima sui
   doc Markdown; cede se il focus è sulla find box (`FocusManager`) o IME attivo.
   I `ContentDialog` vivono fuori dall'albero di `Root`, il loro ESC non collide.

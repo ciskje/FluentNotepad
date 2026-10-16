@@ -14,10 +14,15 @@ Legend per row: `win:[x]` / `mac:[x]` = shipped on that platform.
 
 ## Pending
 
-- [ ] [macos] Publish 2.6.0 (version-only: click-to-source already shipped) — mac:[ ]
+- [x] [windows] Double paste/cut/undo from Edit menu accelerators firing on top of native RichEditBox keys — win:[x] mac:[n/a]
+- [ ] [macos] Copy-paste broken (symptoms TBD) — mac:[ ]
+
+- [ ] [macos] Publish 2.6.1 (version-only: no Mac code changes since 2.5.0) — mac:[ ]
 - [ ] [generic] Click-to-source (click a rendered block to jump to its source line) — win:[x] mac:[x]
 
 ## Done
+
+- [x] [windows] Double paste/cut/undo from Edit menu accelerators firing on top of native RichEditBox keys — win:[x] mac:[n/a]
 
 - [x] [generic] Quick-save button in the toolbar (disabled unless the tab is dirty) — win:[x] mac:[x]
 
