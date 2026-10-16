@@ -183,6 +183,11 @@
                         <Button x:Uid="PreviewModeBtn" x:Name="PreviewModeBtn" Content="Anteprima" FontSize="12" Padding="6,1" MinHeight="24" Click="PreviewMode_Click" ToolTipService.ToolTip="Anteprima Markdown (Ctrl+Maiusc+V)"/>
                     </StackPanel>
                 </Border>
+                <AppBarButton x:Uid="SaveBtn" x:Name="SaveBtn" ToolTipService.ToolTip="Salva (Ctrl+S)" Click="Save_Click" Width="36" Height="36" IsEnabled="False">
+                    <AppBarButton.Icon>
+                        <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE74E;"/>
+                    </AppBarButton.Icon>
+                </AppBarButton>
                 <AppBarButton x:Uid="SearchBtn" ToolTipService.ToolTip="Cerca (Ctrl+F)" Click="Find_Click" Width="36" Height="36">
                     <AppBarButton.Icon>
                         <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE721;"/>

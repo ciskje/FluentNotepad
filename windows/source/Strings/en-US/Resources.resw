@@ -42,6 +42,7 @@
   <data name="PreviewModeBtn.Content"><value>Preview</value></data>
   <data name="PreviewModeBtn.ToolTipService.ToolTip"><value>Markdown preview (Ctrl+Shift+V)</value></data>
   <!-- Right buttons -->
+  <data name="SaveBtn.ToolTipService.ToolTip"><value>Save (Ctrl+S)</value></data>
   <data name="SearchBtn.ToolTipService.ToolTip"><value>Find (Ctrl+F)</value></data>
   <data name="ThemeBtn.ToolTipService.ToolTip"><value>Light/dark theme</value></data>
   <data name="SettingsBtn.ToolTipService.ToolTip"><value>Settings</value></data>

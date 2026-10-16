@@ -42,6 +42,7 @@
   <data name="PreviewModeBtn.Content"><value>Anteprima</value></data>
   <data name="PreviewModeBtn.ToolTipService.ToolTip"><value>Anteprima Markdown (Ctrl+Maiusc+V)</value></data>
   <!-- Pulsanti destra -->
+  <data name="SaveBtn.ToolTipService.ToolTip"><value>Salva (Ctrl+S)</value></data>
   <data name="SearchBtn.ToolTipService.ToolTip"><value>Cerca (Ctrl+F)</value></data>
   <data name="ThemeBtn.ToolTipService.ToolTip"><value>Tema chiaro/scuro</value></data>
   <data name="SettingsBtn.ToolTipService.ToolTip"><value>Impostazioni</value></data>

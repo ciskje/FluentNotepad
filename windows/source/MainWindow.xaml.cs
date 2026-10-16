@@ -311,6 +311,7 @@ public sealed partial class MainWindow : Window
             d.TextHash = h;
             d.Dirty = true;
             RefreshHeader(d);
+            RefreshSaveBtn();
             if (d.IsMarkdown && d.PreviewVisible) { _previewTimer.Stop(); _previewTimer.Start(); }
             UpdateStatus();
         };
@@ -604,7 +605,11 @@ public sealed partial class MainWindow : Window
             StyleToggle(EditModeBtn, !d.PreviewVisible);
             StyleToggle(PreviewModeBtn, d.PreviewVisible);
         }
+        RefreshSaveBtn();
     }
+
+    // Quick-save toolbar button (like the Mac one): enabled only when dirty.
+    private void RefreshSaveBtn() => SaveBtn.IsEnabled = GetActiveDoc()?.Dirty == true;
 
     private void StyleToggle(Button b, bool selected)
     {
@@ -698,6 +703,7 @@ public sealed partial class MainWindow : Window
         string cur = GetEditorText(doc.Editor);
         doc.TextLen = cur.Length;
         doc.TextHash = cur.GetHashCode();
+        RefreshSaveBtn();
         doc.FileEncoding = "UTF-8"; // FileIO.WriteTextAsync and File.WriteAllText write UTF-8 without BOM
         RefreshHeader(doc);
         RefreshFileLabels();
