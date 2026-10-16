@@ -54,9 +54,9 @@ swift build -c release
 
 ## Changelog
 
-Same version number = same features everywhere. Windows is at `2.6.1`, macOS at `2.5.0` (2.6.1 pending there, version-only).
+Same version number = same features everywhere. Windows and macOS are at `2.6.1`.
 
-- **2.6.1** — Fixed double paste/cut/undo (Edit menu accelerators fired on top of native RichEditBox keys); typing+highlight is a single undo unit again.
+- **2.6.1** — Fixed double paste/cut/undo (Edit menu accelerators fired on top of native RichEditBox keys); typing+highlight is a single undo unit again. macOS: undo/redo now syncs back to the document (the view no longer snaps back on the next refresh).
 
 - **2.6.0** — Click-to-source: click a rendered block to jump back to its source line.
 - **2.4.2** — No more background flash when hovering the editor (template hover/focus brushes neutralized).

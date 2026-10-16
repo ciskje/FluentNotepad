@@ -62,6 +62,7 @@ struct EditorView: NSViewRepresentable {
         scroll.borderType = .noBorder
         let tv = EditorTextView()
         tv.delegate = context.coordinator
+        tv.textStorage?.delegate = context.coordinator
         tv.onFileDrop = onFileDrop
         tv.isRichText = false
         tv.importsGraphics = false
@@ -90,6 +91,7 @@ struct EditorView: NSViewRepresentable {
     func updateNSView(_ scroll: NSScrollView, context: Context) {
         guard let tv = scroll.documentView as? NSTextView else { return }
         let c = context.coordinator
+        tv.textStorage?.delegate = c
         if c.lastFontSize != fontSize {
             c.lastFontSize = fontSize
             tv.font = Self.baseFont(size: fontSize)
@@ -149,7 +151,7 @@ struct EditorView: NSViewRepresentable {
         }
     }
 
-    final class C: NSObject, NSTextViewDelegate {
+    final class C: NSObject, NSTextViewDelegate, NSTextStorageDelegate {
         var doc: Doc
         var applying = false
         var lastKey = ""
@@ -162,6 +164,19 @@ struct EditorView: NSViewRepresentable {
 
         func textDidChange(_ notification: Notification) {
             guard !applying, let tv = view else { return }
+            doc.text = tv.string
+            EditorView.refreshHighlight(tv, fontSize: fontSize, dark: dark, coord: self)
+        }
+
+        /// Undo/redo bypass textDidChange (AppKit notifies only key/paste
+        /// edits): without this the Doc keeps pre-undo text and the next
+        /// refresh snaps the view back. Attribute-only passes (our own
+        /// highlight) are harmless: same text, same highlight key.
+        func textStorage(_ ts: NSTextStorage,
+            didProcessEditing editedMask: NSTextStorageEditActions,
+            range editedRange: NSRange, changeInLength delta: Int)
+        {
+            guard !applying, let tv = view, ts === tv.textStorage else { return }
             doc.text = tv.string
             EditorView.refreshHighlight(tv, fontSize: fontSize, dark: dark, coord: self)
         }
