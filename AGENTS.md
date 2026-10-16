@@ -79,7 +79,15 @@ cascata +36px per non impilarsi perfette (`App.NewWindow()`).
 - Highlight edit-mode (`MarkdownHighlight.cs`, AST Markdig, stessa palette del
   preview) applicato in `TextChanging` (equivalente di EN_UPDATE): la
   formattazione entra nella stessa unità di undo della digitazione. Cache per
-  chiave; skip in composizione IME e oltre 300.000 caratteri (come il Mac).
+  chiave; skip in composizione IME, oltre 300.000 caratteri (come il Mac) e a
+  controllo fuori dal visual tree.
+- Formattazione applicata prima del primo `Loaded` non renderizza (il modello
+  risulta colorato ma lo schermo resta bianco): repaint forzato sull'evento
+  `Loaded` dell'editor, che scatta a ogni hosting.
+- Mai sfondo `Transparent` sui range (`Color.FromArgb(0,0,0,0)`): RichEdit
+  ignora l'alfa e lo rende nero (barre nere dietro ogni riga). Dipingere il
+  colore di sfondo dell'editor (`#282828`/bianco, come `ApplyTheme`); i repaint
+  su cambio tema lo riallineano.
 - `ESC` è un acceleratore a livello finestra che flippa Modifica/Anteprima sui
   doc Markdown; cede se il focus è sulla find box (`FocusManager`) o IME attivo.
   I `ContentDialog` vivono fuori dall'albero di `Root`, il loro ESC non collide.

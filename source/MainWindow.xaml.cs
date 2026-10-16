@@ -209,6 +209,10 @@ public sealed partial class MainWindow : Window
     private float EffectiveFontSize() => (float)((FontSlider?.Value ?? 15) * _zoom);
     private Windows.UI.Color BaseTextColor() =>
         _dark ? Colors.White : Windows.UI.Color.FromArgb(255, 38, 38, 38);
+    // Same tones as ApplyTheme: the highlight paints this (never transparent,
+    // which RichEdit renders black) so text and editor background match.
+    private Windows.UI.Color BaseBgColor() =>
+        _dark ? Windows.UI.Color.FromArgb(255, 40, 40, 40) : Colors.White;
 
     private bool _highlighting;
     private bool _composing; // IME composition: don't fight it (like the Mac skip on marked text)
@@ -219,12 +223,16 @@ public sealed partial class MainWindow : Window
     private void RefreshHighlight(DocumentInfo d)
     {
         if (_highlighting || _composing) return;
+        // Formatting applied while the control is outside the visual tree
+        // doesn't render (foreground is lost): ShowActiveContent repaints on
+        // hosting, skip the wasted pass here.
+        if (d.Editor.Parent == null) return;
         string text = GetEditorText(d.Editor);
         string key = $"{text.Length}-{text.GetHashCode()}-{EffectiveFontSize()}-{_dark}-{d.IsMarkdown}";
         if (key == d.HighlightKey) return;
         d.HighlightKey = key;
         _highlighting = true;
-        try { MarkdownHighlight.Apply(d.Editor, d.IsMarkdown, _dark, EffectiveFontSize(), BaseTextColor()); }
+        try { MarkdownHighlight.Apply(d.Editor, d.IsMarkdown, _dark, EffectiveFontSize(), BaseTextColor(), BaseBgColor()); }
         catch (Exception ex) { Debug.WriteLine($"Highlight: {ex.Message}"); }
         finally { _highlighting = false; }
     }
@@ -319,6 +327,18 @@ public sealed partial class MainWindow : Window
         {
             _composing = false;
             if (box.Tag is DocumentInfo dd) RefreshHighlight(dd);
+        };
+        // Formatting applied before first load doesn't render (and ReadBack
+        // lies: the model looks colored while the screen stays white): repaint
+        // on every hosting, when the control is actually loaded. Typing and
+        // later passes then only refresh on real changes (HighlightKey).
+        box.Loaded += (_, _) =>
+        {
+            if (box.Tag is DocumentInfo dd)
+            {
+                dd.HighlightKey = "";
+                RefreshHighlight(dd);
+            }
         };
         // NOTE: text set AFTER the handlers are attached, so the first
         // highlight runs from TextChanging with the doc already in place

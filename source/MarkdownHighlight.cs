@@ -102,7 +102,8 @@ public static class MarkdownHighlight
         }
     }
 
-    public static void Apply(RichEditBox editor, bool isMarkdown, bool dark, float fontSize, Color baseFg)
+    public static void Apply(RichEditBox editor, bool isMarkdown, bool dark, float fontSize,
+        Color baseFg, Color baseBg)
     {
         var doc = editor.Document;
         doc.GetText(TextGetOptions.None, out string raw);
@@ -121,7 +122,10 @@ public static class MarkdownHighlight
                 var all = doc.GetRange(0, n);
                 var f = all.CharacterFormat;
                 f.ForegroundColor = baseFg;
-                f.BackgroundColor = Color.FromArgb(0, 0, 0, 0);
+                // NOT transparent: RichEdit ignores the alpha and renders it
+                // black (black bars behind every line). Paint the editor
+                // background instead; theme changes repaint via RefreshHighlight.
+                f.BackgroundColor = baseBg;
                 f.Bold = FormatEffect.Off;
                 f.Italic = FormatEffect.Off;
                 f.Strikethrough = FormatEffect.Off;
@@ -143,7 +147,7 @@ public static class MarkdownHighlight
                 var r = doc.GetRange(s, s + l);
                 var f = r.CharacterFormat;
                 f.ForegroundColor = p.Fg;
-                f.BackgroundColor = p.Bg ?? Color.FromArgb(0, 0, 0, 0);
+                f.BackgroundColor = p.Bg ?? baseBg;
                 f.Bold = p.Bold ? FormatEffect.On : FormatEffect.Off;
                 f.Italic = p.Italic ? FormatEffect.On : FormatEffect.Off;
                 f.Strikethrough = p.Strike ? FormatEffect.On : FormatEffect.Off;
