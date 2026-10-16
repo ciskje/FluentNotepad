@@ -54,7 +54,9 @@ swift build -c release
 
 ## Changelog
 
-Same version number = same features everywhere. Windows and macOS are at `2.6.1`.
+Same version number = same features everywhere. macOS is at `2.6.2`, Windows at `2.6.1` (unsaved-tabs-as-Markdown pending there).
+
+- **2.6.2** — Unsaved tabs count as Markdown: preview toggle, live highlighting and `.md` save default before the first save; new tabs open directly in Preview.
 
 - **2.6.1** — Fixed double paste/cut/undo (Edit menu accelerators fired on top of native RichEditBox keys); typing+highlight is a single undo unit again. macOS: undo/redo now syncs back to the document (the view no longer snaps back on the next refresh).
 
