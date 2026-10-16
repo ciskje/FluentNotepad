@@ -66,22 +66,22 @@ One channel per platform, tags always carry the platform prefix:
 
 - Windows: tag `windows-vX.Y.Z` + `FluentNotepad-Setup-X.Y.Z-win-x64.exe`
   (per-machine install in Program Files, optional `.md` association).
-  Comando in `windows/AGENTS.md`.
+  Command in `windows/AGENTS.md`.
 - macOS: tag `macos-vX.Y.Z` + `FluentNotepad.dmg` (drag into Applications).
-  Comando in `macos/AGENTS.md`.
+  Command in `macos/AGENTS.md`.
 - Every version bump is published (tag + release with artifact), otherwise
   Latest lags behind the code. Keep the **last 2 releases per platform**.
 - Release notes **always in English**: standard install line + changelog
   entries since the previous release of that platform (same text as the
   Changelog in `README.md`, which is in English).
 
-## "Genera l'applicazione" (build per l'ambiente corrente)
+## "Generate the application" (build for the current environment)
 
-"Genera l'applicazione" significa sempre: compila **solo per la piattaforma
-della macchina su cui gira l'agent**, mai per l'altra. Comandi in
-`windows/AGENTS.md` (Build/run) e `macos/AGENTS.md` (Build/run).
-Non toccare la versione (salvo release), non pubblicare
-su GitHub se non richiesto esplicitamente.
+"Generate the application" always means: build **only for the platform of the
+machine the agent runs on**, never the other one. Commands in
+`windows/AGENTS.md` (Build/run) and `macos/AGENTS.md` (Build/run).
+Don't touch the version (except releases), don't publish
+to GitHub unless explicitly requested.
 
 ## Source language
 
@@ -95,7 +95,7 @@ code-side strings go through the platform loader (`Str()` / `L()`).
   `AGENTS.md` (tutto il resto è qui).
 - `macos/` — `Sources/` (app), `packaging/` (bundle/dmg scripts),
   `Package.swift`, `AGENTS.md` (tutto il resto è qui).
-- Root: `README.md` (unico), `TODO.md`, `BENCH.md` (shared preview sample),
+- Root: `README.md` (the only one), `TODO.md`, `BENCH.md` (shared preview sample),
   `LICENSE` (MIT), `screenshot-*.png`.
 - Line endings: `.gitattributes` disables all conversion (`* -text`, bytes are
   checked out verbatim); only `*.sh` → LF and `*.bat` → CRLF are enforced.
