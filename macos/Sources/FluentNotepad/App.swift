@@ -46,7 +46,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     static var pendingURLs: [URL] = []
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        addHelpItem()
         // Command-line file open: FluentNotepad notes.md. Queued: the first
         // window to appear (or the CLI fallback below) consumes them.
         for arg in CommandLine.arguments.dropFirst() where !arg.hasPrefix("-") {
@@ -71,20 +70,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         pendingURLs.removeAll()
     }
 
-    /// Help menu (the system one, with search): Keyboard Shortcuts cheatsheet.
-    /// Explicit target: the app delegate is not in the responder chain.
+    /// Help > Keyboard Shortcuts window (reused once opened).
     private var helpWindow: NSWindow?
 
-    func addHelpItem() {
-        guard let m = NSApp.helpMenu,
-            !m.items.contains(where: { $0.action == #selector(showShortcuts) })
-        else { return }
-        let item = NSMenuItem(title: L("shortcuts"), action: #selector(showShortcuts), keyEquivalent: "")
-        item.target = self
-        m.addItem(item)
-    }
-
-    @objc func showShortcuts() {
+    func showShortcuts() {
         if let w = helpWindow { w.makeKeyAndOrderFront(nil); return }
         let win = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 400, height: 560),
             styleMask: [.titled, .closable], backing: .buffered, defer: false)
@@ -259,6 +248,10 @@ struct FluentNotepadApp: App {
                     }.keyboardShortcut("v", modifiers: [.command, .shift])
                     Toggle(L("wordWrap"), isOn: Bindable(WindowStores.frontmost()).wrap)
                 }
+            }
+            CommandGroup(replacing: .help) {
+                Button(L("shortcuts")) { AppDelegate.shared?.showShortcuts() }
+                    .keyboardShortcut("?", modifiers: .command)
             }
         }
         Settings { SettingsView(store: WindowStores.frontmost()) }
