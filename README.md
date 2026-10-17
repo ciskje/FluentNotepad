@@ -27,7 +27,9 @@ Or build it yourself: see `windows/AGENTS.md` (Build/run) and `macos/AGENTS.md` 
 
 ## Changelog
 
-Same version number = same features everywhere. Windows and macOS are at `2.6.3`.
+Same version number = same features everywhere. macOS is at `2.7.0`, Windows at `2.6.3`.
+
+- **2.7.0** — macOS: Help menu with a keyboard-shortcuts cheatsheet; app icon back on the mounted DMG volume (plus custom icon on the `.dmg` file); build number shown in About.
 Last 5 entries; full history in [Releases](../../releases) and the Done section
 of [TODO.md](TODO.md) (archived at each release).
 
@@ -38,8 +40,6 @@ of [TODO.md](TODO.md) (archived at each release).
 - **2.6.1** — Fixed double paste/cut/undo (Edit menu accelerators fired on top of native RichEditBox keys); typing+highlight is a single undo unit again. macOS: undo/redo now syncs back to the document (the view no longer snaps back on the next refresh).
 
 - **2.6.0** — Click-to-source: click a rendered block to jump back to its source line.
-- **2.4.2** — No more background flash when hovering the editor (template hover/focus brushes neutralized).
-- **2.4.1** — Fixed edit-mode highlighting not rendering on file open (repaint on editor load) and black bars behind text (opaque editor background instead of transparent).
 
 ## License
 
