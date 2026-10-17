@@ -20,16 +20,16 @@ Same intents on both platforms — see the parity checklist in [AGENTS.md](AGENT
 The repo contains sources only (builds and setups are **not** versioned). Same
 version number = same features on both platforms (see Changelogs below).
 
-- **Windows**: [Releases](../../releases) page → `FluentNotepad-Setup-2.6.3-win-x64.exe` (per-machine install in Program Files, optional `.md` association)
+- **Windows**: [Releases](../../releases) page → `FluentNotepad-Setup-2.7.0-win-x64.exe` (per-machine install in Program Files, optional `.md` association)
 - **macOS**: [Releases](../../releases) page → `FluentNotepad.dmg` from a `macos-vX.Y.Z` release → drag `FluentNotepad.app` into Applications. First launch: right-click → Open (ad-hoc signature).
 
 Or build it yourself: see `windows/AGENTS.md` (Build/run) and `macos/AGENTS.md` (Build/run).
 
 ## Changelog
 
-Same version number = same features everywhere. macOS is at `2.7.0`, Windows at `2.6.3`.
+Same version number = same features everywhere. Windows and macOS are at `2.7.0`.
 
-- **2.7.0** — macOS: Help menu with a keyboard-shortcuts cheatsheet; app icon back on the mounted DMG volume (plus custom icon on the `.dmg` file); build number shown in About.
+- **2.7.0** — In-app keyboard-shortcuts reference (Help menu, both languages). macOS also: app icon back on the mounted DMG volume (plus custom icon on the `.dmg` file); build number shown in About.
 Last 5 entries; full history in [Releases](../../releases) and the Done section
 of [TODO.md](TODO.md) (archived at each release).
 

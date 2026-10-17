@@ -20,4 +20,4 @@ Legend per row: `win:[x]` / `mac:[x]` = shipped on that platform.
 
 ## Done
 
-- [x] [generic] In-app keyboard-shortcuts reference (native Help on each platform) — win:[x] mac:[x]
+(archived at each release — history in tags and release notes)
