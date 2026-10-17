@@ -37,11 +37,16 @@ final class CloseGuard: NSObject, NSWindowDelegate {
 }
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    /// The adaptor instance (NSApp.delegate is SwiftUI's own wrapper).
+    static var shared: AppDelegate?
+    override init() { super.init(); Self.shared = self }
+
     /// Files waiting for a window (CLI args, openFile events arriving with no
     /// window yet). The next window to appear consumes them.
     static var pendingURLs: [URL] = []
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        addHelpItem()
         // Command-line file open: FluentNotepad notes.md. Queued: the first
         // window to appear (or the CLI fallback below) consumes them.
         for arg in CommandLine.arguments.dropFirst() where !arg.hasPrefix("-") {
@@ -64,6 +69,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let s = WindowStores.frontmost()
         for url in pendingURLs { s.open(url: url) }
         pendingURLs.removeAll()
+    }
+
+    /// Help menu (the system one, with search): Keyboard Shortcuts cheatsheet.
+    /// Explicit target: the app delegate is not in the responder chain.
+    private var helpWindow: NSWindow?
+
+    func addHelpItem() {
+        guard let m = NSApp.helpMenu,
+            !m.items.contains(where: { $0.action == #selector(showShortcuts) })
+        else { return }
+        let item = NSMenuItem(title: L("shortcuts"), action: #selector(showShortcuts), keyEquivalent: "")
+        item.target = self
+        m.addItem(item)
+    }
+
+    @objc func showShortcuts() {
+        if let w = helpWindow { w.makeKeyAndOrderFront(nil); return }
+        let win = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 400, height: 560),
+            styleMask: [.titled, .closable], backing: .buffered, defer: false)
+        win.title = L("shortcuts")
+        win.contentViewController = NSHostingController(rootView: ShortcutsHelpView())
+        win.center()
+        helpWindow = win
+        win.makeKeyAndOrderFront(nil)
     }
 
     func showFallbackWindow() {

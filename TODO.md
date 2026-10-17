@@ -16,9 +16,10 @@ Legend per row: `win:[x]` / `mac:[x]` = shipped on that platform.
 
 ## Pending
 
-(none)
 
 ## Done
+
+- [x] [macos] Help menu with keyboard shortcuts (Help > Shortcuts cheatsheet) — mac:[x]
 
 - [x] [generic] Unsaved tabs count as Markdown (preview toggle, highlighting, .md save default) — win:[x] mac:[x]
 

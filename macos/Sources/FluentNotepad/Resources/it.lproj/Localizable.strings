@@ -48,3 +48,10 @@
 "fontSize" = "Dimensione carattere";
 "about" = "Informazioni";
 "aboutPreview" = "anteprima Markdown via WKWebView.";
+"shortcuts" = "Scorciatoie da tastiera";
+"toggleEsc" = "Alterna Modifica/Anteprima";
+"undo" = "Annulla";
+"cut" = "Taglia";
+"copy" = "Copia";
+"paste" = "Incolla";
+"selectAll" = "Seleziona tutto";

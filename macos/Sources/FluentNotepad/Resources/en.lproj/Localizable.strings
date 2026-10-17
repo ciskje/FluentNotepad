@@ -48,3 +48,10 @@
 "fontSize" = "Font size";
 "about" = "About";
 "aboutPreview" = "Markdown preview via WKWebView.";
+"shortcuts" = "Keyboard Shortcuts";
+"toggleEsc" = "Toggle Edit/Preview";
+"undo" = "Undo";
+"cut" = "Cut";
+"copy" = "Copy";
+"paste" = "Paste";
+"selectAll" = "Select All";
