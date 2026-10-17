@@ -28,6 +28,7 @@ Both builds implement the same intents; platform-native details may differ
 - Light/dark/system theme, interface in English and Italian
 - Click-to-source: click a rendered block to jump to its source line
   (macOS done; Windows pending)
+- In-app keyboard-shortcuts reference (macOS done; Windows pending)
 
 ## Change workflow
 
@@ -57,7 +58,7 @@ implemented those intents; if the other lags, its release waits.
 
 - Z = bugfix/tweak, Y = new feature/behavior, X = upheaval.
 - Docs/refactor/build never change the version.
-- Current: Windows `2.6.3`, macOS `2.7.0`; next shared version: TBD.
+- Current: Windows `2.6.3`, macOS `2.7.0`; next shared version: `2.7.0` on Windows (shortcuts reference pending).
 - Single source: `<Version>` in `windows/source/FluentNotepad.WinUI.csproj`
   (derives at build into `#define MyAppVersion` in
   `windows/installer/FluentNotepad.iss` and the setup name in `README.md`);

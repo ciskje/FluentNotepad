@@ -16,6 +16,7 @@ Legend per row: `win:[x]` / `mac:[x]` = shipped on that platform.
 
 ## Pending
 
+- [ ] [generic] In-app keyboard-shortcuts reference (native Help on each platform) — win:[ ] mac:[x]
 
 ## Done
 
@@ -23,7 +24,6 @@ Legend per row: `win:[x]` / `mac:[x]` = shipped on that platform.
 
 - [x] [macos] Custom Finder icon for the .dmg file (app icon via NSWorkspace) — mac:[x]
 
-- [x] [macos] Help menu with keyboard shortcuts (Help > Shortcuts cheatsheet) — mac:[x]
 
 - [x] [generic] Unsaved tabs count as Markdown (preview toggle, highlighting, .md save default) — win:[x] mac:[x]
 
