@@ -102,8 +102,6 @@ pixel-perfect (`App.NewWindow()`).
 
 - Smoke start: launch the exe with a file (`FluentNotepad.exe ..\README.md &`),
   wait, screenshot with `CopyFromScreen` via PowerShell, kill the process.
-  Copy the exe to local SSD first: unsigned launches from the NAS stall on
-  SmartScreen, and `PrintWindow` renders WinUI black — trust only `CopyFromScreen`.
 - Edit/Preview toggle and focus via UI Automation (Invoke on the button,
   `SetFocus` on the Edit); `SendKeys`/`AppActivate` alone are unreliable.
 - Query document state via TextPattern (selection, attributes); for real colors
