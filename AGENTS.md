@@ -94,4 +94,8 @@ code-side strings go through the platform loader (`Str()` / `L()`).
 
 ## Line endings
 
-`* text=auto` everywhere; only `*.sh` → LF and `*.bat` → CRLF are enforced.
+`* text=auto eol=lf` everywhere (LF working copies on all platforms —
+the Mac builds from this repo too); only `*.sh` → LF and `*.bat` → CRLF
+are enforced explicitly. This also silences the
+"LF will be replaced by CRLF" warnings that `core.autocrlf=true`
+would otherwise emit for every file.
