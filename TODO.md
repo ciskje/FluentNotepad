@@ -19,6 +19,8 @@ Legend per row: `win:[x]` / `mac:[x]` = shipped on that platform.
 
 ## Done
 
+- [x] [macos] Custom Finder icon for the .dmg file (app icon via NSWorkspace) — mac:[x]
+
 - [x] [macos] Help menu with keyboard shortcuts (Help > Shortcuts cheatsheet) — mac:[x]
 
 - [x] [generic] Unsaved tabs count as Markdown (preview toggle, highlighting, .md save default) — win:[x] mac:[x]
