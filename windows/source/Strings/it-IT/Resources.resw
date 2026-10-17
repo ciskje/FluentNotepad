@@ -26,6 +26,11 @@
   <data name="ViewZoomReset.Text"><value>Ripristina zoom</value></data>
   <data name="ViewPreview.Text"><value>Anteprima Markdown</value></data>
   <data name="ViewWrap.Text"><value>A capo automatico</value></data>
+  <!-- Menu Aiuto -->
+  <data name="MenuHelp.Title"><value>Aiuto</value></data>
+  <data name="HelpShortcuts.Text"><value>Scorciatoie da tastiera</value></data>
+  <data name="Shortcuts.Title"><value>Scorciatoie da tastiera</value></data>
+  <data name="ShortcutsEsc.Text"><value>Alterna Modifica/Anteprima</value></data>
   <!-- Barra formattazione -->
   <data name="FmtHeading.ToolTipService.ToolTip"><value>Titolo (#)</value></data>
   <data name="FmtBold.ToolTipService.ToolTip"><value>Grassetto (**testo**)</value></data>

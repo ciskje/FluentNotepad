@@ -722,6 +722,63 @@ public sealed partial class MainWindow : Window
 
     private void Exit_Click(object s, RoutedEventArgs e) => Close();
 
+    // Help > Keyboard shortcuts: static cheatsheet, same rows as
+    // FluentNotepadMac ShortcutsHelpView (labels via Str, glyphs literal).
+    private async void Shortcuts_Click(object s, RoutedEventArgs e)
+    {
+        (string Key, string Glyph)[] rows =
+        [
+            ("FileNewTab.Text", "Ctrl+T"),
+            ("FileOpen.Text", "Ctrl+O"),
+            ("FileNewWindow.Text", "Ctrl+Shift+N"),
+            ("FileSave.Text", "Ctrl+S"),
+            ("FileSaveAs.Text", "Ctrl+Shift+S"),
+            ("FileCloseTab.Text", "Ctrl+W"),
+            ("FilePrint.Text", "Ctrl+P"),
+            ("EditFind.Text", "Ctrl+F"),
+            ("ViewZoomIn.Text", "Ctrl++"),
+            ("ViewZoomOut.Text", "Ctrl+\u2212"),
+            ("ViewZoomReset.Text", "Ctrl+0"),
+            ("ViewPreview.Text", "Ctrl+Shift+V"),
+            ("ShortcutsEsc.Text", "Esc"),
+            ("EditUndo.Text", "Ctrl+Z"),
+            ("EditRedo.Text", "Ctrl+Y"),
+            ("EditCut.Text", "Ctrl+X"),
+            ("EditCopy.Text", "Ctrl+C"),
+            ("EditPaste.Text", "Ctrl+V"),
+            ("EditSelectAll.Text", "Ctrl+A"),
+        ];
+        var secondary = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"];
+        var panel = new StackPanel { Spacing = 0, MinWidth = 300 };
+        foreach (var (key, glyph) in rows)
+        {
+            var grid = new Grid { Padding = new Thickness(0, 5, 0, 5) };
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            var label = new TextBlock { Text = Str(key) };
+            Grid.SetColumn(label, 0);
+            var keys = new TextBlock
+            {
+                Text = glyph,
+                Foreground = secondary,
+                FontFamily = new FontFamily("Consolas"),
+                Margin = new Thickness(16, 0, 0, 0)
+            };
+            Grid.SetColumn(keys, 1);
+            grid.Children.Add(label);
+            grid.Children.Add(keys);
+            panel.Children.Add(grid);
+        }
+        var dlg = new ContentDialog
+        {
+            Title = Str("Shortcuts.Title"),
+            Content = new ScrollViewer { Content = panel },
+            CloseButtonText = Str("PrintClose"),
+            XamlRoot = Content.XamlRoot
+        };
+        await dlg.ShowAsync();
+    }
+
     private async Task ShowNoteAsync(string content)
     {
         var dlg = new ContentDialog

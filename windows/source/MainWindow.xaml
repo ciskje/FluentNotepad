@@ -142,6 +142,13 @@
                     <MenuFlyoutSeparator/>
                     <MenuFlyoutItem x:Uid="ViewWrap" Text="A capo automatico" Click="Wrap_Click"/>
                 </MenuBarItem>
+                <MenuBarItem x:Uid="MenuHelp" Title="?">
+                    <MenuFlyoutItem x:Uid="HelpShortcuts" Text="Scorciatoie da tastiera" Click="Shortcuts_Click">
+                        <MenuFlyoutItem.KeyboardAccelerators>
+                            <KeyboardAccelerator Key="F1"/>
+                        </MenuFlyoutItem.KeyboardAccelerators>
+                    </MenuFlyoutItem>
+                </MenuBarItem>
             </MenuBar>
 
             <CommandBar Grid.Column="1" Background="Transparent" DefaultLabelPosition="Collapsed"

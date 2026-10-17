@@ -26,6 +26,11 @@
   <data name="ViewZoomReset.Text"><value>Reset zoom</value></data>
   <data name="ViewPreview.Text"><value>Markdown preview</value></data>
   <data name="ViewWrap.Text"><value>Word wrap</value></data>
+  <!-- Help menu -->
+  <data name="MenuHelp.Title"><value>Help</value></data>
+  <data name="HelpShortcuts.Text"><value>Keyboard shortcuts</value></data>
+  <data name="Shortcuts.Title"><value>Keyboard shortcuts</value></data>
+  <data name="ShortcutsEsc.Text"><value>Toggle Edit/Preview</value></data>
   <!-- Formatting toolbar -->
   <data name="FmtHeading.ToolTipService.ToolTip"><value>Heading (#)</value></data>
   <data name="FmtBold.ToolTipService.ToolTip"><value>Bold (**text**)</value></data>

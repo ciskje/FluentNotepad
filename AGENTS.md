@@ -27,7 +27,7 @@ Both builds implement the same intents; platform-native details may differ
 - Status bar (line/column, characters, file type, zoom, line ending, encoding)
 - Light/dark/system theme, interface in English and Italian
 - Click-to-source: click a rendered block to jump to its source line
-  (macOS done; Windows pending)
+- In-app keyboard-shortcuts reference (Help menu, both languages)
 - In-app keyboard-shortcuts reference (macOS done; Windows pending)
 
 ## Change workflow
