@@ -28,6 +28,12 @@ Shared lockstep versioning, see root `AGENTS.md`: same X.Y.Z on both platforms
 Release + publish: `gh release create macos-vX.Y.Z dist/FluentNotepad.dmg`,
 commit + push `main`. `CFBundleShortVersionString` lives in `packaging/Info.plist`.
 
+Every recompile bumps `CFBundleVersion` (build number, the number in
+parentheses in About — max 18 chars, digits and dots) in the same
+`packaging/Info.plist`. Bump it on the **NAS source before** copying to SSD:
+only `dist/` comes back from the temp build, an increment made there would be
+lost. `CFBundleShortVersionString` changes only at releases.
+
 ## Gotchas learned
 
 - SwiftUI withholds the default window on raw-CLI launches with files → AppKit

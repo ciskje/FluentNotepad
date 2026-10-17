@@ -19,6 +19,8 @@ Legend per row: `win:[x]` / `mac:[x]` = shipped on that platform.
 
 ## Done
 
+- [x] [macos] Bump CFBundleVersion (build number) at every recompile — mac:[x]  (convention in macos/AGENTS.md)
+
 - [x] [macos] Custom Finder icon for the .dmg file (app icon via NSWorkspace) — mac:[x]
 
 - [x] [macos] Help menu with keyboard shortcuts (Help > Shortcuts cheatsheet) — mac:[x]
