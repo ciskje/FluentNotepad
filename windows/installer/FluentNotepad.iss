@@ -10,7 +10,7 @@
 ; ============================================================
 
 #define MyAppName "FluentNotepad"
-#define MyAppVersion "2.9.0"
+#define MyAppVersion "2.9.1"
 #define MyAppExeName "FluentNotepad.exe"
 #define PublishDir "..\source\bin\Release\net8.0-windows10.0.26100.0\win-x64\publish"
 #define IconFile "..\source\Assets\AppIcon.ico"
@@ -40,6 +40,8 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
 Name: "fileassoc"; Description: "Associate .md files with FluentNotepad"; GroupDescription: "File associations:"; Flags: unchecked
+Name: "fileassoc_json"; Description: "Associate .json/.jsonc files with FluentNotepad"; GroupDescription: "File associations:"; Flags: unchecked
+Name: "fileassoc_xml"; Description: "Associate .xml files with FluentNotepad"; GroupDescription: "File associations:"; Flags: unchecked
 
 [Files]
 ; Publish self-contained (includes the .NET runtime and Windows App SDK)
@@ -55,6 +57,19 @@ Root: HKLM; Subkey: "Software\Classes\.md"; ValueType: string; ValueName: ""; Va
 Root: HKLM; Subkey: "Software\Classes\FluentNotepad.md"; ValueType: string; ValueName: ""; ValueData: "File Markdown"; Flags: uninsdeletekey; Tasks: fileassoc
 Root: HKLM; Subkey: "Software\Classes\FluentNotepad.md\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#MyAppExeName},0"; Tasks: fileassoc
 Root: HKLM; Subkey: "Software\Classes\FluentNotepad.md\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" ""%1"""; Tasks: fileassoc
+
+; Optional .json/.jsonc association (unchecked by default: no hijacking).
+Root: HKLM; Subkey: "Software\Classes\.json"; ValueType: string; ValueName: ""; ValueData: "FluentNotepad.json"; Flags: uninsdeletevalue; Tasks: fileassoc_json
+Root: HKLM; Subkey: "Software\Classes\.jsonc"; ValueType: string; ValueName: ""; ValueData: "FluentNotepad.json"; Flags: uninsdeletevalue; Tasks: fileassoc_json
+Root: HKLM; Subkey: "Software\Classes\FluentNotepad.json"; ValueType: string; ValueName: ""; ValueData: "File JSON"; Flags: uninsdeletekey; Tasks: fileassoc_json
+Root: HKLM; Subkey: "Software\Classes\FluentNotepad.json\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#MyAppExeName},0"; Tasks: fileassoc_json
+Root: HKLM; Subkey: "Software\Classes\FluentNotepad.json\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" ""%1"""; Tasks: fileassoc_json
+
+; Optional .xml association (unchecked by default: no hijacking).
+Root: HKLM; Subkey: "Software\Classes\.xml"; ValueType: string; ValueName: ""; ValueData: "FluentNotepad.xml"; Flags: uninsdeletevalue; Tasks: fileassoc_xml
+Root: HKLM; Subkey: "Software\Classes\FluentNotepad.xml"; ValueType: string; ValueName: ""; ValueData: "File XML"; Flags: uninsdeletekey; Tasks: fileassoc_xml
+Root: HKLM; Subkey: "Software\Classes\FluentNotepad.xml\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#MyAppExeName},0"; Tasks: fileassoc_xml
+Root: HKLM; Subkey: "Software\Classes\FluentNotepad.xml\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" ""%1"""; Tasks: fileassoc_xml
 
 [Run]
 ; runasoriginaluser: without it, after an admin install the app would start elevated
