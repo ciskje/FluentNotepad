@@ -7,6 +7,7 @@ struct ShortcutsHelpView: View {
         ("newTab", "⌘T"),
         ("open", "⌘O"),
         ("newWindow", "⇧⌘N"),
+        ("save", "⌘S"),
         ("saveAs", "⇧⌘S"),
         ("closeTab", "⌘W"),
         ("print", "⌘P"),

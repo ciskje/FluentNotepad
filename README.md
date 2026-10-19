@@ -27,14 +27,13 @@ Or build it yourself: see `windows/AGENTS.md` (Build/run) and `macos/AGENTS.md` 
 
 ## Changelog
 
-Same version number = same features everywhere. Windows is at `2.10.1`, macOS at `2.8.0` (XML/YAML/TOML/INI/CSV previews pending there).
+Same version number = same features everywhere. Windows and macOS are at `2.10.1`.
 
+- **2.10.1** (macOS) — File associations for the new formats too (exported UTIs: `.yaml`/`.yml`, `.toml`, `.ini`/`.cfg`/`.inf`/`.properties`, `.jsonc`, `.config`; open by double-click); YAML, TOML and INI tree previews plus CSV grid preview (search, copy, click-to-line; edit-mode highlight for the tree formats); XML tree preview (attributes as `@name` rows, XPath copy paths, XML comments, invalid-XML error, XML highlight, Open/Save panel types); ⌘S saves the active tab; drag-reorderable tabs; print notice for non-preview tabs (expand-before-print for trees); footnotes/definition lists in Markdown preview; caret-line flash entering Edit; click-to-source blinks the row in preview before jumping.
 - **2.10.1** (Windows) — Setup offers optional associations for the new formats too (`.yaml`/`.yml`, `.toml`, `.ini`/`.cfg`/`.inf`/`.properties`, `.csv`/`.tsv`; all unchecked by default).
 - **2.10.0** (Windows) — YAML, TOML and INI tree previews plus CSV grid preview (search, copy, click-to-line; edit-mode highlight for the tree formats).
-- **2.8.0** (macOS) — JSON tree preview: `.json`/`.jsonc` files open in a collapsible tree on the same schema (expand/collapse all, search with match count, copy path/value, per-tab open state, invalid-JSON error with line/column, print expanded, JSON highlighting in edit mode, Open/Save panel types).
 - **2.9.6** (Windows) — Click-to-source blinks the rendered row twice in the preview first, then switches to Edit.
-- **2.9.0** (Windows) — XML tree preview: `.xml`/`.config` files open in a collapsible tree on the same schema (attributes as `@name` rows, XPath copy paths, XML comments shown, invalid-XML error with line/column, XML highlighting in edit mode). JSONC comments now shown in the JSON tree. Fixed a startup crash when opening tree-preview files (no RichEdit formatting inside the layout pass) and the Release publish missing the app `.pri`/`.xbf` (installed app died on launch). Per-machine install now targets the real Program Files on 64-bit.
-- **2.8.0** — never published (local only).
+- **2.9.5** (Windows) — Click-to-source flashes the target line (it used to select-and-abort before painting).
 Last 5 entries; full history in [Releases](../../releases) and the Done section
 of [TODO.md](TODO.md) (archived at each release).
 

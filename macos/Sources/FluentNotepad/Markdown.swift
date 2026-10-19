@@ -15,13 +15,214 @@ enum MarkdownHTML {
         if markdown.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             body = "<p class='empty-hint'>\(esc(L("emptyHint")))</p>"
         } else {
-            body = childrenHTML(Document(parsing: markdown), baseDir: baseDir)
+            // Footnotes + definition lists (Markdig renders them on Windows;
+            // swift-markdown/cmark has no equivalent): text-level expansion
+            // first, so the AST walk below needs no changes.
+            body = childrenHTML(Document(parsing: expandNotes(markdown)), baseDir: baseDir)
         }
         let css = dark ? darkCss(fontSize) : lightCss(fontSize)
         let t = title.map { "<title>\(esc($0))</title>" } ?? ""
         return "<!DOCTYPE html><html><head><meta charset='utf-8'>"
             + "<meta name='color-scheme' content='\(dark ? "dark" : "light")'>"
             + t + "<style>\(css)</style></head><body>\(body)</body></html>"
+    }
+
+    // MARK: - Footnotes + definition lists (no cmark equivalent)
+
+    /// Text-level expansion of Markdig footnote/definition-list syntax.
+    /// Removed lines become blanks (never deletions) so data-src-line
+    /// numbers still match the source. Fast path: no `[^` and no `:`-led
+    /// line means the text returns untouched.
+    static func expandNotes(_ markdown: String) -> String {
+        guard markdown.contains("[^") || markdown.contains("\n:") || markdown.hasPrefix(":") else {
+            return markdown
+        }
+        var lines = markdown.components(separatedBy: "\n")
+        var inFence = false
+        // 1. Footnote definitions: `[^id]: ...` + indented continuations.
+        var defs: [(id: String, content: [String])] = []
+        var i = 0
+        while i < lines.count {
+            let ln = lines[i]
+            if ln.trimmingCharacters(in: .whitespaces).hasPrefix("```") { inFence.toggle() }
+            if !inFence, let (id, first) = footnoteDef(ln) {
+                var content = [first]
+                var j = i + 1
+                while j < lines.count,
+                    lines[j].trimmingCharacters(in: .whitespaces).isEmpty
+                        || lines[j].hasPrefix("    ") || lines[j].hasPrefix("\t")
+                {
+                    var c = lines[j]
+                    if c.hasPrefix("    ") { c = String(c.dropFirst(4)) }
+                    else if c.hasPrefix("\t") { c = String(c.dropFirst()) }
+                    content.append(c)
+                    lines[j] = ""
+                    j += 1
+                }
+                defs.append((id, content))
+                lines[i] = ""
+                i = j
+                continue
+            }
+            i += 1
+        }
+        guard !defs.isEmpty else { return joinDeflists(lines) }
+        var order: [String] = []
+        var num: [String: Int] = [:]
+        func ref(_ id: String) -> String {
+            if let n = num[id] { return String(n) }
+            order.append(id)
+            num[id] = order.count
+            return String(order.count)
+        }
+        // 2. References `[^id]` -> sup links (outside fences/code spans).
+        inFence = false
+        for k in lines.indices {
+            let ln = lines[k]
+            if ln.trimmingCharacters(in: .whitespaces).hasPrefix("```") { inFence.toggle(); continue }
+            if inFence || !ln.contains("[^") { continue }
+            lines[k] = expandRefs(ln, defs: defs, ref: ref)
+        }
+        for d in defs.indices {
+            defs[d].content = defs[d].content.map { expandRefs($0, defs: defs, ref: ref) }
+        }
+        // 3. Footnotes section (appended: shifts nothing).
+        if !order.isEmpty {
+            var out = "<div class=\"footnotes\">\n<hr />\n<ol>\n"
+            for id in order {
+                let content = defs.first { $0.id == id }?.content.joined(separator: "\n") ?? ""
+                let html = childrenHTML(Document(parsing: content), baseDir: nil)
+                out += "<li id=\"fn:\(esc(id))\">\(html)<a href=\"#fnref:\(esc(id))\" class=\"footnote-backref\">&#8617;</a></li>\n"
+            }
+            lines.append("")
+            lines.append(contentsOf: out.components(separatedBy: "\n"))
+            lines.append("</ol>\n</div>")
+        }
+        return joinDeflists(lines)
+    }
+
+    private static func footnoteDef(_ line: String) -> (String, String)? {
+        guard line.hasPrefix("[^"), let end = line.firstIndex(of: "]") else { return nil }
+        let id = String(line[line.index(line.startIndex, offsetBy: 2)..<end])
+        if id.isEmpty || id.contains("[") || id.contains("]") { return nil }
+        let rest = line[line.index(after: end)...]
+        guard rest.hasPrefix(":") else { return nil }
+        var content = rest.dropFirst()
+        if content.hasPrefix(" ") { content = content.dropFirst() }
+        else if content.hasPrefix("\t") { content = content.dropFirst() }
+        return (id, String(content))
+    }
+
+    /// Rewrites `[^id]` outside backtick spans; unknown ids stay literal.
+    private static func expandRefs(_ line: String, defs: [(id: String, content: [String])],
+        ref: (String) -> String) -> String
+    {
+        let ids = Set(defs.map(\.id))
+        var out = ""
+        var k = line.startIndex
+        while k < line.endIndex {
+            let c = line[k]
+            if c == "`" {
+                // Skip the whole code span (matched backtick run).
+                var run = 0
+                var m = k
+                while m < line.endIndex, line[m] == "`" { run += 1; m = line.index(after: m) }
+                var close = m
+                var found = false
+                while close < line.endIndex {
+                    if line[close] == "`" {
+                        var r2 = 0
+                        var m2 = close
+                        while m2 < line.endIndex, line[m2] == "`" { r2 += 1; m2 = line.index(after: m2) }
+                        if r2 == run { close = m2; found = true; break }
+                        close = m2
+                    } else {
+                        close = line.index(after: close)
+                    }
+                }
+                out += String(line[k..<(found ? close : m)])
+                k = found ? close : m
+                continue
+            }
+            if c == "[", line[k...].hasPrefix("[^"),
+                let rb = line[k...].firstIndex(of: "]"),
+                !line[k...].contains("\n")
+            {
+                let id = String(line[line.index(k, offsetBy: 2)..<rb])
+                if ids.contains(id) {
+                    let n = ref(id)
+                    out += "<sup id=\"fnref:\(esc(id))\"><a href=\"#fn:\(esc(id))\">\(n)</a></sup>"
+                    k = line.index(after: rb)
+                    continue
+                }
+            }
+            out.append(c)
+            k = line.index(after: k)
+        }
+        return out
+    }
+
+    /// `Term` + `: def` lines -> single-line `<dl>` block (padded with blanks
+    /// to preserve line numbers). Outside fenced code only.
+    private static func joinDeflists(_ lines: [String]) -> String {
+        var lines = lines
+        var inFence = false
+        var i = 0
+        while i < lines.count {
+            let ln = lines[i]
+            if ln.trimmingCharacters(in: .whitespaces).hasPrefix("```") { inFence.toggle(); i += 1; continue }
+            if inFence { i += 1; continue }
+            if isDefLine(ln), i > 0, isTermLine(lines[i - 1]) {
+                // Collect terms above (consecutive plain lines).
+                var t = i - 1
+                while t > 0, isTermLine(lines[t - 1]) { t -= 1 }
+                let terms = Array(lines[t..<i])
+                // Collect def lines.
+                var j = i
+                var defs: [String] = []
+                while j < lines.count, isDefLine(lines[j]) {
+                    var d = String(lines[j].dropFirst())
+                    if d.hasPrefix(" ") { d = String(d.dropFirst()) }
+                    defs.append(d)
+                    lines[j] = ""
+                    j += 1
+                }
+                var dl = "<dl>"
+                for term in terms { dl += "<dt>\(inlineHTML(term))</dt>" }
+                for d in defs { dl += "<dd>\(inlineHTML(d))</dd>" }
+                dl += "</dl>"
+                for k in t..<i { lines[k] = "" }
+                lines[t] = dl
+                i = j
+                continue
+            }
+            i += 1
+        }
+        return lines.joined(separator: "\n")
+    }
+
+    private static func isDefLine(_ s: String) -> Bool {
+        s == ":" || s.hasPrefix(": ") || s.hasPrefix(":\t")
+    }
+
+    private static func isTermLine(_ s: String) -> Bool {
+        let t = s.trimmingCharacters(in: .whitespaces)
+        if t.isEmpty { return false }
+        if t.hasPrefix("```") || t.hasPrefix(">") || t.hasPrefix("#") || t.hasPrefix("<") { return false }
+        if t.hasPrefix("- ") || t.hasPrefix("* ") || t.hasPrefix("+ ") { return false }
+        if t.range(of: #"^\d+[.)] "#, options: .regularExpression) != nil { return false }
+        if isDefLine(t) { return false }
+        if t.hasPrefix("|") { return false }
+        return true
+    }
+
+    /// Markdown span -> inline HTML (single `<p>` unwrapped).
+    private static func inlineHTML(_ s: String) -> String {
+        let h = childrenHTML(Document(parsing: s), baseDir: nil)
+        if h.hasPrefix("<p"), let open = h.firstIndex(of: ">"), h.hasSuffix("</p>") {
+            return String(h[h.index(after: open)..<h.index(h.endIndex, offsetBy: -4)])
+        }
+        return h
     }
 
     // MARK: - Walker
@@ -177,6 +378,8 @@ enum MarkdownHTML {
         table{border-collapse:collapse;margin:0 0 14px;font-size:.95em}th,td{border:1px solid;padding:6px 12px}th{font-weight:700}
         img{max-width:100%;margin:8px 0}.img-missing{font-style:italic;opacity:.7}
         .empty-hint{opacity:.6;font-style:italic;text-align:center;margin-top:40px}
+        dl{margin:0 0 10px}dt{font-weight:700}dd{margin:0 0 8px 20px}
+        .footnotes{font-size:.9em;margin-top:16px}.footnote-backref{text-decoration:none}
         hr{border:none;border-top:1px solid;margin:18px 0}
         @media print{html{background:#FFFFFF!important;color-scheme:light!important}*{print-color-adjust:exact!important;-webkit-print-color-adjust:exact!important}body{margin:0;background:#FFFFFF!important;color:#1E1E1E!important}h1,h2{border-color:#E5E5E5!important}h1,h2,h3,h4,h5{color:#0F6CBD!important}h6{color:#808080!important}a{color:#0F6CBD!important}strong{color:#A31515!important}em{color:#7A3E9D!important}code{background:#F3F3F3!important;color:#A31515!important}pre{background:#F6F6F6!important;border-color:#E5E5E5!important}pre code{color:#1E1E1E!important;background:none!important;border:0!important}blockquote{background:#F6F6F6!important;border-color:#0F6CBD!important;color:#075AA0!important}th{background:#F3F3F3!important;color:#0F6CBD!important}th,td{border-color:#D4D4D4!important}tbody tr:nth-child(even){background:#FAFAFA!important}hr{border-color:#E5E5E5!important}}
         """

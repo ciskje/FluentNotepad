@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// Main window: tab strip, native toolbar, editor/preview, find bar, status bar.
 struct ContentView: View {
@@ -23,7 +24,7 @@ struct ContentView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            TabStrip(activeID: doc?.id, docs: store.docs,
+            TabStrip(activeID: doc?.id, docs: store.docs, store: store,
                 select: { store.selected = $0 }, close: { store.requestClose($0) },
                 add: { _ = store.newTab() })
             Divider()
@@ -34,22 +35,25 @@ struct ContentView: View {
         .navigationTitle(doc?.displayName ?? "FluentNotepad")
         .onOpenURL { url in store.open(url: url) }
         .toolbar { toolbarContent }
-        .onChange(of: doc?.text ?? "") { scheduleRender() }
+        .onChange(of: doc?.text ?? "") { store.flashGen += 1; scheduleRender() }
         .onChange(of: dark) { renderSelected() }
         .onChange(of: store.effectiveFontSize) { renderSelected() }
-        .onChange(of: doc?.id) { renderSelected() }
+        .onChange(of: doc?.id) {
+            renderSelected()
+            if let d = store.selected, !d.showPreview { flashCaretLine(store) }
+        }
         .onReceive(NotificationCenter.default.publisher(for: .toggleFind)) { _ in
             findShown.toggle()
         }
         .onReceive(NotificationCenter.default.publisher(for: .srcLineTapped)) { n in
-            if let line = n.userInfo?["line"] as? Int { jumpToLine(line) }
+            if let line = n.userInfo?["line"] as? Int { flashThenJump(store, dark, line) }
         }
         .onReceive(NotificationCenter.default.publisher(for: .escapeToggle)) { _ in
             // ESC flips Edit/Preview (both directions). The find field keeps
             // its own Escape (close bar): the monitor below lets it through.
-            // The tree preview's search owns ESC first (clears it, stays put).
+            // The tree/grid preview's search owns ESC first (clears it, stays put).
             if let doc = store.selected, doc.canPreview {
-                if doc.showPreview, doc.isJSON, !doc.treeQuery.isEmpty {
+                if doc.showPreview, (doc.isTree || doc.isCSV), !doc.treeQuery.isEmpty {
                     doc.treeQuery = ""
                     store.webRef.runJS("if(window.__fnClearSearch)window.__fnClearSearch();")
                 } else {
@@ -69,7 +73,7 @@ struct ContentView: View {
                 if doc.showPreview, doc.canPreview {
                     PreviewView(html: doc.renderedHTML, webRef: store.webRef,
                         onFileDrop: { store.open(url: $0) },
-                        onTreeLine: { jumpToLine($0) },
+                        onTreeLine: { flashThenJump(store, dark, $0) },
                         onTreeCopy: {
                             NSPasteboard.general.clearContents()
                             NSPasteboard.general.setString($0, forType: .string)
@@ -100,7 +104,13 @@ struct ContentView: View {
                 Divider().frame(height: 12)
                 Text(L("statusChars", doc.text.count))
                 Divider().frame(height: 12)
-                Text(doc.isMarkdown ? "Markdown" : doc.isJSON ? L("fileTypeJson") : L("fileTypePlain"))
+                Text(doc.isMarkdown ? "Markdown"
+                : doc.isJSON ? L("fileTypeJson")
+                : doc.isXML ? "XML"
+                : doc.isYaml ? "YAML"
+                : doc.isToml ? "TOML"
+                : doc.isIni ? "INI"
+                : doc.isCSV ? "CSV" : L("fileTypePlain"))
                 Spacer()
                 Stepper(value: $store.zoom, in: 0.5 ... 3.0, step: 0.1) {
                     Text("\(Int(store.zoom * 100))%")
@@ -200,6 +210,31 @@ struct ContentView: View {
                 fontSize: store.effectiveFontSize, title: doc.fileName, open: doc.treeOpen)
             return
         }
+        if doc.isXML {
+            doc.renderedHTML = XmlTree.build(doc.text, dark: dark,
+                fontSize: store.effectiveFontSize, title: doc.fileName, open: doc.treeOpen)
+            return
+        }
+        if doc.isYaml {
+            doc.renderedHTML = YamlTree.build(doc.text, dark: dark,
+                fontSize: store.effectiveFontSize, title: doc.fileName, open: doc.treeOpen)
+            return
+        }
+        if doc.isToml {
+            doc.renderedHTML = TomlTree.build(doc.text, dark: dark,
+                fontSize: store.effectiveFontSize, title: doc.fileName, open: doc.treeOpen)
+            return
+        }
+        if doc.isIni {
+            doc.renderedHTML = IniTree.build(doc.text, dark: dark,
+                fontSize: store.effectiveFontSize, title: doc.fileName, open: doc.treeOpen)
+            return
+        }
+        if doc.isCSV {
+            doc.renderedHTML = CsvGrid.build(doc.text, dark: dark,
+                fontSize: store.effectiveFontSize, title: doc.fileName)
+            return
+        }
         let base = doc.path.map { URL(fileURLWithPath: $0).deletingLastPathComponent().path }
         doc.renderedHTML = MarkdownHTML.build(doc.text, baseDir: base, dark: dark,
             fontSize: store.effectiveFontSize, title: doc.fileName)
@@ -208,25 +243,106 @@ struct ContentView: View {
     private func showPreview(_ doc: Doc, _ show: Bool) {
         guard doc.canPreview else { return }
         doc.showPreview = show
-        if show { render(doc) }
+        if show { render(doc); return }
+        // Click-to-source already blinked in the preview: don't double up.
+        if store.suppressFlashOnce { store.suppressFlashOnce = false; return }
+        flashCaretLine(store)
     }
 
     // MARK: - Click-to-source: preview click -> editor caret on that line
 
-    private func jumpToLine(_ line: Int) {
-        guard let doc = store.selected, doc.canPreview, !doc.text.isEmpty else { return }
-        showPreview(doc, false)
-        doc.revealRange = NSRange(location: lineStartOffset(doc.text, line: line), length: 0)
-    }
+// MARK: - Click-to-source + caret-line flash (Windows 2.9.4-2.9.6)
 
-    /// UTF-16 offset of a 1-based line start, clamped. LineMap handles
-    /// \n, \r\n and \r alike.
-    private func lineStartOffset(_ text: String, line: Int) -> Int {
-        guard line > 1 else { return 0 }
-        let map = SyntaxHighlight.LineMap(text)
-        if line - 1 < map.starts.count { return map.starts[line - 1] }
-        return (text as NSString).length
+/// Leave preview, caret on the line. No flash here: the click path already
+/// blinked in the preview (flashThenJump) and showPreview's hook flash is
+/// suppressed for it.
+private func jumpToLine(_ store: Store, _ line: Int) {
+    guard let doc = store.selected, doc.canPreview, !doc.text.isEmpty else { return }
+    leavePreviewForJump(store, doc)
+    doc.revealRange = NSRange(location: lineStartOffsetIn(doc.text, line: line), length: 0)
+}
+
+/// Leave preview for a click-to-source jump (never renders, never
+/// flashes: the row already blinked in the preview).
+private func leavePreviewForJump(_ store: Store, _ doc: Doc) {
+    guard doc.canPreview else { return }
+    doc.showPreview = false
+    if store.suppressFlashOnce { store.suppressFlashOnce = false; return }
+    flashCaretLine(store)
+}
+
+/// Blink the clicked row twice in the preview first (Web Animations API, no
+/// page changes needed: works for Markdown data-src-line and tree data-l
+/// rows), then jump to Edit. Skips the jump if the user moved on meanwhile.
+private func flashThenJump(_ store: Store, _ dark: Bool, _ line: Int) {
+    guard let doc = store.selected, doc.canPreview, !doc.text.isEmpty else { return }
+    let color = dark ? "#569CD6" : "#0F6CBD"
+    let js = "(function(){try{var el=document.querySelector('[data-src-line=\"\(line)\"],[data-l=\"\(line)\"]');"
+        + "if(!el)return false;el.style.outline='2px solid transparent';el.style.outlineOffset='-2px';"
+        + "var a=el.animate([{outlineColor:'rgba(0,0,0,0)'},{outlineColor:'\(color)'},{outlineColor:'rgba(0,0,0,0)'}],{duration:300,iterations:2});"
+        + "a.onfinish=function(){try{el.style.outline='';el.style.outlineOffset='';}catch(e){}};"
+        + "return true;}catch(e){return false;}})()"
+    store.webRef.runJS(js) { result in
+        let flashed = (result as? String) == "true"
+        Task { @MainActor [store] in
+            if flashed { try? await Task.sleep(nanoseconds: 700_000_000) }
+            guard let cur = store.selected, cur.id == doc.id, cur.showPreview else { return }
+            store.suppressFlashOnce = true // the edit-mode flash would double up
+            jumpToLine(store, line)
+        }
     }
+}
+
+/// Caret-line flash (two blinks) when entering Edit: selection-only, so it
+/// never touches the undo stack or text attributes. Any real edit, key press
+/// or tab switch aborts it via flashGen. No-op unless the tab is in Edit.
+private func flashCaretLine(_ store: Store) {
+    store.flashGen += 1
+    let gen = store.flashGen
+    guard let doc = store.selected, !doc.showPreview, !doc.text.isEmpty else { return }
+    guard let (ls, len) = lineRangeIn(doc.text, caret: doc.caret) else { return }
+    let orig = NSRange(location: doc.caret, length: doc.selLen)
+    Task { @MainActor [store] in
+        for _ in 0..<2 {
+            try? await Task.sleep(nanoseconds: 140_000_000)
+            guard gen == store.flashGen, let d = store.selected,
+                d.id == doc.id, !d.showPreview
+            else { return }
+            d.revealRange = NSRange(location: ls, length: len)
+            try? await Task.sleep(nanoseconds: 140_000_000)
+            guard gen == store.flashGen, let d2 = store.selected,
+                d2.id == doc.id, !d2.showPreview
+            else { return }
+            if d2.caret != ls || d2.selLen != len { return } // user moved on; keep their selection
+            d2.revealRange = orig
+        }
+    }
+}
+
+/// Caret's line as (start, length) on \n text. Empty lines collapse to one
+/// char (the break, or the previous one at EOF) so a flash stays visible.
+/// Mirrors Windows' TextUtil.TryGetLineRange.
+private func lineRangeIn(_ text: String, caret: Int) -> (Int, Int)? {
+    if text.isEmpty { return nil }
+    let ns = text as NSString
+    var ls = min(max(caret, 0), ns.length)
+    while ls > 0, ns.character(at: ls - 1) != 10 { ls -= 1 }
+    var le = min(max(caret, 0), ns.length)
+    while le < ns.length, ns.character(at: le) != 10 { le += 1 }
+    var len = le - ls
+    if len <= 0 {
+        if ls + 1 <= ns.length { len = 1 } else if ls > 0 { ls -= 1; len = 1 } else { return nil }
+    }
+    return (ls, len)
+}
+
+/// UTF-16 offset of a 1-based line start, clamped.
+private func lineStartOffsetIn(_ text: String, line: Int) -> Int {
+    guard line > 1 else { return 0 }
+    let map = SyntaxHighlight.LineMap(text)
+    if line - 1 < map.starts.count { return map.starts[line - 1] }
+    return (text as NSString).length
+}
 
     // MARK: - Formatting (operates on the cached selection: toolbar clicks move focus)
 
@@ -331,11 +447,12 @@ struct ContentView: View {
     }
 }
 
-// MARK: - Tab strip (Safari-style compact tabs)
+// MARK: - Tab strip (Safari-style compact tabs, drag to reorder)
 
 private struct TabStrip: View {
     var activeID: UUID?
     var docs: [Doc]
+    var store: Store
     var select: (Doc) -> Void
     var close: (Doc) -> Void
     var add: () -> Void
@@ -377,6 +494,8 @@ private struct TabStrip: View {
         .background { tabBackground(doc) }
         .clipShape(RoundedRectangle(cornerRadius: 7))
         .onTapGesture { select(doc) }
+        .onDrag { NSItemProvider(object: doc.id.uuidString as NSString) }
+        .onDrop(of: [.text], delegate: TabDrop(store: store, doc: doc))
         .help(doc.path ?? doc.fileName)
     }
 
@@ -387,6 +506,27 @@ private struct TabStrip: View {
         } else {
             Color.clear
         }
+    }
+}
+
+/// Tab reorder: dropping a tab onto another moves it there.
+private struct TabDrop: DropDelegate {
+    var store: Store
+    var doc: Doc
+
+    func performDrop(info: DropInfo) -> Bool {
+        guard let item = info.itemProviders(for: [.text]).first else { return false }
+        item.loadObject(ofClass: NSString.self) { str, _ in
+            guard let s = (str as? NSString) as String?, let id = UUID(uuidString: s) else { return }
+            DispatchQueue.main.async {
+                guard let from = store.docs.firstIndex(where: { $0.id == id }),
+                    let to = store.docs.firstIndex(where: { $0.id == doc.id }), from != to
+                else { return }
+                store.docs.move(fromOffsets: IndexSet(integer: from),
+                    toOffset: to > from ? to + 1 : to)
+            }
+        }
+        return true
     }
 }
 

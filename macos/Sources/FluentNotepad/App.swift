@@ -84,6 +84,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         win.makeKeyAndOrderFront(nil)
     }
 
+    /// Standard print notice when the active tab has no graphical preview
+    /// (mirrors Windows' PrintOnlyPreview dialog).
+    func printNote() {
+        let a = NSAlert()
+        a.messageText = "FluentNotepad"
+        a.informativeText = L("printOnlyPreview")
+        a.addButton(withTitle: L("ok"))
+        let s = WindowStores.frontmost()
+        if let w = WindowStores.window(for: s) {
+            a.beginSheetModal(for: w, completionHandler: { _ in })
+        } else {
+            a.runModal()
+        }
+    }
+
     func showFallbackWindow() {
         let store = Store()
         for url in Self.pendingURLs { store.open(url: url) }
@@ -214,6 +229,9 @@ struct FluentNotepadApp: App {
                     .keyboardShortcut("n", modifiers: [.command, .shift])
             }
             CommandGroup(after: .saveItem) {
+                Button(L("save")) {
+                    if let d = WindowStores.frontmost().selected { WindowStores.frontmost().save(d) }
+                }.keyboardShortcut("s", modifiers: .command)
                 Button(L("saveAs")) {
                     if let d = WindowStores.frontmost().selected { WindowStores.frontmost().saveAs(d) }
                 }.keyboardShortcut("s", modifiers: [.command, .shift])
@@ -223,8 +241,17 @@ struct FluentNotepadApp: App {
                 Divider()
                 Button(L("print")) {
                     let s = WindowStores.frontmost()
-                    if let d = s.selected, d.canPreview {
-                        if !d.showPreview { d.showPreview = true }
+                    guard let d = s.selected, d.canPreview else {
+                        AppDelegate.shared?.printNote()
+                        return
+                    }
+                    if !d.showPreview { d.showPreview = true }
+                    if d.isTree {
+                        // Print the whole tree, not just the open branches
+                        // (the toolbar is hidden by the print CSS).
+                        s.webRef.runJS("if(window.__fnExpandAll)window.__fnExpandAll();")
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { s.webRef.print() }
+                    } else {
                         s.webRef.print()
                     }
                 }.keyboardShortcut("p", modifiers: .command)

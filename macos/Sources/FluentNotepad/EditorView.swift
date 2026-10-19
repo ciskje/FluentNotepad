@@ -40,12 +40,20 @@ struct EditorView: NSViewRepresentable {
     static func refreshHighlight(_ tv: NSTextView, fontSize: Double, dark: Bool, coord: C) {
         // One hash (O(n), non-cryptographic): skip when nothing relevant changed.
         let doc = coord.doc
-        let key = "\(tv.string.count)-\(tv.string.hashValue)-\(fontSize)-\(dark)-\(doc.isMarkdown)-\(doc.isJSON)"
+        let key = "\(tv.string.count)-\(tv.string.hashValue)-\(fontSize)-\(dark)-\(doc.isMarkdown)-\(doc.isJSON)-\(doc.isXML)-\(doc.isYaml)-\(doc.isToml)-\(doc.isIni)"
         guard coord.lastKey != key else { return }
         coord.lastKey = key
         SyntaxHighlight.apply(to: tv, baseFont: baseFont(size: fontSize), dark: dark, markdown: doc.isMarkdown)
         if doc.isJSON {
             JsonHighlight.apply(to: tv, baseFont: baseFont(size: fontSize), dark: dark)
+        } else if doc.isXML {
+            XmlHighlight.apply(to: tv, baseFont: baseFont(size: fontSize), dark: dark)
+        } else if doc.isYaml {
+            YamlHighlight.apply(to: tv, baseFont: baseFont(size: fontSize), dark: dark)
+        } else if doc.isToml {
+            TomlHighlight.apply(to: tv, baseFont: baseFont(size: fontSize), dark: dark)
+        } else if doc.isIni {
+            IniHighlight.apply(to: tv, baseFont: baseFont(size: fontSize), dark: dark)
         }
     }
 

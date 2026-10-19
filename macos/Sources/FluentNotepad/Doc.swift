@@ -43,8 +43,45 @@ final class Doc: Identifiable, @unchecked Sendable {
         return l.hasSuffix(".json") || l.hasSuffix(".jsonc")
     }
 
-    /// Anything with a graphical preview (Markdown + tree previews).
-    var canPreview: Bool { isMarkdown || isJSON }
+    var isXML: Bool {
+        guard let p = path else { return false }
+        let l = p.lowercased()
+        return l.hasSuffix(".xml") || l.hasSuffix(".config")
+    }
+
+    var isYaml: Bool {
+        guard let p = path else { return false }
+        let l = p.lowercased()
+        return l.hasSuffix(".yaml") || l.hasSuffix(".yml")
+    }
+
+    var isToml: Bool {
+        guard let p = path else { return false }
+        return p.lowercased().hasSuffix(".toml")
+    }
+
+    var isIni: Bool {
+        guard let p = path else { return false }
+        let l = p.lowercased()
+        if l.hasSuffix(".ini") || l.hasSuffix(".cfg") || l.hasSuffix(".inf")
+            || l.hasSuffix(".properties") { return true }
+        // Extensionless dotfiles like .env / .env.local (checked by file name).
+        let name = URL(fileURLWithPath: p).lastPathComponent.lowercased()
+        return name == ".env" || name.hasPrefix(".env.")
+    }
+
+    var isCSV: Bool {
+        guard let p = path else { return false }
+        let l = p.lowercased()
+        return l.hasSuffix(".csv") || l.hasSuffix(".tsv")
+    }
+
+    /// Tree previews share the collapsible schema (JSON pointer + $. paths);
+    /// CSV has its own grid page. Markdown stands alone.
+    var isTree: Bool { isJSON || isXML || isYaml || isToml || isIni }
+
+    /// Anything with a graphical preview (Markdown + tree/grid previews).
+    var canPreview: Bool { isMarkdown || isTree || isCSV }
 
     var fileName: String { path.map { URL(fileURLWithPath: $0).lastPathComponent } ?? L("untitled") }
 

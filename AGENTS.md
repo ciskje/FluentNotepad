@@ -67,7 +67,7 @@ implemented those intents; if the other lags, its release waits.
 
 - Z = bugfix/tweak, Y = new feature/behavior, X = upheaval.
 - Docs/refactor/build never change the version.
-- Current: Windows `2.7.0`, macOS `2.7.0`; next shared version: TBD.
+- Current: Windows `2.10.1`, macOS `2.10.1`; next shared version: TBD.
 - Single source: `<Version>` in `windows/source/FluentNotepad.WinUI.csproj`
   (derives at build into `#define MyAppVersion` in
   `windows/installer/FluentNotepad.iss` and the setup name in `README.md`);

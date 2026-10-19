@@ -73,6 +73,12 @@ final class Store: @unchecked Sendable {
 
     var effectiveFontSize: Double { fontSize * zoom }
 
+    /// Caret-line flash generation (any real edit aborts it) + one-shot
+    /// suppress after click-to-source (it already blinked in the preview).
+    /// Mirrors Windows' _flashGen/_suppressFlashOnce.
+    var flashGen = 0
+    var suppressFlashOnce = false
+
     /// This window's live preview handle (print needs the WKWebView).
     let webRef = WebRef()
 
@@ -139,11 +145,19 @@ final class Store: @unchecked Sendable {
         ["md", "markdown"].compactMap { UTType(filenameExtension: $0) }
     }
 
-    /// Open accepts plain text + JSON (.json is public.text, not plain-text,
-    /// so it needs listing; .jsonc has no system UTI and is declared below).
+    /// INI extensions for the save panel (no system UTIs: declared by extension).
+    static var iniTypes: [UTType] {
+        ["ini", "cfg", "inf", "properties"].compactMap { UTType(filenameExtension: $0, conformingTo: .text) }
+    }
+
+    /// Open accepts any plain text + known preview formats (.json/.xml are
+    /// public.text, not plain-text, so they need listing; the rest have no
+    /// system UTI and are declared by extension below).
     static var openTypes: [UTType] {
-        var t: [UTType] = [.plainText, .json]
-        if let j = UTType(filenameExtension: "jsonc", conformingTo: .text) { t.append(j) }
+        var t: [UTType] = [.plainText, .json, .xml, .commaSeparatedText, .tabSeparatedText]
+        for ext in ["jsonc", "config", "yaml", "yml", "toml", "ini", "cfg", "inf", "properties"] {
+            if let u = UTType(filenameExtension: ext, conformingTo: .text) { t.append(u) }
+        }
         return t
     }
 
@@ -159,7 +173,17 @@ final class Store: @unchecked Sendable {
         if doc.path == nil {
             let p = NSSavePanel()
             p.nameFieldStringValue = L("untitled") + (doc.isMarkdown ? ".md" : ".txt")
-            p.allowedContentTypes = doc.isJSON ? [.json] : doc.isMarkdown ? Self.mdTypes : [UTType.plainText]
+            if doc.isCSV { p.allowedContentTypes = [.commaSeparatedText, .tabSeparatedText] }
+            else if doc.isIni { p.allowedContentTypes = Self.iniTypes }
+            else if doc.isToml, let toml = UTType(filenameExtension: "toml", conformingTo: .text) {
+                p.allowedContentTypes = [toml]
+            }
+            else if doc.isYaml, let yaml = UTType(filenameExtension: "yaml", conformingTo: .text) {
+                p.allowedContentTypes = [yaml]
+            }
+            else if doc.isJSON { p.allowedContentTypes = [.json] }
+            else if doc.isXML { p.allowedContentTypes = [.xml] }
+            else { p.allowedContentTypes = doc.isMarkdown ? Self.mdTypes : [UTType.plainText] }
             guard p.runModal() == .OK, let url = p.url else { return false }
             doc.path = url.path
         }
