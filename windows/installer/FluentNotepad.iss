@@ -10,7 +10,7 @@
 ; ============================================================
 
 #define MyAppName "FluentNotepad"
-#define MyAppVersion "2.8.0"
+#define MyAppVersion "2.9.0"
 #define MyAppExeName "FluentNotepad.exe"
 #define PublishDir "..\source\bin\Release\net8.0-windows10.0.26100.0\win-x64\publish"
 #define IconFile "..\source\Assets\AppIcon.ico"
@@ -28,7 +28,9 @@ Compression=lzma2/ultra64
 ArchitecturesAllowed=x64compatible
 ; Per-machine install under C:\Program Files: requires the UAC prompt.
 ; {commonpf} is explicit: it can never fall back to the per-user folder (AppData)
+; Install in 64-bit mode so {commonpf} is the real Program Files, not (x86).
 PrivilegesRequired=admin
+ArchitecturesInstallIn64BitMode=x64compatible
 ; WebView2 evergreen required (preinstalled on Windows 11)
 
 [Languages]

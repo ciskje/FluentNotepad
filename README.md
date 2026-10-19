@@ -20,16 +20,17 @@ Same intents on both platforms — see the parity checklist in [AGENTS.md](AGENT
 The repo contains sources only (builds and setups are **not** versioned). Same
 version number = same features on both platforms (see Changelogs below).
 
-- **Windows**: [Releases](../../releases) page → `FluentNotepad-Setup-2.8.0-win-x64.exe` (per-machine install in Program Files, optional `.md` association)
+- **Windows**: [Releases](../../releases) page → `FluentNotepad-Setup-2.9.0-win-x64.exe` (per-machine install in Program Files, optional `.md` association)
 - **macOS**: [Releases](../../releases) page → `FluentNotepad.dmg` from a `macos-vX.Y.Z` release → drag `FluentNotepad.app` into Applications. First launch: right-click → Open (ad-hoc signature).
 
 Or build it yourself: see `windows/AGENTS.md` (Build/run) and `macos/AGENTS.md` (Build/run).
 
 ## Changelog
 
-Same version number = same features everywhere. Windows is at `2.8.0`, macOS at `2.7.0` (JSON preview pending there).
+Same version number = same features everywhere. Windows is at `2.9.0`, macOS at `2.7.0` (JSON/XML previews pending there).
 
-- **2.8.0** (Windows) — JSON tree preview: `.json`/`.jsonc` files open in a collapsible tree (expand/collapse all, search, copy path/value, invalid-JSON error with line/column, print expanded); JSON highlighting in edit mode. Menu and tooltips now say Preview instead of Markdown preview.
+- **2.9.0** (Windows) — XML tree preview: `.xml`/`.config` files open in a collapsible tree on the same schema (attributes as `@name` rows, XPath copy paths, XML comments shown, invalid-XML error with line/column, XML highlighting in edit mode). JSONC comments now shown in the JSON tree. Fixed a startup crash when opening tree-preview files (no RichEdit formatting inside the layout pass) and the Release publish missing the app `.pri`/`.xbf` (installed app died on launch). Per-machine install now targets the real Program Files on 64-bit.
+- **2.8.0** — never published (local only).
 - **2.7.0** — In-app keyboard-shortcuts reference (Help menu, both languages). macOS also: app icon back on the mounted DMG volume (plus custom icon on the `.dmg` file); build number shown in About.
 Last 5 entries; full history in [Releases](../../releases) and the Done section
 of [TODO.md](TODO.md) (archived at each release).
