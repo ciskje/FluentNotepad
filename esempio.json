@@ -1,0 +1,36 @@
+{
+  "app": "FluentNotepad",
+  "versione": 2.8,
+  "attivo": true,
+  "slogan": "Anteprima ad albero: apri e chiudi i rami",
+  "finestra": {
+    "larghezza": 1000,
+    "altezza": 650,
+    "massimizzata": false,
+    "posizione": { "x": 100, "y": 80 },
+    "opacita": 0.97
+  },
+  "temi": ["chiaro", "scuro", "sistema"],
+  "scorciatoie": [
+    { "azione": "Anteprima", "tasti": "Ctrl+Maiusc+V" },
+    { "azione": "Cerca", "tasti": "Ctrl+F" },
+    { "azione": "Chiudi scheda", "tasti": "Ctrl+W" }
+  ],
+  "limiti": {
+    "maxCaratteri": 10000000,
+    "maxNodi": 300000,
+    "profonditaMax": 200,
+    "sogliaMB": 1.5
+  },
+  "server": {
+    "host": "raspberrypi.local",
+    "porte": [80, 443],
+    "tls": true,
+    "certificato": null
+  },
+  "unicode": "caffè — naïve — 日本語 — emoji ok 🙂",
+  "escape": "virgolette \" e backslash \\ dentro stringa",
+  "vuoti": { "oggetto": {}, "lista": [] },
+  "duplicata": "prima",
+  "duplicata": "seconda"
+}
