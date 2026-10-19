@@ -27,8 +27,9 @@ Or build it yourself: see `windows/AGENTS.md` (Build/run) and `macos/AGENTS.md` 
 
 ## Changelog
 
-Same version number = same features everywhere. Windows is at `2.9.6`, macOS at `2.7.0` (JSON/XML previews pending there).
+Same version number = same features everywhere. Windows is at `2.9.6`, macOS at `2.8.0` (XML previews pending there).
 
+- **2.8.0** (macOS) — JSON tree preview: `.json`/`.jsonc` files open in a collapsible tree on the same schema (expand/collapse all, search with match count, copy path/value, per-tab open state, invalid-JSON error with line/column, print expanded, JSON highlighting in edit mode, Open/Save panel types).
 - **2.9.6** (Windows) — Click-to-source blinks the rendered row twice in the preview first, then switches to Edit.
 - **2.9.5** (Windows) — Click-to-source flashes the target line (it used to select-and-abort before painting).
 - **2.9.4** (Windows) — Caret-line flash (two blinks) when entering Edit mode.

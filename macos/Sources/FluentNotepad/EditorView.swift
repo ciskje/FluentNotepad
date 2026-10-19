@@ -39,11 +39,14 @@ struct EditorView: NSViewRepresentable {
 
     static func refreshHighlight(_ tv: NSTextView, fontSize: Double, dark: Bool, coord: C) {
         // One hash (O(n), non-cryptographic): skip when nothing relevant changed.
-        let markdown = coord.doc.isMarkdown
-        let key = "\(tv.string.count)-\(tv.string.hashValue)-\(fontSize)-\(dark)-\(markdown)"
+        let doc = coord.doc
+        let key = "\(tv.string.count)-\(tv.string.hashValue)-\(fontSize)-\(dark)-\(doc.isMarkdown)-\(doc.isJSON)"
         guard coord.lastKey != key else { return }
         coord.lastKey = key
-        SyntaxHighlight.apply(to: tv, baseFont: baseFont(size: fontSize), dark: dark, markdown: markdown)
+        SyntaxHighlight.apply(to: tv, baseFont: baseFont(size: fontSize), dark: dark, markdown: doc.isMarkdown)
+        if doc.isJSON {
+            JsonHighlight.apply(to: tv, baseFont: baseFont(size: fontSize), dark: dark)
+        }
     }
 
     func makeCoordinator() -> C { C(doc: doc) }

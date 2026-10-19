@@ -16,15 +16,25 @@ Legend per row: `win:[x]` / `mac:[x]` = shipped on that platform.
 
 ## Pending
 
-- JSON tree preview (`generic`, win:[x] mac:[ ]): `.json`/`.jsonc` auto-open
-  in a collapsible tree preview (expand/collapse all, search, copy path/value,
-  per-tab open state, invalid-JSON error page, print expanded, JSON edit-mode
-  highlight). Windows done; macOS (WKWebView port) pending (incl. Open/Save
-  panel types for .json/.jsonc).
 - XML tree preview (`generic`, win:[x] mac:[ ]): `.xml`/`.config` with the same
   tree schema (attributes as `@name` rows, XPath copy paths, XML comments
   shown, invalid-XML error page, XML edit-mode highlight, Open/Save panel
   types). Windows done; macOS (WKWebView port) pending.
+- YAML tree preview (`generic`, win:[ ] mac:[ ]): `.yaml`/`.yml` auto-open as a
+  collapsible tree (indentation-based subset: mappings, sequences, scalars,
+  comments; anchors/aliases/tags stripped, not resolved), `$.` copy paths,
+  YAML edit-mode highlight. Windows pending; macOS pending.
+- TOML tree preview (`generic`, win:[ ] mac:[ ]): `.toml` auto-open as a
+  collapsible tree (tables, arrays of tables, dotted keys expanded),
+  `$.` copy paths, TOML edit-mode highlight. Windows pending; macOS pending.
+- INI tree preview (`generic`, win:[ ] mac:[ ]): `.ini`/`.cfg`/`.inf`/
+  `.properties`/`.env*` as a collapsible tree (sections, `=`/`:` pairs,
+  `;`/`#` comments, `\` continuations), `$.` copy paths, INI edit-mode
+  highlight. Windows pending; macOS pending.
+- CSV grid preview (`generic`, win:[ ] mac:[ ]): `.csv`/`.tsv` as a grid
+  (sniffed delimiter, quoted/multiline fields, header row, row cap with
+  banner, search, copy raw line, click-to-line). No edit-mode highlight
+  (plain text). Windows pending; macOS pending.
 - Save via keyboard on macOS (`generic`, win:[x] mac:[ ]): ⌘S saves the active
   tab, plus cheatsheet row (like Windows Ctrl+S).
 - Tab drag-reorder on macOS (`generic`, win:[x] mac:[ ]): checklist says

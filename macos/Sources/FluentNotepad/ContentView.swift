@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 /// Main window: tab strip, native toolbar, editor/preview, find bar, status bar.
@@ -46,8 +47,14 @@ struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: .escapeToggle)) { _ in
             // ESC flips Edit/Preview (both directions). The find field keeps
             // its own Escape (close bar): the monitor below lets it through.
-            if let doc = store.selected, doc.isMarkdown {
-                showPreview(doc, !doc.showPreview)
+            // The tree preview's search owns ESC first (clears it, stays put).
+            if let doc = store.selected, doc.canPreview {
+                if doc.showPreview, doc.isJSON, !doc.treeQuery.isEmpty {
+                    doc.treeQuery = ""
+                    store.webRef.runJS("if(window.__fnClearSearch)window.__fnClearSearch();")
+                } else {
+                    showPreview(doc, !doc.showPreview)
+                }
             }
         }
         .onDrop(of: [.fileURL], isTargeted: nil, perform: handleDrop)
@@ -59,9 +66,18 @@ struct ContentView: View {
     private var editorArea: some View {
         ZStack(alignment: .topTrailing) {
             if let doc {
-                if doc.showPreview, doc.isMarkdown {
+                if doc.showPreview, doc.canPreview {
                     PreviewView(html: doc.renderedHTML, webRef: store.webRef,
-                        onFileDrop: { store.open(url: $0) })
+                        onFileDrop: { store.open(url: $0) },
+                        onTreeLine: { jumpToLine($0) },
+                        onTreeCopy: {
+                            NSPasteboard.general.clearContents()
+                            NSPasteboard.general.setString($0, forType: .string)
+                        },
+                        onTreeState: {
+                            doc.treeOpen = Set($0)
+                            doc.treeQuery = $1
+                        })
                         .onAppear { render(doc) }
                 } else {
                     EditorView(doc: doc, fontSize: store.effectiveFontSize, wrap: store.wrap, dark: dark,
@@ -84,7 +100,7 @@ struct ContentView: View {
                 Divider().frame(height: 12)
                 Text(L("statusChars", doc.text.count))
                 Divider().frame(height: 12)
-                Text(doc.isMarkdown ? "Markdown" : L("fileTypePlain"))
+                Text(doc.isMarkdown ? "Markdown" : doc.isJSON ? L("fileTypeJson") : L("fileTypePlain"))
                 Spacer()
                 Stepper(value: $store.zoom, in: 0.5 ... 3.0, step: 0.1) {
                     Text("\(Int(store.zoom * 100))%")
@@ -116,7 +132,7 @@ struct ContentView: View {
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         ToolbarItemGroup(placement: .primaryAction) {
-            if let doc, doc.isMarkdown {
+            if let doc, doc.canPreview {
                 Picker("", selection: Bindable(doc).showPreview) {
                     Text(L("edit")).tag(false)
                     Text(L("preview")).tag(true)
@@ -127,7 +143,7 @@ struct ContentView: View {
             }
         }
         ToolbarItemGroup(placement: .secondaryAction) {
-            fmtButtons
+            if doc?.isMarkdown == true { fmtButtons }
         }
         ToolbarItemGroup(placement: .navigation) {
             Button { if let doc { store.save(doc) } } label: {
@@ -170,22 +186,27 @@ struct ContentView: View {
 
     private func scheduleRender() {
         renderTimer?.invalidate()
-        guard let doc, doc.isMarkdown, doc.showPreview else { return }
+        guard let doc, doc.canPreview, doc.showPreview else { return }
         renderTimer = Timer.scheduledTimer(withTimeInterval: 0.4, repeats: false) { _ in render(doc) }
     }
 
     private func renderSelected() {
-        if let doc, doc.isMarkdown, doc.showPreview { render(doc) }
+        if let doc, doc.canPreview, doc.showPreview { render(doc) }
     }
 
     private func render(_ doc: Doc) {
+        if doc.isJSON {
+            doc.renderedHTML = JsonTree.build(doc.text, dark: dark,
+                fontSize: store.effectiveFontSize, title: doc.fileName, open: doc.treeOpen)
+            return
+        }
         let base = doc.path.map { URL(fileURLWithPath: $0).deletingLastPathComponent().path }
         doc.renderedHTML = MarkdownHTML.build(doc.text, baseDir: base, dark: dark,
             fontSize: store.effectiveFontSize, title: doc.fileName)
     }
 
     private func showPreview(_ doc: Doc, _ show: Bool) {
-        guard doc.isMarkdown else { return }
+        guard doc.canPreview else { return }
         doc.showPreview = show
         if show { render(doc) }
     }
@@ -193,7 +214,7 @@ struct ContentView: View {
     // MARK: - Click-to-source: preview click -> editor caret on that line
 
     private func jumpToLine(_ line: Int) {
-        guard let doc = store.selected, doc.isMarkdown, !doc.text.isEmpty else { return }
+        guard let doc = store.selected, doc.canPreview, !doc.text.isEmpty else { return }
         showPreview(doc, false)
         doc.revealRange = NSRange(location: lineStartOffset(doc.text, line: line), length: 0)
     }

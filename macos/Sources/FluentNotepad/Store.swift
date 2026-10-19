@@ -87,7 +87,7 @@ final class Store: @unchecked Sendable {
         if let p = path {
             d.lineEnding = Doc.detectLineEnding(content)
             d.fileEncoding = Doc.detectEncoding(URL(fileURLWithPath: p))
-            if d.isMarkdown { d.showPreview = true }
+            if d.canPreview { d.showPreview = true }
         }
         docs.append(d)
         selected = d
@@ -139,10 +139,18 @@ final class Store: @unchecked Sendable {
         ["md", "markdown"].compactMap { UTType(filenameExtension: $0) }
     }
 
+    /// Open accepts plain text + JSON (.json is public.text, not plain-text,
+    /// so it needs listing; .jsonc has no system UTI and is declared below).
+    static var openTypes: [UTType] {
+        var t: [UTType] = [.plainText, .json]
+        if let j = UTType(filenameExtension: "jsonc", conformingTo: .text) { t.append(j) }
+        return t
+    }
+
     func openPanel() {
         let p = NSOpenPanel()
         p.allowsMultipleSelection = false
-        p.allowedContentTypes = [UTType.plainText]
+        p.allowedContentTypes = Self.openTypes
         if p.runModal() == .OK, let url = p.url { open(url: url) }
     }
 
@@ -151,7 +159,7 @@ final class Store: @unchecked Sendable {
         if doc.path == nil {
             let p = NSSavePanel()
             p.nameFieldStringValue = L("untitled") + (doc.isMarkdown ? ".md" : ".txt")
-            p.allowedContentTypes = doc.isMarkdown ? Self.mdTypes : [UTType.plainText]
+            p.allowedContentTypes = doc.isJSON ? [.json] : doc.isMarkdown ? Self.mdTypes : [UTType.plainText]
             guard p.runModal() == .OK, let url = p.url else { return false }
             doc.path = url.path
         }

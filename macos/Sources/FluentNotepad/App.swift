@@ -162,7 +162,7 @@ func installEscMonitor(for w: NSWindow, store: Store) -> Any {
             if let tv = fr as? NSTextView, tv.hasMarkedText() { return event }
             if fr is NSTextField { return event }
         }
-        guard let doc = store.selected, doc.isMarkdown else { return event }
+        guard let doc = store.selected, doc.canPreview else { return event }
         NotificationCenter.default.post(name: .escapeToggle, object: nil)
         return nil
     }
@@ -223,7 +223,7 @@ struct FluentNotepadApp: App {
                 Divider()
                 Button(L("print")) {
                     let s = WindowStores.frontmost()
-                    if let d = s.selected, d.isMarkdown {
+                    if let d = s.selected, d.canPreview {
                         if !d.showPreview { d.showPreview = true }
                         s.webRef.print()
                     }
@@ -244,7 +244,7 @@ struct FluentNotepadApp: App {
                         .keyboardShortcut("0", modifiers: .command)
                     Divider()
                     Button(L("togglePreview")) {
-                        if let d = WindowStores.frontmost().selected, d.isMarkdown { d.showPreview.toggle() }
+                        if let d = WindowStores.frontmost().selected, d.canPreview { d.showPreview.toggle() }
                     }.keyboardShortcut("v", modifiers: [.command, .shift])
                     Toggle(L("wordWrap"), isOn: Bindable(WindowStores.frontmost()).wrap)
                 }

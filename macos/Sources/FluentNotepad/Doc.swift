@@ -22,6 +22,11 @@ final class Doc: Identifiable, @unchecked Sendable {
     /// One-shot reveal for find matches (select + scroll + flash).
     var revealRange: NSRange?
 
+    /// Per-tab tree-preview state (JSON): RFC 6901 pointers of open nodes +
+    /// last search text (mirrors Windows' JsonOpen/JsonQuery).
+    var treeOpen = Set<String>()
+    var treeQuery = ""
+
     var dirty: Bool { text != savedText }
 
     var isMarkdown: Bool {
@@ -31,6 +36,15 @@ final class Doc: Identifiable, @unchecked Sendable {
         let l = p.lowercased()
         return l.hasSuffix(".md") || l.hasSuffix(".markdown")
     }
+
+    var isJSON: Bool {
+        guard let p = path else { return false }
+        let l = p.lowercased()
+        return l.hasSuffix(".json") || l.hasSuffix(".jsonc")
+    }
+
+    /// Anything with a graphical preview (Markdown + tree previews).
+    var canPreview: Bool { isMarkdown || isJSON }
 
     var fileName: String { path.map { URL(fileURLWithPath: $0).lastPathComponent } ?? L("untitled") }
 
