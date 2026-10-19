@@ -20,14 +20,16 @@ Same intents on both platforms — see the parity checklist in [AGENTS.md](AGENT
 The repo contains sources only (builds and setups are **not** versioned). Same
 version number = same features on both platforms (see Changelogs below).
 
-- **Windows**: [Releases](../../releases) page → `FluentNotepad-Setup-2.9.2-win-x64.exe` (per-machine install in Program Files, optional file associations)
+- **Windows**: [Releases](../../releases) page → `FluentNotepad-Setup-2.9.3-win-x64.exe` (per-machine install in Program Files, optional file associations)
 - **macOS**: [Releases](../../releases) page → `FluentNotepad.dmg` from a `macos-vX.Y.Z` release → drag `FluentNotepad.app` into Applications. First launch: right-click → Open (ad-hoc signature).
 
 Or build it yourself: see `windows/AGENTS.md` (Build/run) and `macos/AGENTS.md` (Build/run).
 
 ## Changelog
 
-Same version number = same features everywhere. Windows is at `2.9.2`, macOS at `2.7.0` (JSON/XML previews pending there).
+Same version number = same features everywhere. Windows is at `2.9.3`, macOS at `2.7.0` (JSON/XML previews pending there).
+
+- **2.9.3** (Windows) — Version info lives only in Help > About now, removed from Settings (both platforms).
 
 - **2.9.2** (Windows) — Help > About dialog (macOS uses the native app-menu About).
 - **2.9.1** (Windows) — Setup now offers optional `.json`/`.jsonc`/`.xml` file associations (unchecked by default).
@@ -36,8 +38,6 @@ Same version number = same features everywhere. Windows is at `2.9.2`, macOS at 
 - **2.7.0** — In-app keyboard-shortcuts reference (Help menu, both languages). macOS also: app icon back on the mounted DMG volume (plus custom icon on the `.dmg` file); build number shown in About.
 Last 5 entries; full history in [Releases](../../releases) and the Done section
 of [TODO.md](TODO.md) (archived at each release).
-
-- **2.6.3** — Code cleanup only, no behavior change: shared Markdown pipeline/palette, native click-to-source renderer and clipboard ops on Windows, unified file-drop helper and precomputed highlight fonts on macOS, docs/config dedup.
 
 ## License
 
