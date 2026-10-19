@@ -295,6 +295,7 @@ public sealed partial class MainWindow : Window
         // Begin/End calls are no-ops; empty groups are discarded by TOM.
         box.KeyDown += (_, _) =>
         {
+            _flashGen++; // user took over: abort any caret-line flash
             try { box.Document.BeginUndoGroup(); }
             catch (Exception ex) { Debug.WriteLine($"UndoGroup: {ex.Message}"); }
         };
@@ -317,6 +318,7 @@ public sealed partial class MainWindow : Window
             d.TextLen = t.Length;
             d.TextHash = h;
             d.Dirty = true;
+            _flashGen++; // real text change (not formatting): abort any caret-line flash
             RefreshHeader(d);
             RefreshSaveBtn();
             if (d.CanPreview() && d.PreviewVisible) { _previewTimer.Stop(); _previewTimer.Start(); }
@@ -673,6 +675,40 @@ public sealed partial class MainWindow : Window
         if (show) RenderPreview(d);
         ShowActiveContent();
         RefreshMdUi();
+        if (!show) FlashCaretLine();
+    }
+
+    // Caret-line flash (two blinks) when entering Edit: selection-only, so it
+    // never touches the undo stack or RichEdit formatting (AV-safe, unlike a
+    // paint). Any real edit, key press or tab switch aborts it via _flashGen.
+    private int _flashGen;
+
+    private async void FlashCaretLine()
+    {
+        var d = GetActiveDoc();
+        var box = d?.Editor;
+        if (d == null || box == null || d.PreviewVisible || box.Parent == null) return;
+        int gen = ++_flashGen;
+        var (os, ol) = GetSelection(box);
+        string text;
+        try { text = GetEditorText(box); }
+        catch (Exception ex) { Debug.WriteLine($"Flash: {ex.Message}"); return; }
+        if (!TextUtil.TryGetLineRange(text, os, out int ls, out int len)) return;
+        try
+        {
+            for (int k = 0; k < 2; k++)
+            {
+                if (gen != _flashGen || !ReferenceEquals(GetActiveDoc(), d)) return;
+                SetSelection(box, ls, len);
+                await Task.Delay(140);
+                if (gen != _flashGen || !ReferenceEquals(GetActiveDoc(), d)) { SetSelection(box, os, ol); return; }
+                var (cs, cl) = GetSelection(box);
+                if (cs != ls || cl != len) return; // user moved on; keep their selection
+                SetSelection(box, os, ol);
+                await Task.Delay(140);
+            }
+        }
+        catch (Exception ex) { Debug.WriteLine($"Flash: {ex.Message}"); }
     }
 
     private void TogglePreview()
@@ -1005,6 +1041,7 @@ public sealed partial class MainWindow : Window
         UpdateStatus();
         RefreshFileLabels();
         RefreshMdUi();
+        FlashCaretLine(); // no-op unless the new tab is in Edit
     }
 
     // ================= EDIT =================
