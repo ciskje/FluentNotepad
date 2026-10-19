@@ -25,6 +25,7 @@ public static class JsonPreviewHtml
     public const int MaxKidsAfterTrunc = 1000;
 
     // t: o = object, a = array, s = string, n = number (raw literal), b = bool, u = null.
+    // m = leading comments, e = trailing comments (shown dimmed, never copied).
     private sealed class JNode
     {
         public string? k { get; set; }
@@ -34,6 +35,10 @@ public static class JsonPreviewHtml
         public List<JNode>? c { get; set; }
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public bool tr { get; set; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<string>? m { get; set; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<string>? e { get; set; }
     }
 
     public static string Build(string text, bool dark, double fontSize, string? title, ISet<string>? open)
@@ -84,13 +89,53 @@ public static class JsonPreviewHtml
     {
         truncated = false;
         if (string.IsNullOrWhiteSpace(text)) throw new JsonException("The JSON document is empty.");
-        byte[] bytes = Encoding.UTF8.GetBytes(text);
-        // Byte-based line starts (\n never hides inside a UTF-8 multibyte sequence):
-        // TokenStartIndex is a byte offset, so this maps 1:1 even past non-ASCII.
-        var starts = new List<int> { 0 };
-        for (int i = 0; i < bytes.Length; i++)
-            if (bytes[i] == (byte)'\n') starts.Add(i + 1);
-        int LineOf(long bytePos)
+        var w = new Walker(text);
+        // Leading comments belong to the root.
+        while (true)
+        {
+            if (!w.r.Read()) throw new JsonException("The JSON document is empty.");
+            if (w.r.TokenType == JsonTokenType.Comment) { w.pending.Add(w.r.GetComment()); continue; }
+            break;
+        }
+        var root = w.ReadValue(0);
+        // Trailing comments belong to the root end; anything else is garbage.
+        while (w.r.Read())
+        {
+            if (w.r.TokenType == JsonTokenType.Comment) { (root.e ??= new List<string>()).Add(w.r.GetComment()); continue; }
+            throw new JsonException("Extra content after the JSON document.");
+        }
+        truncated = w.trunc;
+        return root;
+    }
+
+    // Comments ride in the same token stream (CommentHandling.Allow) and are
+    // attached as leading (m) or trailing (e) remarks of the node they stick to.
+    // A ref struct (like the Utf8JsonReader it owns): stack-only, never boxed.
+    private ref struct Walker
+    {
+        public readonly byte[] bytes;
+        // Byte-based line starts (\n never hides inside a UTF-8 multibyte
+        // sequence): TokenStartIndex is a byte offset, so this maps 1:1 even
+        // past non-ASCII.
+        public readonly List<int> starts = new() { 0 };
+        public Utf8JsonReader r;
+        public int count;
+        public bool trunc;
+        public readonly List<string> pending = new();
+
+        public Walker(string text)
+        {
+            bytes = Encoding.UTF8.GetBytes(text);
+            for (int i = 0; i < bytes.Length; i++)
+                if (bytes[i] == (byte)'\n') starts.Add(i + 1);
+            r = new Utf8JsonReader(bytes, new JsonReaderOptions
+            {
+                CommentHandling = JsonCommentHandling.Allow,
+                AllowTrailingCommas = true,
+            });
+        }
+
+        public int LineOf(long bytePos)
         {
             int lo = 0, hi = starts.Count - 1;
             while (lo < hi)
@@ -101,110 +146,118 @@ public static class JsonPreviewHtml
             }
             return lo + 1;
         }
-        var reader = new Utf8JsonReader(bytes, new JsonReaderOptions
-        {
-            CommentHandling = JsonCommentHandling.Skip,
-            AllowTrailingCommas = true,
-        });
-        int count = 0;
-        bool trunc = false;
-        if (!reader.Read()) throw new JsonException("The JSON document is empty.");
-        var root = ReadValue(ref reader, LineOf, 0, ref count, ref trunc);
-        if (reader.Read()) throw new JsonException("Extra content after the JSON document.");
-        truncated = trunc;
-        return root;
-    }
 
-    private static JNode ReadValue(ref Utf8JsonReader r, Func<long, int> lineOf, int depth,
-        ref int count, ref bool trunc)
-    {
-        count++;
-        if (count > MaxNodes || depth > MaxDepth)
+        public List<string>? TakePending()
         {
-            // Cap hit: swallow the whole value, leave one widow marker.
-            trunc = true;
-            int l = lineOf(r.TokenStartIndex);
-            SkipValue(ref r);
-            return new JNode { t = "s", v = "…", l = l };
+            if (pending.Count == 0) return null;
+            var l = new List<string>(pending);
+            pending.Clear();
+            return l;
         }
-        switch (r.TokenType)
+
+        // Current token is the value's first token. Consumes through its end.
+        public JNode ReadValue(int depth)
         {
-            case JsonTokenType.StartObject:
-                {
-                    var node = new JNode { t = "o", l = lineOf(r.TokenStartIndex), c = new List<JNode>() };
-                    while (r.Read())
+            count++;
+            if (count > MaxNodes || depth > MaxDepth)
+            {
+                // Cap hit: swallow the whole value, leave one widow marker.
+                trunc = true;
+                pending.Clear();
+                int l = LineOf(r.TokenStartIndex);
+                SkipValue();
+                return new JNode { t = "s", v = "…", l = l };
+            }
+            switch (r.TokenType)
+            {
+                case JsonTokenType.StartObject:
                     {
-                        if (r.TokenType == JsonTokenType.EndObject) return node;
-                        if (r.TokenType != JsonTokenType.PropertyName)
-                            throw new JsonException("Invalid JSON: expected a property name.");
-                        string key = r.GetString() ?? "";
-                        if (!r.Read()) throw new JsonException("Invalid JSON: unexpected end of document.");
-                        var child = ReadValue(ref r, lineOf, depth + 1, ref count, ref trunc);
-                        child.k = key;
-                        node.c.Add(child);
-                        if (trunc && node.c.Count >= MaxKidsAfterTrunc)
+                        var node = new JNode { t = "o", l = LineOf(r.TokenStartIndex), c = new List<JNode>(), m = TakePending() };
+                        while (r.Read())
                         {
-                            SkipRest(ref r, JsonTokenType.EndObject);
-                            return node;
+                            if (r.TokenType == JsonTokenType.Comment) { pending.Add(r.GetComment()); continue; }
+                            if (r.TokenType == JsonTokenType.EndObject) { node.e = TakePending(); return node; }
+                            if (r.TokenType != JsonTokenType.PropertyName)
+                                throw new JsonException("Invalid JSON: expected a property name.");
+                            string key = r.GetString() ?? "";
+                            while (true)
+                            {
+                                if (!r.Read()) throw new JsonException("Invalid JSON: unexpected end of document.");
+                                if (r.TokenType == JsonTokenType.Comment) { pending.Add(r.GetComment()); continue; }
+                                break;
+                            }
+                            var child = ReadValue(depth + 1);
+                            child.k = key;
+                            child.m = TakePending();
+                            node.c.Add(child);
+                            if (trunc && node.c.Count >= MaxKidsAfterTrunc)
+                            {
+                                pending.Clear();
+                                SkipRest(JsonTokenType.EndObject);
+                                return node;
+                            }
+                        }
+                        throw new JsonException("Invalid JSON: unexpected end of document.");
+                    }
+                case JsonTokenType.StartArray:
+                    {
+                        var node = new JNode { t = "a", l = LineOf(r.TokenStartIndex), c = new List<JNode>(), m = TakePending() };
+                        while (true)
+                        {
+                            if (!r.Read()) throw new JsonException("Invalid JSON: unexpected end of document.");
+                            if (r.TokenType == JsonTokenType.Comment) { pending.Add(r.GetComment()); continue; }
+                            if (r.TokenType == JsonTokenType.EndArray) { node.e = TakePending(); return node; }
+                            var child = ReadValue(depth + 1);
+                            child.m = TakePending();
+                            node.c.Add(child);
+                            if (trunc && node.c.Count >= MaxKidsAfterTrunc)
+                            {
+                                pending.Clear();
+                                SkipRest(JsonTokenType.EndArray);
+                                return node;
+                            }
                         }
                     }
-                    throw new JsonException("Invalid JSON: unexpected end of document.");
-                }
-            case JsonTokenType.StartArray:
-                {
-                    var node = new JNode { t = "a", l = lineOf(r.TokenStartIndex), c = new List<JNode>() };
-                    while (r.Read())
+                case JsonTokenType.String:
+                    return new JNode { t = "s", v = r.GetString() ?? "", l = LineOf(r.TokenStartIndex), m = TakePending() };
+                case JsonTokenType.Number:
                     {
-                        if (r.TokenType == JsonTokenType.EndArray) return node;
-                        var child = ReadValue(ref r, lineOf, depth + 1, ref count, ref trunc);
-                        node.c.Add(child);
-                        if (trunc && node.c.Count >= MaxKidsAfterTrunc)
-                        {
-                            SkipRest(ref r, JsonTokenType.EndArray);
-                            return node;
-                        }
+                        string raw = r.HasValueSequence
+                            ? Encoding.UTF8.GetString(r.ValueSequence.ToArray())
+                            : Encoding.UTF8.GetString(r.ValueSpan);
+                        return new JNode { t = "n", v = raw, l = LineOf(r.TokenStartIndex), m = TakePending() };
                     }
-                    throw new JsonException("Invalid JSON: unexpected end of document.");
-                }
-            case JsonTokenType.String:
-                return new JNode { t = "s", v = r.GetString() ?? "", l = lineOf(r.TokenStartIndex) };
-            case JsonTokenType.Number:
-                {
-                    string raw = r.HasValueSequence
-                        ? Encoding.UTF8.GetString(r.ValueSequence.ToArray())
-                        : Encoding.UTF8.GetString(r.ValueSpan);
-                    return new JNode { t = "n", v = raw, l = lineOf(r.TokenStartIndex) };
-                }
-            case JsonTokenType.True:
-                return new JNode { t = "b", v = "true", l = lineOf(r.TokenStartIndex) };
-            case JsonTokenType.False:
-                return new JNode { t = "b", v = "false", l = lineOf(r.TokenStartIndex) };
-            case JsonTokenType.Null:
-                return new JNode { t = "u", l = lineOf(r.TokenStartIndex) };
-            default:
-                throw new JsonException("Invalid JSON: unexpected token.");
+                case JsonTokenType.True:
+                    return new JNode { t = "b", v = "true", l = LineOf(r.TokenStartIndex), m = TakePending() };
+                case JsonTokenType.False:
+                    return new JNode { t = "b", v = "false", l = LineOf(r.TokenStartIndex), m = TakePending() };
+                case JsonTokenType.Null:
+                    return new JNode { t = "u", l = LineOf(r.TokenStartIndex), m = TakePending() };
+                default:
+                    throw new JsonException("Invalid JSON: unexpected token.");
+            }
         }
-    }
 
-    private static void SkipValue(ref Utf8JsonReader r)
-    {
-        if (r.TokenType is not (JsonTokenType.StartObject or JsonTokenType.StartArray)) return;
-        int d = 1;
-        while (d > 0 && r.Read())
+        public void SkipValue()
         {
-            if (r.TokenType is JsonTokenType.StartObject or JsonTokenType.StartArray) d++;
-            else if (r.TokenType is JsonTokenType.EndObject or JsonTokenType.EndArray) d--;
+            if (r.TokenType is not (JsonTokenType.StartObject or JsonTokenType.StartArray)) return;
+            int d = 1;
+            while (d > 0 && r.Read())
+            {
+                if (r.TokenType is JsonTokenType.StartObject or JsonTokenType.StartArray) d++;
+                else if (r.TokenType is JsonTokenType.EndObject or JsonTokenType.EndArray) d--;
+            }
         }
-    }
 
-    private static void SkipRest(ref Utf8JsonReader r, JsonTokenType end)
-    {
-        int d = 0;
-        while (r.Read())
+        public void SkipRest(JsonTokenType end)
         {
-            if (r.TokenType is JsonTokenType.StartObject or JsonTokenType.StartArray) d++;
-            else if (r.TokenType == end && d == 0) return;
-            else if (r.TokenType is JsonTokenType.EndObject or JsonTokenType.EndArray) d--;
+            int d = 0;
+            while (r.Read())
+            {
+                if (r.TokenType is JsonTokenType.StartObject or JsonTokenType.StartArray) d++;
+                else if (r.TokenType == end && d == 0) return;
+                else if (r.TokenType is JsonTokenType.EndObject or JsonTokenType.EndArray) d--;
+            }
         }
     }
 
@@ -249,6 +302,7 @@ public static class JsonPreviewHtml
         ".nd.open>.row .chev::before{transform:rotate(90deg)}" +
         ".nochev{width:14px;flex:none}" +
         ".k{color:" + p.JsonKey.Hex + "}" +
+        ".cm{color:" + p.JsonComment.Hex + ";font-style:italic;white-space:pre-wrap;word-break:break-word;margin:1px 4px}" +
         ".pu,.ix,.sum{color:" + p.Dim.Hex + "}" +
         ".rp{color:" + p.Marker.Hex + ";font-weight:700}" +
         ".vs{color:" + p.JsonString.Hex + "}" +
@@ -274,6 +328,7 @@ public static class JsonPreviewHtml
         ".row:hover{background:none!important}.kids{display:block!important}.nd.open>.row .sum{display:none!important}" +
         ".k{color:#001080!important}.pu,.ix,.sum{color:#808080!important}.rp{color:#0F6CBD!important}" +
         ".vs{color:#A31515!important}.vn{color:#098658!important}.vb{color:#0F6CBD!important}.vl{color:#808080!important}" +
+        ".cm{color:#008000!important}" +
         "mark{background:#FFD866!important;color:#111!important}}" +
         "";
 
@@ -306,6 +361,7 @@ public static class JsonPreviewHtml
         function buildNd(n,p,j,key,isIdx,isRoot){
         var u='u'+(++uidc);n._u=u;
         var nd=E('div','nd');nd.setAttribute('data-p',p);
+        if(n.m)for(var mi=0;mi<n.m.length;mi++){var cm0=E('div','cm');cm0.textContent=disp(n.m[mi]);nd.appendChild(cm0);}
         var row=E('div','row');row.setAttribute('data-u',u);row.tabIndex=0;
         var h=isC(n)?'<span class=chev></span>':'<span class=nochev></span>';
         if(isRoot)h+='<span class=rp>$</span> ';
@@ -315,6 +371,7 @@ public static class JsonPreviewHtml
         h+='<button class=ic title="'+esc(STR.cp)+'" data-w=p tabindex="-1">$</button>';
         h+='<button class=ic title="'+esc(STR.cv)+'" data-w=v tabindex="-1">'+icoV+'</button>';
         row.innerHTML=h;nd.appendChild(row);nd.appendChild(E('div','kids'));
+        if(n.e)for(var ei=0;ei<n.e.length;ei++){var cm1=E('div','cm');cm1.textContent=disp(n.e[ei]);nd.appendChild(cm1);}
         byUid[u]={n:n,el:nd,p:p,j:j};(byPtr[p]||(byPtr[p]=[])).push(u);
         return nd;
         }
@@ -367,6 +424,8 @@ public static class JsonPreviewHtml
         }
         function matchN(n,key,q){
         if(key&&key.toLowerCase().indexOf(q)>=0)return true;
+        if(n.m)for(var i=0;i<n.m.length;i++)if(String(n.m[i]).toLowerCase().indexOf(q)>=0)return true;
+        if(n.e)for(var k=0;k<n.e.length;k++)if(String(n.e[k]).toLowerCase().indexOf(q)>=0)return true;
         if(n.t==='s')return String(n.v).toLowerCase().indexOf(q)>=0;
         if(n.t==='n'||n.t==='b')return String(n.v).toLowerCase().indexOf(q)>=0;
         if(n.t==='u')return 'null'.indexOf(q)>=0;
@@ -385,7 +444,7 @@ public static class JsonPreviewHtml
         if(!rec)return;
         var row=rec.el.querySelector(':scope > .row');if(!row)return;
         row.classList.add('hit');
-        var ts=row.querySelectorAll('.k,.vv');
+        var ts=rec.el.querySelectorAll(':scope > .row .k,:scope > .row .vv,:scope > .cm');
         for(var i=0;i<ts.length;i++)markIn(ts[i],q);
         }
         function markIn(el,q){
@@ -397,8 +456,8 @@ public static class JsonPreviewHtml
         function clearMarks(){
         host.querySelectorAll('.hit').forEach(function(r){r.classList.remove('hit');});
         host.querySelectorAll('.cur').forEach(function(r){r.classList.remove('cur');});
-        for(var u in byUid){var row=byUid[u].el.querySelector(':scope > .row');if(!row)continue;
-        var ts=row.querySelectorAll('.k,.vv');
+        for(var u in byUid){var nd=byUid[u].el;if(!nd)continue;
+        var ts=nd.querySelectorAll(':scope > .row .k,:scope > .row .vv,:scope > .cm');
         for(var i=0;i<ts.length;i++)if(ts[i]._o!==undefined){ts[i].textContent=ts[i]._o;delete ts[i]._o;}}
         }
         function updateCnt(){
@@ -428,7 +487,8 @@ public static class JsonPreviewHtml
         function init(){
         host.innerHTML='';
         var r=buildNd(root,'','$',null,false,true);
-        rootUid=r.firstChild.getAttribute('data-u');
+        var row0=r.querySelector(':scope > .row');
+        rootUid=row0.getAttribute('data-u');
         host.appendChild(r);
         r.classList.add('open');
         if(isC(root))renderKids(r,byUid[rootUid]);
