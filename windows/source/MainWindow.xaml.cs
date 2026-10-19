@@ -813,6 +813,7 @@ public sealed partial class MainWindow : Window
         bool isMd = d?.IsMarkdown == true;
         bool isTree = (d?.IsTree() == true) || d?.IsCsv == true;
         bool isPv = isMd || isTree;
+        MdToggle.Visibility = isPv ? Visibility.Visible : Visibility.Collapsed;
         FileTypeLabel.Text = isMd ? "Markdown"
             : d?.IsJson == true ? "JSON"
             : d?.IsXml == true ? "XML"
