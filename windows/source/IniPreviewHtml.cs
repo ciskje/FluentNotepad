@@ -172,20 +172,5 @@ public static class IniPreviewHtml
             return (s, null);
         }
 
-        static string StripInlineComment(string s)
-        {
-            bool inS = false, inD = false;
-            for (int i = 0; i < s.Length; i++)
-            {
-                char c = s[i];
-                if (inS) { if (c == '\'') inS = false; continue; }
-                if (inD) { if (c == '\\') i++; else if (c == '"') inD = false; continue; }
-                if (c == '\'') { inS = true; continue; }
-                if (c == '"') { inD = true; continue; }
-                if ((c == ';' || c == '#') && i > 0 && (s[i - 1] == ' ' || s[i - 1] == '\t'))
-                    return s[..(i - 1)].TrimEnd();
-            }
-            return s;
-        }
     }
 }
