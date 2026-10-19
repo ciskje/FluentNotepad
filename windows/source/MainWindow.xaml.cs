@@ -563,6 +563,9 @@ public sealed partial class MainWindow : Window
         var b = d.Editor;
         SetSelection(b, off, 0);
         b.Focus(FocusState.Programmatic);
+        // ShowPreview above already flashed the OLD line (aborted below when the
+        // caret moved): flash the target line now that it is selected.
+        FlashCaretLine();
     }
 
     // Copy of the tree path/value buttons (navigator.clipboard is unreliable on
