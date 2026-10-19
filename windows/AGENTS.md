@@ -14,7 +14,7 @@ Release + installer:
 
 ```bash
 dotnet publish source\FluentNotepad.WinUI.csproj -c Release -p:Platform=x64
-iscc installer\FluentNotepad.iss   # requires Inno Setup 6, output in installer\dist\
+iscc installer\FluentNotepad.iss   # requires Inno Setup 7, output in installer\dist\
 ```
 
 - The csproj copies the app's own `FluentNotepad.pri` + `*.xbf` into the publish
