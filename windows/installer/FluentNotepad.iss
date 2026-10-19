@@ -10,7 +10,7 @@
 ; ============================================================
 
 #define MyAppName "FluentNotepad"
-#define MyAppVersion "2.10.0"
+#define MyAppVersion "2.10.1"
 #define MyAppExeName "FluentNotepad.exe"
 #define PublishDir "..\source\bin\Release\net8.0-windows10.0.26100.0\win-x64\publish"
 #define IconFile "..\source\Assets\AppIcon.ico"
@@ -45,6 +45,10 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Name: "fileassoc"; Description: "Associate .md files with FluentNotepad"; GroupDescription: "File associations:"; Flags: unchecked
 Name: "fileassoc_json"; Description: "Associate .json/.jsonc files with FluentNotepad"; GroupDescription: "File associations:"; Flags: unchecked
 Name: "fileassoc_xml"; Description: "Associate .xml files with FluentNotepad"; GroupDescription: "File associations:"; Flags: unchecked
+Name: "fileassoc_yaml"; Description: "Associate .yaml/.yml files with FluentNotepad"; GroupDescription: "File associations:"; Flags: unchecked
+Name: "fileassoc_toml"; Description: "Associate .toml files with FluentNotepad"; GroupDescription: "File associations:"; Flags: unchecked
+Name: "fileassoc_ini"; Description: "Associate .ini/.cfg/.inf/.properties files with FluentNotepad"; GroupDescription: "File associations:"; Flags: unchecked
+Name: "fileassoc_csv"; Description: "Associate .csv/.tsv files with FluentNotepad"; GroupDescription: "File associations:"; Flags: unchecked
 
 [Files]
 ; Publish self-contained (includes the .NET runtime and Windows App SDK)
@@ -73,6 +77,35 @@ Root: HKLM; Subkey: "Software\Classes\.xml"; ValueType: string; ValueName: ""; V
 Root: HKLM; Subkey: "Software\Classes\FluentNotepad.xml"; ValueType: string; ValueName: ""; ValueData: "File XML"; Flags: uninsdeletekey; Tasks: fileassoc_xml
 Root: HKLM; Subkey: "Software\Classes\FluentNotepad.xml\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#MyAppExeName},0"; Tasks: fileassoc_xml
 Root: HKLM; Subkey: "Software\Classes\FluentNotepad.xml\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" ""%1"""; Tasks: fileassoc_xml
+
+; Optional .yaml/.yml association (unchecked by default: no hijacking).
+Root: HKLM; Subkey: "Software\Classes\.yaml"; ValueType: string; ValueName: ""; ValueData: "FluentNotepad.yaml"; Flags: uninsdeletevalue; Tasks: fileassoc_yaml
+Root: HKLM; Subkey: "Software\Classes\.yml"; ValueType: string; ValueName: ""; ValueData: "FluentNotepad.yaml"; Flags: uninsdeletevalue; Tasks: fileassoc_yaml
+Root: HKLM; Subkey: "Software\Classes\FluentNotepad.yaml"; ValueType: string; ValueName: ""; ValueData: "File YAML"; Flags: uninsdeletekey; Tasks: fileassoc_yaml
+Root: HKLM; Subkey: "Software\Classes\FluentNotepad.yaml\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#MyAppExeName},0"; Tasks: fileassoc_yaml
+Root: HKLM; Subkey: "Software\Classes\FluentNotepad.yaml\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" ""%1"""; Tasks: fileassoc_yaml
+
+; Optional .toml association (unchecked by default: no hijacking).
+Root: HKLM; Subkey: "Software\Classes\.toml"; ValueType: string; ValueName: ""; ValueData: "FluentNotepad.toml"; Flags: uninsdeletevalue; Tasks: fileassoc_toml
+Root: HKLM; Subkey: "Software\Classes\FluentNotepad.toml"; ValueType: string; ValueName: ""; ValueData: "File TOML"; Flags: uninsdeletekey; Tasks: fileassoc_toml
+Root: HKLM; Subkey: "Software\Classes\FluentNotepad.toml\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#MyAppExeName},0"; Tasks: fileassoc_toml
+Root: HKLM; Subkey: "Software\Classes\FluentNotepad.toml\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" ""%1"""; Tasks: fileassoc_toml
+
+; Optional .ini/.cfg/.inf/.properties association (unchecked by default).
+Root: HKLM; Subkey: "Software\Classes\.ini"; ValueType: string; ValueName: ""; ValueData: "FluentNotepad.ini"; Flags: uninsdeletevalue; Tasks: fileassoc_ini
+Root: HKLM; Subkey: "Software\Classes\.cfg"; ValueType: string; ValueName: ""; ValueData: "FluentNotepad.ini"; Flags: uninsdeletevalue; Tasks: fileassoc_ini
+Root: HKLM; Subkey: "Software\Classes\.inf"; ValueType: string; ValueName: ""; ValueData: "FluentNotepad.ini"; Flags: uninsdeletevalue; Tasks: fileassoc_ini
+Root: HKLM; Subkey: "Software\Classes\.properties"; ValueType: string; ValueName: ""; ValueData: "FluentNotepad.ini"; Flags: uninsdeletevalue; Tasks: fileassoc_ini
+Root: HKLM; Subkey: "Software\Classes\FluentNotepad.ini"; ValueType: string; ValueName: ""; ValueData: "File INI"; Flags: uninsdeletekey; Tasks: fileassoc_ini
+Root: HKLM; Subkey: "Software\Classes\FluentNotepad.ini\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#MyAppExeName},0"; Tasks: fileassoc_ini
+Root: HKLM; Subkey: "Software\Classes\FluentNotepad.ini\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" ""%1"""; Tasks: fileassoc_ini
+
+; Optional .csv/.tsv association (unchecked by default: no hijacking).
+Root: HKLM; Subkey: "Software\Classes\.csv"; ValueType: string; ValueName: ""; ValueData: "FluentNotepad.csv"; Flags: uninsdeletevalue; Tasks: fileassoc_csv
+Root: HKLM; Subkey: "Software\Classes\.tsv"; ValueType: string; ValueName: ""; ValueData: "FluentNotepad.csv"; Flags: uninsdeletevalue; Tasks: fileassoc_csv
+Root: HKLM; Subkey: "Software\Classes\FluentNotepad.csv"; ValueType: string; ValueName: ""; ValueData: "File CSV"; Flags: uninsdeletekey; Tasks: fileassoc_csv
+Root: HKLM; Subkey: "Software\Classes\FluentNotepad.csv\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#MyAppExeName},0"; Tasks: fileassoc_csv
+Root: HKLM; Subkey: "Software\Classes\FluentNotepad.csv\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" ""%1"""; Tasks: fileassoc_csv
 
 [Run]
 ; runasoriginaluser: without it, after an admin install the app would start elevated
