@@ -26,7 +26,7 @@ public static class PreviewTree
         public List<string>? e { get; set; }
     }
 
-    // Toolbar + search strings (generic wording, shared by JSON and XML).
+    // Toolbar + search strings (generic wording, shared by every tree preview).
     public static Dictionary<string, string> Strings() => new()
     {
         ["exp"] = MainWindow.Str("JsonExpandAll"),
@@ -36,6 +36,36 @@ public static class PreviewTree
         ["match"] = MainWindow.Str("JsonMatches"),
         ["none"] = MainWindow.Str("JsonNoMatch"),
     };
+
+    /// <summary>
+    /// Parse failure with a 1-based position (all tree parsers report lines
+    /// starting at 1, like the editor shows them).
+    /// </summary>
+    public sealed class TreeParseException(string message, int line, int column) : Exception(message)
+    {
+        public int Line { get; } = line;
+        public int Column { get; } = column;
+    }
+
+    /// <summary>
+    /// Generic invalid-document page (new tree previews share it; the JSON
+    /// and XML builders predate it and keep their own identical markup).
+    /// </summary>
+    public static string ErrorPage(bool dark, double fontSize, string? title,
+        string heading, string invalidLine, string details, string source, string hint)
+    {
+        var pal = new MarkdownShared.Palette(dark);
+        string src = source.Length > 100_000 ? source[..100_000] + "\n…" : source;
+        return "<!DOCTYPE html><html><head><meta charset='utf-8'>" +
+            "<meta name='color-scheme' content='" + (dark ? "dark" : "light") + "'>" +
+            "<title>" + System.Net.WebUtility.HtmlEncode(title ?? "Preview") + "</title>" +
+            "<style>" + Css(pal, fontSize) + "</style></head><body>" +
+            "<div class=err><div class=et>" + System.Net.WebUtility.HtmlEncode(heading) + "</div>" +
+            "<div class=em>" + System.Net.WebUtility.HtmlEncode(invalidLine) + "</div>" +
+            "<div class=ed>" + System.Net.WebUtility.HtmlEncode(details) + "</div>" +
+            "<pre>" + System.Net.WebUtility.HtmlEncode(src) + "</pre>" +
+            "<div class=eh>" + System.Net.WebUtility.HtmlEncode(hint) + "</div></div></body></html>";
+    }
     // MARK: - CSS
 
     public static string Css(MarkdownShared.Palette p, double fs) =>
