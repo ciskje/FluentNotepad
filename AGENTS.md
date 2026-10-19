@@ -35,6 +35,8 @@ Both builds implement the same intents; platform-native details may differ
 - XML tree preview for `.xml`/`.config` on the same schema (attributes as
   `@name` rows, XPath copy paths, XML comments shown, invalid-XML error,
   XML highlighting in edit mode)
+- YAML/TOML/INI tree previews (same collapsible schema, `$.` copy paths)
+- CSV grid preview (sniffed delimiter, header row, search, copy raw line)
 - In-app keyboard-shortcuts reference (Help menu, both languages)
 
 ## Change workflow

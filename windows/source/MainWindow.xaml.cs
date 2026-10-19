@@ -65,8 +65,15 @@ public sealed partial class MainWindow : Window
         public bool IsMarkdown;
         public bool IsJson;
         public bool IsXml;
+        public bool IsYaml;
+        public bool IsToml;
+        public bool IsIni;
+        public bool IsCsv;
         public bool PreviewVisible;
-        public bool CanPreview() => IsMarkdown || IsJson || IsXml;
+        public bool CanPreview() => IsMarkdown || IsJson || IsXml || IsYaml || IsToml || IsIni || IsCsv;
+        // Tree previews share the collapsible schema (JSON pointer + $. paths);
+        // CSV has its own grid page. Markdown stands alone (Markdig body).
+        public bool IsTree() => IsJson || IsXml || IsYaml || IsToml || IsIni;
         // Tree-preview state, per tab in memory: open node pointers + search text.
         // (XML uses index-based pointers; the same set works for both.)
         public HashSet<string> JsonOpen = new();
@@ -217,7 +224,7 @@ public sealed partial class MainWindow : Window
         // hosting, skip the wasted pass here.
         if (d.Editor.Parent == null) return;
         string text = GetEditorText(d.Editor);
-        string key = $"{text.Length}-{text.GetHashCode()}-{EffectiveFontSize()}-{_dark}-{d.IsMarkdown}-{d.IsJson}-{d.IsXml}";
+        string key = $"{text.Length}-{text.GetHashCode()}-{EffectiveFontSize()}-{_dark}-{d.IsMarkdown}-{d.IsJson}-{d.IsXml}-{d.IsYaml}-{d.IsToml}-{d.IsIni}";
         if (key == d.HighlightKey) return;
         d.HighlightKey = key;
         _highlighting = true;
@@ -225,6 +232,9 @@ public sealed partial class MainWindow : Window
         {
             if (d.IsJson) JsonHighlight.Apply(d.Editor, _dark, EffectiveFontSize(), BaseTextColor(), BaseBgColor());
             else if (d.IsXml) XmlHighlight.Apply(d.Editor, _dark, EffectiveFontSize(), BaseTextColor(), BaseBgColor());
+            else if (d.IsYaml) YamlHighlight.Apply(d.Editor, _dark, EffectiveFontSize(), BaseTextColor(), BaseBgColor());
+            else if (d.IsToml) TomlHighlight.Apply(d.Editor, _dark, EffectiveFontSize(), BaseTextColor(), BaseBgColor());
+            else if (d.IsIni) IniHighlight.Apply(d.Editor, _dark, EffectiveFontSize(), BaseTextColor(), BaseBgColor());
             else MarkdownHighlight.Apply(d.Editor, d.IsMarkdown, _dark, EffectiveFontSize(), BaseTextColor(), BaseBgColor());
         }
         catch (Exception ex) { Debug.WriteLine($"Highlight: {ex.Message}"); }
@@ -242,6 +252,30 @@ public sealed partial class MainWindow : Window
     public static bool IsXmlFile(string? path) =>
         path != null && (path.EndsWith(".xml", StringComparison.OrdinalIgnoreCase) ||
                          path.EndsWith(".config", StringComparison.OrdinalIgnoreCase));
+
+    public static bool IsYamlFile(string? path) =>
+        path != null && (path.EndsWith(".yaml", StringComparison.OrdinalIgnoreCase) ||
+                         path.EndsWith(".yml", StringComparison.OrdinalIgnoreCase));
+
+    public static bool IsTomlFile(string? path) =>
+        path != null && path.EndsWith(".toml", StringComparison.OrdinalIgnoreCase);
+
+    public static bool IsIniFile(string? path)
+    {
+        if (path == null) return false;
+        if (path.EndsWith(".ini", StringComparison.OrdinalIgnoreCase) ||
+            path.EndsWith(".cfg", StringComparison.OrdinalIgnoreCase) ||
+            path.EndsWith(".inf", StringComparison.OrdinalIgnoreCase) ||
+            path.EndsWith(".properties", StringComparison.OrdinalIgnoreCase)) return true;
+        // Extensionless dotfiles like .env / .env.local (checked by file name).
+        string name = System.IO.Path.GetFileName(path);
+        return name.Equals(".env", StringComparison.OrdinalIgnoreCase) ||
+            name.StartsWith(".env.", StringComparison.OrdinalIgnoreCase);
+    }
+
+    public static bool IsCsvFile(string? path) =>
+        path != null && (path.EndsWith(".csv", StringComparison.OrdinalIgnoreCase) ||
+                         path.EndsWith(".tsv", StringComparison.OrdinalIgnoreCase));
 
     private static string DisplayName(DocumentInfo d) =>
         d.Path != null ? System.IO.Path.GetFileName(d.Path) : Str("Untitled");
@@ -280,7 +314,7 @@ public sealed partial class MainWindow : Window
         // Unsaved tabs count as Markdown (like the Mac): preview toggle,
         // highlighting and .md save default work before the first save.
         // Save As to .txt flips it back (see SaveTabAsync).
-        var doc = new DocumentInfo { Editor = box, Path = path, IsMarkdown = path == null || IsMarkdownFile(path), IsJson = path != null && IsJsonFile(path), IsXml = path != null && IsXmlFile(path) };
+        var doc = new DocumentInfo { Editor = box, Path = path, IsMarkdown = path == null || IsMarkdownFile(path), IsJson = path != null && IsJsonFile(path), IsXml = path != null && IsXmlFile(path), IsYaml = path != null && IsYamlFile(path), IsToml = path != null && IsTomlFile(path), IsIni = path != null && IsIniFile(path), IsCsv = path != null && IsCsvFile(path) };
         var tab = new TabViewItem { Tag = doc };
         doc.Tab = tab;
         RefreshHeader(doc);
@@ -496,12 +530,25 @@ public sealed partial class MainWindow : Window
             }
             string? baseDir = doc.Path != null ? Path.GetDirectoryName(doc.Path) : null;
             double size = (FontSlider?.Value ?? 15) * _zoom;
-            if (doc.IsJson || doc.IsXml)
+            if (doc.IsTree() || doc.IsCsv)
             {
-                string html = doc.IsJson
-                    ? JsonPreviewHtml.Build(GetEditorText(doc.Editor), _dark, size,
-                        DisplayName(doc), doc.JsonOpen)
-                    : XmlPreviewHtml.Build(GetEditorText(doc.Editor), _dark, size,
+                string html;
+                if (doc.IsCsv)
+                    html = CsvPreviewHtml.Build(GetEditorText(doc.Editor), _dark, size, DisplayName(doc));
+                else if (doc.IsJson)
+                    html = JsonPreviewHtml.Build(GetEditorText(doc.Editor), _dark, size,
+                        DisplayName(doc), doc.JsonOpen);
+                else if (doc.IsXml)
+                    html = XmlPreviewHtml.Build(GetEditorText(doc.Editor), _dark, size,
+                        DisplayName(doc), doc.JsonOpen);
+                else if (doc.IsYaml)
+                    html = YamlPreviewHtml.Build(GetEditorText(doc.Editor), _dark, size,
+                        DisplayName(doc), doc.JsonOpen);
+                else if (doc.IsToml)
+                    html = TomlPreviewHtml.Build(GetEditorText(doc.Editor), _dark, size,
+                        DisplayName(doc), doc.JsonOpen);
+                else
+                    html = IniPreviewHtml.Build(GetEditorText(doc.Editor), _dark, size,
                         DisplayName(doc), doc.JsonOpen);
                 string file = TreePreviewPath();
                 File.WriteAllText(file, html);
@@ -587,7 +634,7 @@ public sealed partial class MainWindow : Window
                 if (root.TryGetProperty("op", out var op) && op.GetString() is string o)
                 {
                     var d = GetActiveDoc();
-                    bool isTree = d is { PreviewVisible: true } && (d.IsJson || d.IsXml);
+                    bool isTree = d is { PreviewVisible: true } && (d.IsTree() || d.IsCsv);
                     if (o == "line" && root.TryGetProperty("line", out var ln) &&
                         ln.TryGetInt32(out int line) && line >= 1)
                     {
@@ -764,11 +811,15 @@ public sealed partial class MainWindow : Window
     {
         var d = GetActiveDoc();
         bool isMd = d?.IsMarkdown == true;
-        bool isJson = d?.IsJson == true;
-        bool isXml = d?.IsXml == true;
-        bool isPv = isMd || isJson || isXml;
-        MdToggle.Visibility = isPv ? Visibility.Visible : Visibility.Collapsed;
-        FileTypeLabel.Text = isMd ? "Markdown" : isJson ? "JSON" : isXml ? "XML" : Str("FileTypeLabel.Text");
+        bool isTree = (d?.IsTree() == true) || d?.IsCsv == true;
+        bool isPv = isMd || isTree;
+        FileTypeLabel.Text = isMd ? "Markdown"
+            : d?.IsJson == true ? "JSON"
+            : d?.IsXml == true ? "XML"
+            : d?.IsYaml == true ? "YAML"
+            : d?.IsToml == true ? "TOML"
+            : d?.IsIni == true ? "INI"
+            : d?.IsCsv == true ? "CSV" : Str("FileTypeLabel.Text");
         if (isPv && d != null)
         {
             StyleToggle(EditModeBtn, !d.PreviewVisible);
@@ -811,8 +862,8 @@ public sealed partial class MainWindow : Window
         var d = GetActiveDoc();
         if (d?.CanPreview() == true)
         {
-            // Tree-preview search owns ESC first: clear it, stay in preview.
-            if (d.PreviewVisible && (d.IsJson || d.IsXml) && !string.IsNullOrEmpty(d.JsonQuery))
+            // Tree/grid preview search owns ESC first: clear it, stay in preview.
+            if (d.PreviewVisible && (d.IsTree() || d.IsCsv) && !string.IsNullOrEmpty(d.JsonQuery))
             {
                 d.JsonQuery = "";
                 try { _ = PreviewView.CoreWebView2?.ExecuteScriptAsync("if(window.__fnClearSearch)window.__fnClearSearch();"); }
@@ -841,6 +892,15 @@ public sealed partial class MainWindow : Window
         picker.FileTypeFilter.Add(".jsonc");
         picker.FileTypeFilter.Add(".xml");
         picker.FileTypeFilter.Add(".config");
+        picker.FileTypeFilter.Add(".yaml");
+        picker.FileTypeFilter.Add(".yml");
+        picker.FileTypeFilter.Add(".toml");
+        picker.FileTypeFilter.Add(".ini");
+        picker.FileTypeFilter.Add(".cfg");
+        picker.FileTypeFilter.Add(".inf");
+        picker.FileTypeFilter.Add(".properties");
+        picker.FileTypeFilter.Add(".csv");
+        picker.FileTypeFilter.Add(".tsv");
         picker.FileTypeFilter.Add(".txt");
         picker.FileTypeFilter.Add("*");
         var file = await picker.PickSingleFileAsync();
@@ -857,7 +917,31 @@ public sealed partial class MainWindow : Window
         {
             var picker = new FileSavePicker { SuggestedStartLocation = PickerLocationId.DocumentsLibrary };
             InitPicker(picker);
-            if (doc.IsXml)
+            if (doc.IsCsv)
+            {
+                picker.FileTypeChoices.Add(Str("CsvFilter"), new List<string> { ".csv", ".tsv" });
+                picker.SuggestedFileName = Str("Untitled");
+                picker.DefaultFileExtension = ".csv";
+            }
+            else if (doc.IsIni)
+            {
+                picker.FileTypeChoices.Add(Str("IniFilter"), new List<string> { ".ini", ".cfg", ".inf", ".properties" });
+                picker.SuggestedFileName = Str("Untitled");
+                picker.DefaultFileExtension = ".ini";
+            }
+            else if (doc.IsToml)
+            {
+                picker.FileTypeChoices.Add(Str("TomlFilter"), new List<string> { ".toml" });
+                picker.SuggestedFileName = Str("Untitled");
+                picker.DefaultFileExtension = ".toml";
+            }
+            else if (doc.IsYaml)
+            {
+                picker.FileTypeChoices.Add(Str("YamlFilter"), new List<string> { ".yaml", ".yml" });
+                picker.SuggestedFileName = Str("Untitled");
+                picker.DefaultFileExtension = ".yaml";
+            }
+            else if (doc.IsXml)
             {
                 picker.FileTypeChoices.Add(Str("XmlFilter"), new List<string> { ".xml", ".config" });
                 picker.SuggestedFileName = Str("Untitled");
@@ -888,6 +972,10 @@ public sealed partial class MainWindow : Window
             doc.IsMarkdown = IsMarkdownFile(doc.Path);
             doc.IsJson = !doc.IsMarkdown && IsJsonFile(doc.Path);
             doc.IsXml = !doc.IsMarkdown && !doc.IsJson && IsXmlFile(doc.Path);
+            doc.IsYaml = !doc.IsMarkdown && !doc.IsJson && !doc.IsXml && IsYamlFile(doc.Path);
+            doc.IsToml = !doc.IsMarkdown && !doc.IsJson && !doc.IsXml && !doc.IsYaml && IsTomlFile(doc.Path);
+            doc.IsIni = !doc.IsMarkdown && !doc.IsJson && !doc.IsXml && !doc.IsYaml && !doc.IsToml && IsIniFile(doc.Path);
+            doc.IsCsv = !doc.IsMarkdown && !doc.IsJson && !doc.IsXml && !doc.IsYaml && !doc.IsToml && !doc.IsIni && IsCsvFile(doc.Path);
             RefreshHeader(doc);
             RefreshMdUi();
             RefreshHighlight(doc); // markdown-ness may have changed: recolor
@@ -1050,7 +1138,7 @@ public sealed partial class MainWindow : Window
             // The page title already carries DisplayName (see Build): the browser
             // print header shows it instead of "about:blank".
             await PreviewView.EnsureCoreWebView2Async();
-            if (d.IsJson || d.IsXml)
+            if (d.IsTree())
             {
                 // Print the whole tree, not just the open branches: expand first
                 // (the toolbar is hidden by the print CSS).
@@ -1149,7 +1237,7 @@ public sealed partial class MainWindow : Window
     private void Find_Click(object s, RoutedEventArgs e)
     {
         var d = GetActiveDoc();
-        if (d is { PreviewVisible: true } && (d.IsJson || d.IsXml)) { FocusTreeSearch(); return; }
+        if (d is { PreviewVisible: true } && (d.IsTree() || d.IsCsv)) { FocusTreeSearch(); return; }
         ShowFind();
     }
     private void FindClose_Click(object s, RoutedEventArgs e) => FindBar.Visibility = Visibility.Collapsed;
