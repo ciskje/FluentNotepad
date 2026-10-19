@@ -37,9 +37,9 @@ Legend per row: `win:[x]` / `mac:[x]` = shipped on that platform.
   Markdig advanced renders them on Windows; swift-markdown has no equivalent.
 - Stale editor with zero tabs (`windows`, win:[x]): closing the last tab leaves
   the last editor hosted; clear EditorHost when no tab is active.
-- Caret-line flash on entering Edit (`generic`, win:[x] mac:[ ]): two blinks
-  of the caret line when switching to Edit mode (selection-only, no undo or
-  formatting touched); macOS port with native flash.
+- Caret-line flash on entering Edit (`generic`, win:[x] mac:[ ]): click-to-source
+  blinks the rendered row twice in the preview, then switches to Edit
+  (selection-only flash for other entries, aborting on edit).
 
 ## Done
 

@@ -563,14 +563,14 @@ public sealed partial class MainWindow : Window
         var b = d.Editor;
         SetSelection(b, off, 0);
         b.Focus(FocusState.Programmatic);
-        // ShowPreview above already flashed the OLD line (aborted below when the
-        // caret moved): flash the target line now that it is selected.
-        FlashCaretLine();
+        // No FlashCaretLine here: the click path already blinked in the preview
+        // (FlashThenJumpAsync) and ShowPreview's hook flash is suppressed for it.
     }
 
-    // Copy of the tree path/value buttons (navigator.clipboard is unreliable on
-    // file:// pages): the page posts {op:"copy"} and the host owns the clipboard.
-    private void Preview_WebMessage(object? sender, Microsoft.Web.WebView2.Core.CoreWebView2WebMessageReceivedEventArgs e)
+    // Click-to-source for tree previews AND Markdown: blink the rendered row
+    // twice in the preview first (confirmation of what was clicked), then
+    // jump to Edit. Aborts the jump if the user moved on meanwhile.
+    private async void Preview_WebMessage(object? sender, Microsoft.Web.WebView2.Core.CoreWebView2WebMessageReceivedEventArgs e)
     {
         string msg;
         try { msg = e.TryGetWebMessageAsString(); }
@@ -591,7 +591,11 @@ public sealed partial class MainWindow : Window
                     if (o == "line" && root.TryGetProperty("line", out var ln) &&
                         ln.TryGetInt32(out int line) && line >= 1)
                     {
-                        if (isTree && d != null) JumpToLine(d, line);
+                        if (isTree && d != null)
+                        {
+                            try { await FlashThenJumpAsync(d, line); }
+                            catch (Exception ex) { Debug.WriteLine($"Jump: {ex.Message}"); }
+                        }
                     }
                     else if (o == "copy" && root.TryGetProperty("text", out var tx))
                     {
@@ -616,7 +620,38 @@ public sealed partial class MainWindow : Window
         if (!int.TryParse(t, out int mdLine) || mdLine < 1) return;
         var md = GetActiveDoc();
         if (md is not { IsMarkdown: true, PreviewVisible: true }) return;
-        JumpToLine(md, mdLine);
+        try { await FlashThenJumpAsync(md, mdLine); }
+        catch (Exception ex) { Debug.WriteLine($"Jump: {ex.Message}"); }
+    }
+
+    // Blink the clicked row twice in the preview (Web Animations API, no page
+    // changes needed: works for Markdown data-src-line and tree data-l rows),
+    // then jump to Edit. Skips the jump if the user moved on meanwhile.
+    private async Task FlashThenJumpAsync(DocumentInfo d, int line)
+    {
+        bool flashed = false;
+        try
+        {
+            if (PreviewView.CoreWebView2 != null)
+            {
+                string color = _dark ? "#569CD6" : "#0F6CBD";
+                string js = "(function(){try{"
+                    + "var el=document.querySelector('[data-src-line=\"" + line + "\"],[data-l=\"" + line + "\"]');"
+                    + "if(!el)return false;"
+                    + "el.style.outline='2px solid transparent';el.style.outlineOffset='-2px';"
+                    + "var a=el.animate([{outlineColor:'rgba(0,0,0,0)'},{outlineColor:'" + color + "'},{outlineColor:'rgba(0,0,0,0)'}],{duration:300,iterations:2});"
+                    + "a.onfinish=function(){try{el.style.outline='';el.style.outlineOffset='';}catch(e){}};"
+                    + "return true;}catch(e){return false;}})()";
+                string r = await PreviewView.CoreWebView2.ExecuteScriptAsync(js);
+                flashed = r != null && r.Trim() == "\"true\"";
+            }
+        }
+        catch (Exception ex) { Debug.WriteLine($"FlashRow: {ex.Message}"); }
+        if (flashed) await Task.Delay(700);
+        var cur = GetActiveDoc();
+        if (!ReferenceEquals(cur, d) || !d.PreviewVisible) return; // user moved on
+        _suppressFlashOnce = true; // the edit-mode flash would double up
+        JumpToLine(d, line);
     }
 
     // A file dropped onto the preview makes WebView2 navigate to it (like Edge),
@@ -678,13 +713,18 @@ public sealed partial class MainWindow : Window
         if (show) RenderPreview(d);
         ShowActiveContent();
         RefreshMdUi();
-        if (!show) FlashCaretLine();
+        if (show) return;
+        // Click-to-source already blinked in the preview: don't double up.
+        if (_suppressFlashOnce) { _suppressFlashOnce = false; return; }
+        FlashCaretLine();
     }
 
     // Caret-line flash (two blinks) when entering Edit: selection-only, so it
     // never touches the undo stack or RichEdit formatting (AV-safe, unlike a
     // paint). Any real edit, key press or tab switch aborts it via _flashGen.
+    // Click-to-source sets _suppressFlashOnce (it blinked in the preview).
     private int _flashGen;
+    private bool _suppressFlashOnce;
 
     private async void FlashCaretLine()
     {

@@ -27,7 +27,8 @@ Both builds implement the same intents; platform-native details may differ
 - Status bar (line/column, characters, file type, zoom, line ending, encoding)
 - Light/dark/system theme, interface in English and Italian
 - Click-to-source: click a rendered block to jump to its source line
-- Caret-line flash (two blinks) when entering Edit mode
+- Caret-line flash: click-to-source blinks the row twice in the preview, then
+  switches to Edit; other Edit entries blink the caret line twice in place
 - JSON tree preview for `.json`/`.jsonc` (auto-preview like Markdown):
   collapsible tree, expand/collapse all, search, copy path/value, invalid-JSON
   error with line/column, print expanded, JSON highlighting in edit mode
