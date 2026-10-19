@@ -16,7 +16,10 @@ Legend per row: `win:[x]` / `mac:[x]` = shipped on that platform.
 
 ## Pending
 
-(none)
+- JSON tree preview (`generic`, win:[x] mac:[ ]): `.json`/`.jsonc` auto-open
+  in a collapsible tree preview (expand/collapse all, search, copy path/value,
+  per-tab open state, invalid-JSON error page, print expanded, JSON edit-mode
+  highlight). Windows done; macOS (WKWebView port) pending.
 
 ## Done
 

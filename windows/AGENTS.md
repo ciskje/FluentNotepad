@@ -87,7 +87,11 @@ pixel-perfect (`App.NewWindow()`).
   `ContentDialog`s live outside `Root`'s tree, so their ESC never collides.
 - A file dropped onto the `WebView2` (which navigates away like Edge, before any
   XAML handler): `NavigationStarting` cancels `file://` navigations (except the
-  preview's internal temp file) and opens the file as a tab instead.
+  JSON tree preview's own temp file, allow-listed by path) and opens the file as
+  a tab instead.
+- JSON tree preview is served from a temp file
+  (`%LocalAppData%\FluentNotepad\preview\json-preview-<pid>.html`, `?v=`-busted):
+  `NavigateToString` caps HTML at 2 MB and the tree payload can exceed the source.
 - Each `MainWindow` is independent (tabs, highlight, busy); they share only
   `settings.json` and the preview temp file (`fluent_preview_<pid>.html`).
 - `TabView` never removes the tab by itself: remove manually (also on Cancel).

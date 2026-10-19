@@ -63,7 +63,12 @@ public sealed partial class MainWindow : Window
         public RichEditBox Editor = null!;
         public string? Path;
         public bool IsMarkdown;
+        public bool IsJson;
         public bool PreviewVisible;
+        public bool CanPreview() => IsMarkdown || IsJson;
+        // JSON tree state, per tab in memory: open RFC 6901 pointers + search text.
+        public HashSet<string> JsonOpen = new();
+        public string JsonQuery = "";
         public bool Dirty;
         public string LineEnding = "Windows (CRLF)";
         // Edit-mode highlight cache (hash of the inputs, like FluentNotepadMac)
@@ -109,7 +114,7 @@ public sealed partial class MainWindow : Window
         {
             _previewTimer.Stop();
             var d = GetActiveDoc();
-            if (d is { IsMarkdown: true, PreviewVisible: true }) RenderPreview(d);
+            if (d is { PreviewVisible: true } && d.CanPreview()) RenderPreview(d);
         };
 
         var v = Assembly.GetExecutingAssembly().GetName().Version;
@@ -212,11 +217,15 @@ public sealed partial class MainWindow : Window
         // hosting, skip the wasted pass here.
         if (d.Editor.Parent == null) return;
         string text = GetEditorText(d.Editor);
-        string key = $"{text.Length}-{text.GetHashCode()}-{EffectiveFontSize()}-{_dark}-{d.IsMarkdown}";
+        string key = $"{text.Length}-{text.GetHashCode()}-{EffectiveFontSize()}-{_dark}-{d.IsMarkdown}-{d.IsJson}";
         if (key == d.HighlightKey) return;
         d.HighlightKey = key;
         _highlighting = true;
-        try { MarkdownHighlight.Apply(d.Editor, d.IsMarkdown, _dark, EffectiveFontSize(), BaseTextColor(), BaseBgColor()); }
+        try
+        {
+            if (d.IsJson) JsonHighlight.Apply(d.Editor, _dark, EffectiveFontSize(), BaseTextColor(), BaseBgColor());
+            else MarkdownHighlight.Apply(d.Editor, d.IsMarkdown, _dark, EffectiveFontSize(), BaseTextColor(), BaseBgColor());
+        }
         catch (Exception ex) { Debug.WriteLine($"Highlight: {ex.Message}"); }
         finally { _highlighting = false; }
     }
@@ -224,6 +233,10 @@ public sealed partial class MainWindow : Window
     public static bool IsMarkdownFile(string? path) =>
         path != null && (path.EndsWith(".md", StringComparison.OrdinalIgnoreCase) ||
                          path.EndsWith(".markdown", StringComparison.OrdinalIgnoreCase));
+
+    public static bool IsJsonFile(string? path) =>
+        path != null && (path.EndsWith(".json", StringComparison.OrdinalIgnoreCase) ||
+                         path.EndsWith(".jsonc", StringComparison.OrdinalIgnoreCase));
 
     private static string DisplayName(DocumentInfo d) =>
         d.Path != null ? System.IO.Path.GetFileName(d.Path) : Str("Untitled");
@@ -262,7 +275,7 @@ public sealed partial class MainWindow : Window
         // Unsaved tabs count as Markdown (like the Mac): preview toggle,
         // highlighting and .md save default work before the first save.
         // Save As to .txt flips it back (see SaveTabAsync).
-        var doc = new DocumentInfo { Editor = box, Path = path, IsMarkdown = path == null || IsMarkdownFile(path) };
+        var doc = new DocumentInfo { Editor = box, Path = path, IsMarkdown = path == null || IsMarkdownFile(path), IsJson = path != null && IsJsonFile(path) };
         var tab = new TabViewItem { Tag = doc };
         doc.Tab = tab;
         RefreshHeader(doc);
@@ -301,7 +314,7 @@ public sealed partial class MainWindow : Window
             d.Dirty = true;
             RefreshHeader(d);
             RefreshSaveBtn();
-            if (d.IsMarkdown && d.PreviewVisible) { _previewTimer.Stop(); _previewTimer.Start(); }
+            if (d.CanPreview() && d.PreviewVisible) { _previewTimer.Stop(); _previewTimer.Start(); }
             UpdateStatus();
         };
         box.SelectionChanged += (_, _) =>
@@ -411,6 +424,10 @@ public sealed partial class MainWindow : Window
     // ================= MARKDOWN PREVIEW (WebView2) =================
     private readonly SemaphoreSlim _webLock = new(1, 1);
     private string _lastWebError = "";
+    // JSON tree HTML is served from a temp file (not NavigateToString, capped at
+    // 2 MB): the payload can exceed the source size.
+    private string? _jsonPreviewFile;
+    private int _previewSeq;
     private Microsoft.Web.WebView2.Core.CoreWebView2? _hookedCore;
 
     // "Busy" cursor (spinning ring) while the preview renders: set on render,
@@ -419,7 +436,7 @@ public sealed partial class MainWindow : Window
 
     private async void RenderPreview(DocumentInfo doc)
     {
-        if (!doc.IsMarkdown || !doc.PreviewVisible) return;
+        if (!doc.CanPreview() || !doc.PreviewVisible) return;
         PreviewError.Visibility = Visibility.Collapsed;
         SetBusy(true);
         for (int attempt = 0; attempt < 3; attempt++)
@@ -468,9 +485,22 @@ public sealed partial class MainWindow : Window
             }
             string? baseDir = doc.Path != null ? Path.GetDirectoryName(doc.Path) : null;
             double size = (FontSlider?.Value ?? 15) * _zoom;
-            string html = MarkdownHtml.Build(GetEditorText(doc.Editor), baseDir, _dark, size,
-                DisplayName(doc));
-            PreviewView.NavigateToString(html);
+            if (doc.IsJson)
+            {
+                string html = JsonPreviewHtml.Build(GetEditorText(doc.Editor), _dark, size,
+                    DisplayName(doc), doc.JsonOpen);
+                string file = JsonPreviewPath();
+                File.WriteAllText(file, html);
+                _jsonPreviewFile = file;
+                // Query busts the cache: same file, new content must re-navigate.
+                PreviewView.CoreWebView2.Navigate(new Uri(file).AbsoluteUri + "?v=" + (++_previewSeq));
+            }
+            else
+            {
+                string html = MarkdownHtml.Build(GetEditorText(doc.Editor), baseDir, _dark, size,
+                    DisplayName(doc));
+                PreviewView.NavigateToString(html);
+            }
             PreviewView.Visibility = Visibility.Visible;
             return true;
         }
@@ -483,15 +513,30 @@ public sealed partial class MainWindow : Window
         if (GetActiveDoc() is { } d) RenderPreview(d);
     }
 
-    // Click on a rendered block -> caret on its source line (1-based).
-    private void Preview_WebMessage(object? sender, Microsoft.Web.WebView2.Core.CoreWebView2WebMessageReceivedEventArgs e)
+    // The temp file backing the JSON tree preview (see windows/AGENTS.md): shared
+    // per process, versioned by query. Allow-listed in Preview_NavigationStarting.
+    private static string JsonPreviewPath()
     {
-        string msg;
-        try { msg = e.TryGetWebMessageAsString(); }
-        catch (Exception ex) { Debug.WriteLine($"WebMsg: {ex.Message}"); return; }
-        if (!int.TryParse(msg.Trim(), out int line) || line < 1) return;
-        var d = GetActiveDoc();
-        if (d is not { IsMarkdown: true, PreviewVisible: true }) return;
+        string dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "FluentNotepad", "preview");
+        Directory.CreateDirectory(dir);
+        return Path.Combine(dir, $"json-preview-{Environment.ProcessId}.html");
+    }
+
+    private static void CopyText(string text)
+    {
+        try
+        {
+            var dp = new DataPackage();
+            dp.SetText(text);
+            Clipboard.SetContent(dp);
+        }
+        catch (Exception ex) { Debug.WriteLine($"Copy: {ex.Message}"); }
+    }
+
+    // Click-to-source, shared by both previews: leave preview, caret on the line.
+    private void JumpToLine(DocumentInfo d, int line)
+    {
         if (d.PreviewVisible) ShowPreview(d, false);
         string text = GetEditorText(d.Editor);
         int off = 0;
@@ -504,6 +549,56 @@ public sealed partial class MainWindow : Window
         var b = d.Editor;
         SetSelection(b, off, 0);
         b.Focus(FocusState.Programmatic);
+    }
+
+    // Copy of the tree path/value buttons (navigator.clipboard is unreliable on
+    // file:// pages): the page posts {op:"copy"} and the host owns the clipboard.
+    private void Preview_WebMessage(object? sender, Microsoft.Web.WebView2.Core.CoreWebView2WebMessageReceivedEventArgs e)
+    {
+        string msg;
+        try { msg = e.TryGetWebMessageAsString(); }
+        catch (Exception ex) { Debug.WriteLine($"WebMsg: {ex.Message}"); return; }
+        // JSON tree protocol: {"op":"line"|"copy"|"state",...}. Anything else
+        // falls through to the Markdown plain-line-number path below.
+        string t = msg.Trim();
+        if (t.StartsWith("{"))
+        {
+            try
+            {
+                using var jdoc = JsonDocument.Parse(t);
+                var root = jdoc.RootElement;
+                if (root.TryGetProperty("op", out var op) && op.GetString() is string o)
+                {
+                    var d = GetActiveDoc();
+                    if (o == "line" && root.TryGetProperty("line", out var ln) &&
+                        ln.TryGetInt32(out int line) && line >= 1)
+                    {
+                        if (d is { IsJson: true, PreviewVisible: true }) JumpToLine(d, line);
+                    }
+                    else if (o == "copy" && root.TryGetProperty("text", out var tx))
+                    {
+                        CopyText(tx.GetString() ?? "");
+                    }
+                    else if (o == "state" && d is { IsJson: true })
+                    {
+                        if (root.TryGetProperty("open", out var arr) && arr.ValueKind == JsonValueKind.Array)
+                        {
+                            d.JsonOpen.Clear();
+                            foreach (var x in arr.EnumerateArray())
+                                if (x.GetString() is string s) d.JsonOpen.Add(s);
+                        }
+                        if (root.TryGetProperty("q", out var qq) && qq.ValueKind == JsonValueKind.String)
+                            d.JsonQuery = qq.GetString() ?? "";
+                    }
+                }
+            }
+            catch (Exception ex) { Debug.WriteLine($"WebMsgJson: {ex.Message}"); }
+            return;
+        }
+        if (!int.TryParse(t, out int mdLine) || mdLine < 1) return;
+        var md = GetActiveDoc();
+        if (md is not { IsMarkdown: true, PreviewVisible: true }) return;
+        JumpToLine(md, mdLine);
     }
 
     // A file dropped onto the preview makes WebView2 navigate to it (like Edge),
@@ -520,6 +615,9 @@ public sealed partial class MainWindow : Window
             string local;
             try { local = new Uri(uri).LocalPath; }
             catch { return; }
+            // Our own JSON tree page (temp file): let it load, never open as a tab.
+            if (_jsonPreviewFile != null &&
+                string.Equals(local, _jsonPreviewFile, StringComparison.OrdinalIgnoreCase)) return;
             if (!File.Exists(local)) return;
             e.Cancel = true;
             // Deferred: we are inside the navigation callback, don't reshuffle tabs here.
@@ -537,7 +635,7 @@ public sealed partial class MainWindow : Window
         PreviewError.Visibility = Visibility.Collapsed;
         var d = GetActiveDoc();
         if (d == null) { PreviewView.Visibility = Visibility.Collapsed; return; }
-        if (d.PreviewVisible && d.IsMarkdown)
+        if (d.PreviewVisible && d.CanPreview())
         {
             EditorHost.Children.Clear();
             PreviewView.Visibility = Visibility.Visible;
@@ -557,7 +655,7 @@ public sealed partial class MainWindow : Window
 
     private void ShowPreview(DocumentInfo d, bool show)
     {
-        if (!d.IsMarkdown) return;
+        if (!d.CanPreview()) return;
         d.PreviewVisible = show;
         if (show) RenderPreview(d);
         ShowActiveContent();
@@ -567,16 +665,18 @@ public sealed partial class MainWindow : Window
     private void TogglePreview()
     {
         var d = GetActiveDoc();
-        if (d?.IsMarkdown == true) ShowPreview(d, !d.PreviewVisible);
+        if (d?.CanPreview() == true) ShowPreview(d, !d.PreviewVisible);
     }
 
     private void RefreshMdUi()
     {
         var d = GetActiveDoc();
         bool isMd = d?.IsMarkdown == true;
-        MdToggle.Visibility = isMd ? Visibility.Visible : Visibility.Collapsed;
-        FileTypeLabel.Text = isMd ? "Markdown" : Str("FileTypeLabel.Text");
-        if (isMd && d != null)
+        bool isJson = d?.IsJson == true;
+        bool isPv = isMd || isJson;
+        MdToggle.Visibility = isPv ? Visibility.Visible : Visibility.Collapsed;
+        FileTypeLabel.Text = isMd ? "Markdown" : isJson ? "JSON" : Str("FileTypeLabel.Text");
+        if (isPv && d != null)
         {
             StyleToggle(EditModeBtn, !d.PreviewVisible);
             StyleToggle(PreviewModeBtn, d.PreviewVisible);
@@ -616,7 +716,20 @@ public sealed partial class MainWindow : Window
         catch (Exception ex) { Debug.WriteLine($"Esc focus: {ex.Message}"); }
         if (_composing) return; // IME composition owns the keystroke
         var d = GetActiveDoc();
-        if (d?.IsMarkdown == true) { ShowPreview(d, !d.PreviewVisible); e.Handled = true; }
+        if (d?.CanPreview() == true)
+        {
+            // JSON tree search owns ESC first: clear it, stay in preview.
+            if (d is { IsJson: true, PreviewVisible: true } && !string.IsNullOrEmpty(d.JsonQuery))
+            {
+                d.JsonQuery = "";
+                try { _ = PreviewView.CoreWebView2?.ExecuteScriptAsync("if(window.__fnClearSearch)window.__fnClearSearch();"); }
+                catch (Exception ex) { Debug.WriteLine($"ClearSearch: {ex.Message}"); }
+                e.Handled = true;
+                return;
+            }
+            ShowPreview(d, !d.PreviewVisible);
+            e.Handled = true;
+        }
     }
 
     private void PreviewToggle_Click(object s, RoutedEventArgs e) => TogglePreview();
@@ -631,6 +744,8 @@ public sealed partial class MainWindow : Window
         InitPicker(picker);
         picker.FileTypeFilter.Add(".md");
         picker.FileTypeFilter.Add(".markdown");
+        picker.FileTypeFilter.Add(".json");
+        picker.FileTypeFilter.Add(".jsonc");
         picker.FileTypeFilter.Add(".txt");
         picker.FileTypeFilter.Add("*");
         var file = await picker.PickSingleFileAsync();
@@ -647,7 +762,13 @@ public sealed partial class MainWindow : Window
         {
             var picker = new FileSavePicker { SuggestedStartLocation = PickerLocationId.DocumentsLibrary };
             InitPicker(picker);
-            if (doc.IsMarkdown)
+            if (doc.IsJson)
+            {
+                picker.FileTypeChoices.Add(Str("JsonFilter"), new List<string> { ".json", ".jsonc" });
+                picker.SuggestedFileName = Str("Untitled");
+                picker.DefaultFileExtension = ".json";
+            }
+            else if (doc.IsMarkdown)
             {
                 picker.FileTypeChoices.Add("Markdown", new List<string> { ".md" });
                 picker.SuggestedFileName = Str("Untitled");
@@ -664,6 +785,7 @@ public sealed partial class MainWindow : Window
             if (file == null) return false;
             doc.Path = file.Path;
             doc.IsMarkdown = IsMarkdownFile(doc.Path);
+            doc.IsJson = !doc.IsMarkdown && IsJsonFile(doc.Path);
             RefreshHeader(doc);
             RefreshMdUi();
             RefreshHighlight(doc); // markdown-ness may have changed: recolor
@@ -697,9 +819,9 @@ public sealed partial class MainWindow : Window
             d.LineEnding = DetectLineEnding(content);
             RefreshHeader(d);
             RefreshFileLabels();
-            // An .md opened from anywhere (association/command line, File > Open,
-            // drag & drop) starts directly in Preview
-            if (d.IsMarkdown) ShowPreview(d, true);
+            // A previewable file opened from anywhere (association/command line,
+            // File > Open, drag & drop) starts directly in Preview.
+            if (d.CanPreview()) ShowPreview(d, true);
         }
     }
 
@@ -795,9 +917,9 @@ public sealed partial class MainWindow : Window
     private async void Print_Click(object s, RoutedEventArgs e)
     {
         var d = GetActiveDoc();
-        if (d?.IsMarkdown != true)
+        if (d?.CanPreview() != true)
         {
-            await ShowNoteAsync(Str("PrintOnlyMarkdown"));
+            await ShowNoteAsync(Str("PrintOnlyPreview"));
             return;
         }
         if (!d.PreviewVisible) ShowPreview(d, true);
@@ -811,6 +933,17 @@ public sealed partial class MainWindow : Window
             // The page title already carries DisplayName (see Build): the browser
             // print header shows it instead of "about:blank".
             await PreviewView.EnsureCoreWebView2Async();
+            if (d.IsJson)
+            {
+                // Print the whole tree, not just the open branches: expand first
+                // (the toolbar is hidden by the print CSS).
+                try
+                {
+                    await PreviewView.CoreWebView2.ExecuteScriptAsync("if(window.__fnExpandAll)window.__fnExpandAll();");
+                    await Task.Delay(200);
+                }
+                catch (Exception ex) { Debug.WriteLine($"ExpandPrint: {ex.Message}"); }
+            }
             PreviewView.CoreWebView2.ShowPrintUI(
                 Microsoft.Web.WebView2.Core.CoreWebView2PrintDialogKind.Browser);
         }
@@ -883,7 +1016,24 @@ public sealed partial class MainWindow : Window
         FindBox.SelectAll();
     }
 
-    private void Find_Click(object s, RoutedEventArgs e) => ShowFind();
+    // Ctrl+F is contextual: in the JSON tree preview it focuses the tree search
+    // (ESC clears that first, see EscapeAccel); otherwise the editor find bar.
+    private async void FocusTreeSearch()
+    {
+        try
+        {
+            if (PreviewView.CoreWebView2 != null)
+                await PreviewView.CoreWebView2.ExecuteScriptAsync("if(window.__fnFocusSearch)window.__fnFocusSearch();");
+        }
+        catch (Exception ex) { Debug.WriteLine($"TreeSearch: {ex.Message}"); }
+    }
+
+    private void Find_Click(object s, RoutedEventArgs e)
+    {
+        var d = GetActiveDoc();
+        if (d is { IsJson: true, PreviewVisible: true }) { FocusTreeSearch(); return; }
+        ShowFind();
+    }
     private void FindClose_Click(object s, RoutedEventArgs e) => FindBar.Visibility = Visibility.Collapsed;
     private void FindBox_TextChanged(object s, TextChangedEventArgs e) => FindNext(false, focusEditor: false);
     private void FindBox_KeyDown(object s, KeyRoutedEventArgs e)
@@ -925,7 +1075,7 @@ public sealed partial class MainWindow : Window
         if (ZoomLabel != null) ZoomLabel.Text = $"{(int)(_zoom * 100)}%";
         if (!renderPreview) return;
         var d = GetActiveDoc();
-        if (d is { IsMarkdown: true, PreviewVisible: true }) RenderPreview(d);
+        if (d is { PreviewVisible: true } && d.CanPreview()) RenderPreview(d);
     }
     private void ZoomIn_Click(object s, RoutedEventArgs e) => SetZoom(_zoom + 0.1);
     private void ZoomOut_Click(object s, RoutedEventArgs e) => SetZoom(_zoom - 0.1);
@@ -1005,7 +1155,7 @@ public sealed partial class MainWindow : Window
         tb.ButtonForegroundColor = dark ? Colors.White : Windows.UI.Color.FromArgb(255, 38, 38, 38);
         tb.ButtonInactiveForegroundColor = Colors.Gray;
         var d = GetActiveDoc();
-        if (d is { IsMarkdown: true, PreviewVisible: true }) RenderPreview(d);
+        if (d is { PreviewVisible: true } && d.CanPreview()) RenderPreview(d);
     }
 
     private void ThemeButton_Click(object s, RoutedEventArgs e) =>
@@ -1177,7 +1327,7 @@ public sealed partial class MainWindow : Window
         SetZoom(_zoom, renderPreview: false);
         // The WebView2 preview is expensive: debounce instead of rendering on every drag tick
         var d = GetActiveDoc();
-        if (d is { IsMarkdown: true, PreviewVisible: true }) { _previewTimer.Stop(); _previewTimer.Start(); }
+        if (d is { PreviewVisible: true } && d.CanPreview()) { _previewTimer.Stop(); _previewTimer.Start(); }
     }
 
     private void Root_DragOver(object s, DragEventArgs e)

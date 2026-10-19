@@ -24,7 +24,7 @@
   <data name="ViewZoomIn.Text"><value>Zoom in</value></data>
   <data name="ViewZoomOut.Text"><value>Zoom out</value></data>
   <data name="ViewZoomReset.Text"><value>Reset zoom</value></data>
-  <data name="ViewPreview.Text"><value>Markdown preview</value></data>
+  <data name="ViewPreview.Text"><value>Preview</value></data>
   <data name="ViewWrap.Text"><value>Word wrap</value></data>
   <!-- Help menu -->
   <data name="MenuHelp.Title"><value>Help</value></data>
@@ -45,7 +45,7 @@
   <data name="EditModeBtn.Content"><value>Edit</value></data>
   <data name="EditModeBtn.ToolTipService.ToolTip"><value>Edit mode</value></data>
   <data name="PreviewModeBtn.Content"><value>Preview</value></data>
-  <data name="PreviewModeBtn.ToolTipService.ToolTip"><value>Markdown preview (Ctrl+Shift+V)</value></data>
+  <data name="PreviewModeBtn.ToolTipService.ToolTip"><value>Preview (Ctrl+Shift+V)</value></data>
   <!-- Right buttons -->
   <data name="SaveBtn.ToolTipService.ToolTip"><value>Save (Ctrl+S)</value></data>
   <data name="SearchBtn.ToolTipService.ToolTip"><value>Find (Ctrl+F)</value></data>
@@ -81,7 +81,7 @@
   <data name="SaveSecondary"><value>Don't save</value></data>
   <data name="SaveClose"><value>Cancel</value></data>
   <data name="PreviewError"><value>Markdown preview unavailable (WebView2). </value></data>
-  <data name="PrintOnlyMarkdown"><value>Printing is only available for the Markdown preview. Open a .md file and switch to Preview.</value></data>
+  <data name="PrintOnlyPreview"><value>Printing is only available for the preview. Open a Markdown or JSON file and switch to Preview.</value></data>
   <data name="PrintError"><value>Printing failed (WebView2). </value></data>
   <data name="PrintClose"><value>Close</value></data>
   <data name="StatusLine"><value>Line {0}, col {1}</value></data>
@@ -92,4 +92,18 @@
   <data name="EmptyHint"><value>Nothing to display — write Markdown in Edit mode.</value></data>
   <data name="ImgName"><value>Image</value></data>
   <data name="ImgMissing"><value> — unavailable</value></data>
+  <!-- JSON preview -->
+  <data name="JsonFilter"><value>JSON file</value></data>
+  <data name="JsonInvalidTitle"><value>Invalid JSON</value></data>
+  <data name="JsonInvalid"><value>Invalid JSON (line {0}, column {1})</value></data>
+  <data name="JsonErrorHint"><value>Switch to Edit (Esc) to fix the file.</value></data>
+  <data name="JsonTooLarge"><value>File too large for the tree view: use Edit mode.</value></data>
+  <data name="JsonTruncated"><value>Tree truncated: too many nodes, showing a part.</value></data>
+  <data name="JsonSearch"><value>Search tree…</value></data>
+  <data name="JsonExpandAll"><value>Expand all</value></data>
+  <data name="JsonCollapseAll"><value>Collapse all</value></data>
+  <data name="JsonCopyPath"><value>Copy path</value></data>
+  <data name="JsonCopyValue"><value>Copy value</value></data>
+  <data name="JsonMatches"><value>{0} of {1}</value></data>
+  <data name="JsonNoMatch"><value>No matches</value></data>
 </root>

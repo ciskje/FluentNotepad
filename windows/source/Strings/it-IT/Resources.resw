@@ -24,7 +24,7 @@
   <data name="ViewZoomIn.Text"><value>Aumenta zoom</value></data>
   <data name="ViewZoomOut.Text"><value>Riduci zoom</value></data>
   <data name="ViewZoomReset.Text"><value>Ripristina zoom</value></data>
-  <data name="ViewPreview.Text"><value>Anteprima Markdown</value></data>
+  <data name="ViewPreview.Text"><value>Anteprima</value></data>
   <data name="ViewWrap.Text"><value>A capo automatico</value></data>
   <!-- Menu Aiuto -->
   <data name="MenuHelp.Title"><value>Aiuto</value></data>
@@ -45,7 +45,7 @@
   <data name="EditModeBtn.Content"><value>Modifica</value></data>
   <data name="EditModeBtn.ToolTipService.ToolTip"><value>Modalità modifica</value></data>
   <data name="PreviewModeBtn.Content"><value>Anteprima</value></data>
-  <data name="PreviewModeBtn.ToolTipService.ToolTip"><value>Anteprima Markdown (Ctrl+Maiusc+V)</value></data>
+  <data name="PreviewModeBtn.ToolTipService.ToolTip"><value>Anteprima (Ctrl+Maiusc+V)</value></data>
   <!-- Pulsanti destra -->
   <data name="SaveBtn.ToolTipService.ToolTip"><value>Salva (Ctrl+S)</value></data>
   <data name="SearchBtn.ToolTipService.ToolTip"><value>Cerca (Ctrl+F)</value></data>
@@ -81,7 +81,7 @@
   <data name="SaveSecondary"><value>Non salvare</value></data>
   <data name="SaveClose"><value>Annulla</value></data>
   <data name="PreviewError"><value>Anteprima non disponibile (WebView2). </value></data>
-  <data name="PrintOnlyMarkdown"><value>La stampa è disponibile solo per l'anteprima Markdown. Apri un file .md e passa in Anteprima.</value></data>
+  <data name="PrintOnlyPreview"><value>La stampa è disponibile solo per l'anteprima. Apri un file Markdown o JSON e passa in Anteprima.</value></data>
   <data name="PrintError"><value>Stampa non riuscita (WebView2). </value></data>
   <data name="PrintClose"><value>Chiudi</value></data>
   <data name="StatusLine"><value>Riga {0}, col. {1}</value></data>
@@ -92,4 +92,18 @@
   <data name="EmptyHint"><value>Niente da visualizzare — scrivi Markdown in modalità Modifica.</value></data>
   <data name="ImgName"><value>Immagine</value></data>
   <data name="ImgMissing"><value> — non disponibile</value></data>
+  <!-- Anteprima JSON -->
+  <data name="JsonFilter"><value>File JSON</value></data>
+  <data name="JsonInvalidTitle"><value>JSON non valido</value></data>
+  <data name="JsonInvalid"><value>JSON non valido (riga {0}, colonna {1})</value></data>
+  <data name="JsonErrorHint"><value>Passa in Modifica (Esc) per correggere il file.</value></data>
+  <data name="JsonTooLarge"><value>File troppo grande per la vista ad albero: usa la modalità Modifica.</value></data>
+  <data name="JsonTruncated"><value>Albero troncato: troppi nodi, ne mostro una parte.</value></data>
+  <data name="JsonSearch"><value>Cerca nell'albero…</value></data>
+  <data name="JsonExpandAll"><value>Espandi tutto</value></data>
+  <data name="JsonCollapseAll"><value>Comprimi tutto</value></data>
+  <data name="JsonCopyPath"><value>Copia percorso</value></data>
+  <data name="JsonCopyValue"><value>Copia valore</value></data>
+  <data name="JsonMatches"><value>{0} di {1}</value></data>
+  <data name="JsonNoMatch"><value>Nessun risultato</value></data>
 </root>
