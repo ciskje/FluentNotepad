@@ -340,14 +340,18 @@ public sealed partial class MainWindow : Window
         };
         // Formatting applied before first load doesn't render (and ReadBack
         // lies: the model looks colored while the screen stays white): repaint
-        // on every hosting, when the control is actually loaded. Typing and
-        // later passes then only refresh on real changes (HighlightKey).
+        // on every hosting, when the control is actually loaded. Deferred by one
+        // UI tick: painting RichEdit ranges synchronously inside the layout pass
+        // fail-fasts intermittently (AV in ITextCharacterFormat at startup).
         box.Loaded += (_, _) =>
         {
             if (box.Tag is DocumentInfo dd)
             {
                 dd.HighlightKey = "";
-                RefreshHighlight(dd);
+                _ = DispatcherQueue.TryEnqueue(() =>
+                {
+                    if (box.Tag is DocumentInfo d2) RefreshHighlight(d2);
+                });
             }
         };
         // NOTE: text set AFTER the handlers are attached, so the first
