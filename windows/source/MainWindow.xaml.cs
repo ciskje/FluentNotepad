@@ -649,7 +649,7 @@ public sealed partial class MainWindow : Window
     {
         PreviewError.Visibility = Visibility.Collapsed;
         var d = GetActiveDoc();
-        if (d == null) { PreviewView.Visibility = Visibility.Collapsed; return; }
+        if (d == null) { PreviewView.Visibility = Visibility.Collapsed; EditorHost.Children.Clear(); return; }
         if (d.PreviewVisible && d.CanPreview())
         {
             EditorHost.Children.Clear();
