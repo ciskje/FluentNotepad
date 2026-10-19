@@ -20,21 +20,21 @@ Legend per row: `win:[x]` / `mac:[x]` = shipped on that platform.
   tree schema (attributes as `@name` rows, XPath copy paths, XML comments
   shown, invalid-XML error page, XML edit-mode highlight, Open/Save panel
   types). Windows done; macOS (WKWebView port) pending.
-- YAML tree preview (`generic`, win:[ ] mac:[ ]): `.yaml`/`.yml` auto-open as a
+- YAML tree preview (`generic`, win:[x] mac:[ ]): `.yaml`/`.yml` auto-open as a
   collapsible tree (indentation-based subset: mappings, sequences, scalars,
   comments; anchors/aliases/tags stripped, not resolved), `$.` copy paths,
-  YAML edit-mode highlight. Windows pending; macOS pending.
-- TOML tree preview (`generic`, win:[ ] mac:[ ]): `.toml` auto-open as a
+  YAML edit-mode highlight. Windows done; macOS pending.
+- TOML tree preview (`generic`, win:[x] mac:[ ]): `.toml` auto-open as a
   collapsible tree (tables, arrays of tables, dotted keys expanded),
-  `$.` copy paths, TOML edit-mode highlight. Windows pending; macOS pending.
-- INI tree preview (`generic`, win:[ ] mac:[ ]): `.ini`/`.cfg`/`.inf`/
+  `$.` copy paths, TOML edit-mode highlight. Windows done; macOS pending.
+- INI tree preview (`generic`, win:[x] mac:[ ]): `.ini`/`.cfg`/`.inf`/
   `.properties`/`.env*` as a collapsible tree (sections, `=`/`:` pairs,
   `;`/`#` comments, `\` continuations), `$.` copy paths, INI edit-mode
-  highlight. Windows pending; macOS pending.
-- CSV grid preview (`generic`, win:[ ] mac:[ ]): `.csv`/`.tsv` as a grid
+  highlight. Windows done; macOS pending.
+- CSV grid preview (`generic`, win:[x] mac:[ ]): `.csv`/`.tsv` as a grid
   (sniffed delimiter, quoted/multiline fields, header row, row cap with
   banner, search, copy raw line, click-to-line). No edit-mode highlight
-  (plain text). Windows pending; macOS pending.
+  (plain text). Windows done; macOS pending.
 - Save via keyboard on macOS (`generic`, win:[x] mac:[ ]): ⌘S saves the active
   tab, plus cheatsheet row (like Windows Ctrl+S).
 - Tab drag-reorder on macOS (`generic`, win:[x] mac:[ ]): checklist says

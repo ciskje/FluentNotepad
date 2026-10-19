@@ -116,3 +116,7 @@ pixel-perfect (`App.NewWindow()`).
   `SetFocus` on the Edit); `SendKeys`/`AppActivate` alone are unreliable.
 - Query document state via TextPattern (selection, attributes); for real colors
   trust only the screenshot, never the COM read-back.
+- Black screenshot of a working window (valid `hWnd`/rect, full UIA tree,
+  preview temp file written, no crash events) means overlay promotion in the
+  capture path, not an app bug: verify via the UIA tree (menus/buttons
+  present?) and the preview HTML on disk instead.
