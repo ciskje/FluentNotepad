@@ -271,9 +271,6 @@
                 <CheckBox x:Uid="WrapCheck" x:Name="WrapCheck" Content="A capo automatico" IsChecked="True" Checked="Wrap_Changed" Unchecked="Wrap_Changed"/>
                 <TextBlock x:Uid="SetFontSize" Text="Dimensione carattere"/>
                 <Slider x:Name="FontSlider" Minimum="12" Maximum="24" Value="15" ValueChanged="FontSlider_Changed"/>
-                <TextBlock x:Uid="SetInfo" Text="Informazioni" FontWeight="SemiBold" Margin="0,8,0,0"/>
-                <TextBlock x:Name="VersionInfo" Text="FluentNotepad" TextWrapping="WrapWholeWords"
-                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
             </StackPanel>
         </ContentDialog>
     </local:CursorGrid>

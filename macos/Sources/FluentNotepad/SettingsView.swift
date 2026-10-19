@@ -24,10 +24,6 @@ struct SettingsView: View {
                     Text("\(Int(store.fontSize))").frame(width: 24)
                 }
             }
-            Section(L("about")) {
-                Text("FluentNotepad \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?") — \(L("aboutPreview"))")
-                    .foregroundStyle(.secondary)
-            }
         }
         .formStyle(.grouped)
         .frame(width: 380)

@@ -119,8 +119,6 @@ public sealed partial class MainWindow : Window
             if (d is { PreviewVisible: true } && d.CanPreview()) RenderPreview(d);
         };
 
-        var v = Assembly.GetExecutingAssembly().GetName().Version;
-        VersionInfo.Text = string.Format(Str("VersionInfo"), v?.ToString(3) ?? "?");
         ToolTipService.SetToolTip(ZoomOutBtn, Str("ViewZoomOut.Text"));
         ToolTipService.SetToolTip(ZoomInBtn, Str("ViewZoomIn.Text"));
 
