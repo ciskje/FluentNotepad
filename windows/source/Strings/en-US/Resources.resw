@@ -29,6 +29,7 @@
   <!-- Help menu -->
   <data name="MenuHelp.Title"><value>Help</value></data>
   <data name="HelpShortcuts.Text"><value>Keyboard shortcuts</value></data>
+  <data name="HelpAbout.Text"><value>About FluentNotepad</value></data>
   <data name="Shortcuts.Title"><value>Keyboard shortcuts</value></data>
   <data name="ShortcutsEsc.Text"><value>Toggle Edit/Preview</value></data>
   <!-- Formatting toolbar -->
@@ -75,7 +76,7 @@
   <data name="SetInfo.Text"><value>About</value></data>
   <!-- Code -->
   <data name="Untitled"><value>Untitled</value></data>
-  <data name="VersionInfo"><value>FluentNotepad {0} — Markdown preview via WebView2.</value></data>
+  <data name="VersionInfo"><value>FluentNotepad {0} — Markdown, JSON and XML preview.</value></data>
   <data name="SaveContent"><value>Save changes to {0}?</value></data>
   <data name="SavePrimary"><value>Save</value></data>
   <data name="SaveSecondary"><value>Don't save</value></data>

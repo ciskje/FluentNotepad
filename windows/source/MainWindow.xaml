@@ -148,6 +148,8 @@
                             <KeyboardAccelerator Key="F1"/>
                         </MenuFlyoutItem.KeyboardAccelerators>
                     </MenuFlyoutItem>
+                    <MenuFlyoutSeparator/>
+                    <MenuFlyoutItem x:Uid="HelpAbout" Text="Informazioni su FluentNotepad" Click="About_Click"/>
                 </MenuBarItem>
             </MenuBar>
 

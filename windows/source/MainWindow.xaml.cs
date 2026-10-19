@@ -926,6 +926,21 @@ public sealed partial class MainWindow : Window
         await dlg.ShowAsync();
     }
 
+    // Help > About: name, version and one-line description
+    // (macOS uses the native app-menu About box instead).
+    private async void About_Click(object s, RoutedEventArgs e)
+    {
+        var v = Assembly.GetExecutingAssembly().GetName().Version;
+        var dlg = new ContentDialog
+        {
+            Title = "FluentNotepad",
+            Content = string.Format(Str("VersionInfo"), v?.ToString(3) ?? "?"),
+            CloseButtonText = Str("PrintClose"),
+            XamlRoot = Content.XamlRoot
+        };
+        await dlg.ShowAsync();
+    }
+
     private async Task ShowNoteAsync(string content)
     {
         var dlg = new ContentDialog
