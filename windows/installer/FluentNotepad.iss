@@ -24,6 +24,9 @@ DefaultGroupName={#MyAppName}
 OutputDir=.\dist
 OutputBaseFilename={#MyAppName}-Setup-{#MyAppVersion}-win-x64
 SetupIconFile={#IconFile}
+; Control Panel / Settings entry icon: the generated unins000.exe has no icon
+; of its own, so point at the app exe (which embeds AppIcon.ico).
+UninstallDisplayIcon={app}\{#MyAppExeName}
 Compression=lzma2/ultra64
 ArchitecturesAllowed=x64compatible
 ; Per-machine install under C:\Program Files: requires the UAC prompt.
