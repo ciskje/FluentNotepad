@@ -20,6 +20,10 @@ Legend per row: `win:[x]` / `mac:[x]` = shipped on that platform.
   in a collapsible tree preview (expand/collapse all, search, copy path/value,
   per-tab open state, invalid-JSON error page, print expanded, JSON edit-mode
   highlight). Windows done; macOS (WKWebView port) pending.
+- XML tree preview (`generic`, win:[x] mac:[ ]): `.xml`/`.config` with the same
+  tree schema (attributes as `@name` rows, XPath copy paths, XML comments
+  shown, invalid-XML error page, XML edit-mode highlight). Windows done;
+  macOS (WKWebView port) pending.
 
 ## Done
 

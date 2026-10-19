@@ -106,4 +106,10 @@
   <data name="JsonCopyValue"><value>Copy value</value></data>
   <data name="JsonMatches"><value>{0} of {1}</value></data>
   <data name="JsonNoMatch"><value>No matches</value></data>
+  <data name="XmlFilter"><value>XML file</value></data>
+  <data name="XmlInvalidTitle"><value>Invalid XML</value></data>
+  <data name="XmlInvalid"><value>Invalid XML (line {0}, column {1})</value></data>
+  <data name="XmlErrorHint"><value>Switch to Edit (Esc) to fix the file.</value></data>
+  <data name="XmlTooLarge"><value>File too large for the tree view: use Edit mode.</value></data>
+  <data name="XmlTruncated"><value>Tree truncated: too many nodes, showing a part.</value></data>
 </root>

@@ -30,6 +30,9 @@ Both builds implement the same intents; platform-native details may differ
 - JSON tree preview for `.json`/`.jsonc` (auto-preview like Markdown):
   collapsible tree, expand/collapse all, search, copy path/value, invalid-JSON
   error with line/column, print expanded, JSON highlighting in edit mode
+- XML tree preview for `.xml`/`.config` on the same schema (attributes as
+  `@name` rows, XPath copy paths, XML comments shown, invalid-XML error,
+  XML highlighting in edit mode)
 - In-app keyboard-shortcuts reference (Help menu, both languages)
 
 ## Change workflow

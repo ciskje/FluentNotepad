@@ -64,9 +64,11 @@ public sealed partial class MainWindow : Window
         public string? Path;
         public bool IsMarkdown;
         public bool IsJson;
+        public bool IsXml;
         public bool PreviewVisible;
-        public bool CanPreview() => IsMarkdown || IsJson;
-        // JSON tree state, per tab in memory: open RFC 6901 pointers + search text.
+        public bool CanPreview() => IsMarkdown || IsJson || IsXml;
+        // Tree-preview state, per tab in memory: open node pointers + search text.
+        // (XML uses index-based pointers; the same set works for both.)
         public HashSet<string> JsonOpen = new();
         public string JsonQuery = "";
         public bool Dirty;
@@ -217,13 +219,14 @@ public sealed partial class MainWindow : Window
         // hosting, skip the wasted pass here.
         if (d.Editor.Parent == null) return;
         string text = GetEditorText(d.Editor);
-        string key = $"{text.Length}-{text.GetHashCode()}-{EffectiveFontSize()}-{_dark}-{d.IsMarkdown}-{d.IsJson}";
+        string key = $"{text.Length}-{text.GetHashCode()}-{EffectiveFontSize()}-{_dark}-{d.IsMarkdown}-{d.IsJson}-{d.IsXml}";
         if (key == d.HighlightKey) return;
         d.HighlightKey = key;
         _highlighting = true;
         try
         {
             if (d.IsJson) JsonHighlight.Apply(d.Editor, _dark, EffectiveFontSize(), BaseTextColor(), BaseBgColor());
+            else if (d.IsXml) XmlHighlight.Apply(d.Editor, _dark, EffectiveFontSize(), BaseTextColor(), BaseBgColor());
             else MarkdownHighlight.Apply(d.Editor, d.IsMarkdown, _dark, EffectiveFontSize(), BaseTextColor(), BaseBgColor());
         }
         catch (Exception ex) { Debug.WriteLine($"Highlight: {ex.Message}"); }
@@ -237,6 +240,10 @@ public sealed partial class MainWindow : Window
     public static bool IsJsonFile(string? path) =>
         path != null && (path.EndsWith(".json", StringComparison.OrdinalIgnoreCase) ||
                          path.EndsWith(".jsonc", StringComparison.OrdinalIgnoreCase));
+
+    public static bool IsXmlFile(string? path) =>
+        path != null && (path.EndsWith(".xml", StringComparison.OrdinalIgnoreCase) ||
+                         path.EndsWith(".config", StringComparison.OrdinalIgnoreCase));
 
     private static string DisplayName(DocumentInfo d) =>
         d.Path != null ? System.IO.Path.GetFileName(d.Path) : Str("Untitled");
@@ -275,7 +282,7 @@ public sealed partial class MainWindow : Window
         // Unsaved tabs count as Markdown (like the Mac): preview toggle,
         // highlighting and .md save default work before the first save.
         // Save As to .txt flips it back (see SaveTabAsync).
-        var doc = new DocumentInfo { Editor = box, Path = path, IsMarkdown = path == null || IsMarkdownFile(path), IsJson = path != null && IsJsonFile(path) };
+        var doc = new DocumentInfo { Editor = box, Path = path, IsMarkdown = path == null || IsMarkdownFile(path), IsJson = path != null && IsJsonFile(path), IsXml = path != null && IsXmlFile(path) };
         var tab = new TabViewItem { Tag = doc };
         doc.Tab = tab;
         RefreshHeader(doc);
@@ -430,7 +437,7 @@ public sealed partial class MainWindow : Window
     private string _lastWebError = "";
     // JSON tree HTML is served from a temp file (not NavigateToString, capped at
     // 2 MB): the payload can exceed the source size.
-    private string? _jsonPreviewFile;
+    private string? _treePreviewFile;
     private int _previewSeq;
     private Microsoft.Web.WebView2.Core.CoreWebView2? _hookedCore;
 
@@ -489,13 +496,16 @@ public sealed partial class MainWindow : Window
             }
             string? baseDir = doc.Path != null ? Path.GetDirectoryName(doc.Path) : null;
             double size = (FontSlider?.Value ?? 15) * _zoom;
-            if (doc.IsJson)
+            if (doc.IsJson || doc.IsXml)
             {
-                string html = JsonPreviewHtml.Build(GetEditorText(doc.Editor), _dark, size,
-                    DisplayName(doc), doc.JsonOpen);
-                string file = JsonPreviewPath();
+                string html = doc.IsJson
+                    ? JsonPreviewHtml.Build(GetEditorText(doc.Editor), _dark, size,
+                        DisplayName(doc), doc.JsonOpen)
+                    : XmlPreviewHtml.Build(GetEditorText(doc.Editor), _dark, size,
+                        DisplayName(doc), doc.JsonOpen);
+                string file = TreePreviewPath();
                 File.WriteAllText(file, html);
-                _jsonPreviewFile = file;
+                _treePreviewFile = file;
                 // Query busts the cache: same file, new content must re-navigate.
                 PreviewView.CoreWebView2.Navigate(new Uri(file).AbsoluteUri + "?v=" + (++_previewSeq));
             }
@@ -517,14 +527,14 @@ public sealed partial class MainWindow : Window
         if (GetActiveDoc() is { } d) RenderPreview(d);
     }
 
-    // The temp file backing the JSON tree preview (see windows/AGENTS.md): shared
+    // The temp file backing the tree previews (see windows/AGENTS.md): shared
     // per process, versioned by query. Allow-listed in Preview_NavigationStarting.
-    private static string JsonPreviewPath()
+    private static string TreePreviewPath()
     {
         string dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "FluentNotepad", "preview");
         Directory.CreateDirectory(dir);
-        return Path.Combine(dir, $"json-preview-{Environment.ProcessId}.html");
+        return Path.Combine(dir, $"tree-preview-{Environment.ProcessId}.html");
     }
 
     private static void CopyText(string text)
@@ -562,8 +572,8 @@ public sealed partial class MainWindow : Window
         string msg;
         try { msg = e.TryGetWebMessageAsString(); }
         catch (Exception ex) { Debug.WriteLine($"WebMsg: {ex.Message}"); return; }
-        // JSON tree protocol: {"op":"line"|"copy"|"state",...}. Anything else
-        // falls through to the Markdown plain-line-number path below.
+        // Tree-preview protocol (JSON + XML): {"op":"line"|"copy"|"state",...}.
+        // Anything else falls through to the Markdown plain-line-number path.
         string t = msg.Trim();
         if (t.StartsWith("{"))
         {
@@ -574,16 +584,17 @@ public sealed partial class MainWindow : Window
                 if (root.TryGetProperty("op", out var op) && op.GetString() is string o)
                 {
                     var d = GetActiveDoc();
+                    bool isTree = d is { PreviewVisible: true } && (d.IsJson || d.IsXml);
                     if (o == "line" && root.TryGetProperty("line", out var ln) &&
                         ln.TryGetInt32(out int line) && line >= 1)
                     {
-                        if (d is { IsJson: true, PreviewVisible: true }) JumpToLine(d, line);
+                        if (isTree && d != null) JumpToLine(d, line);
                     }
                     else if (o == "copy" && root.TryGetProperty("text", out var tx))
                     {
                         CopyText(tx.GetString() ?? "");
                     }
-                    else if (o == "state" && d is { IsJson: true })
+                    else if (o == "state" && isTree && d != null)
                     {
                         if (root.TryGetProperty("open", out var arr) && arr.ValueKind == JsonValueKind.Array)
                         {
@@ -619,9 +630,9 @@ public sealed partial class MainWindow : Window
             string local;
             try { local = new Uri(uri).LocalPath; }
             catch { return; }
-            // Our own JSON tree page (temp file): let it load, never open as a tab.
-            if (_jsonPreviewFile != null &&
-                string.Equals(local, _jsonPreviewFile, StringComparison.OrdinalIgnoreCase)) return;
+            // Our own tree preview page (temp file): let it load, never open as a tab.
+            if (_treePreviewFile != null &&
+                string.Equals(local, _treePreviewFile, StringComparison.OrdinalIgnoreCase)) return;
             if (!File.Exists(local)) return;
             e.Cancel = true;
             // Deferred: we are inside the navigation callback, don't reshuffle tabs here.
@@ -677,9 +688,10 @@ public sealed partial class MainWindow : Window
         var d = GetActiveDoc();
         bool isMd = d?.IsMarkdown == true;
         bool isJson = d?.IsJson == true;
-        bool isPv = isMd || isJson;
+        bool isXml = d?.IsXml == true;
+        bool isPv = isMd || isJson || isXml;
         MdToggle.Visibility = isPv ? Visibility.Visible : Visibility.Collapsed;
-        FileTypeLabel.Text = isMd ? "Markdown" : isJson ? "JSON" : Str("FileTypeLabel.Text");
+        FileTypeLabel.Text = isMd ? "Markdown" : isJson ? "JSON" : isXml ? "XML" : Str("FileTypeLabel.Text");
         if (isPv && d != null)
         {
             StyleToggle(EditModeBtn, !d.PreviewVisible);
@@ -722,8 +734,8 @@ public sealed partial class MainWindow : Window
         var d = GetActiveDoc();
         if (d?.CanPreview() == true)
         {
-            // JSON tree search owns ESC first: clear it, stay in preview.
-            if (d is { IsJson: true, PreviewVisible: true } && !string.IsNullOrEmpty(d.JsonQuery))
+            // Tree-preview search owns ESC first: clear it, stay in preview.
+            if (d.PreviewVisible && (d.IsJson || d.IsXml) && !string.IsNullOrEmpty(d.JsonQuery))
             {
                 d.JsonQuery = "";
                 try { _ = PreviewView.CoreWebView2?.ExecuteScriptAsync("if(window.__fnClearSearch)window.__fnClearSearch();"); }
@@ -750,6 +762,8 @@ public sealed partial class MainWindow : Window
         picker.FileTypeFilter.Add(".markdown");
         picker.FileTypeFilter.Add(".json");
         picker.FileTypeFilter.Add(".jsonc");
+        picker.FileTypeFilter.Add(".xml");
+        picker.FileTypeFilter.Add(".config");
         picker.FileTypeFilter.Add(".txt");
         picker.FileTypeFilter.Add("*");
         var file = await picker.PickSingleFileAsync();
@@ -766,7 +780,13 @@ public sealed partial class MainWindow : Window
         {
             var picker = new FileSavePicker { SuggestedStartLocation = PickerLocationId.DocumentsLibrary };
             InitPicker(picker);
-            if (doc.IsJson)
+            if (doc.IsXml)
+            {
+                picker.FileTypeChoices.Add(Str("XmlFilter"), new List<string> { ".xml", ".config" });
+                picker.SuggestedFileName = Str("Untitled");
+                picker.DefaultFileExtension = ".xml";
+            }
+            else if (doc.IsJson)
             {
                 picker.FileTypeChoices.Add(Str("JsonFilter"), new List<string> { ".json", ".jsonc" });
                 picker.SuggestedFileName = Str("Untitled");
@@ -790,6 +810,7 @@ public sealed partial class MainWindow : Window
             doc.Path = file.Path;
             doc.IsMarkdown = IsMarkdownFile(doc.Path);
             doc.IsJson = !doc.IsMarkdown && IsJsonFile(doc.Path);
+            doc.IsXml = !doc.IsMarkdown && !doc.IsJson && IsXmlFile(doc.Path);
             RefreshHeader(doc);
             RefreshMdUi();
             RefreshHighlight(doc); // markdown-ness may have changed: recolor
@@ -937,7 +958,7 @@ public sealed partial class MainWindow : Window
             // The page title already carries DisplayName (see Build): the browser
             // print header shows it instead of "about:blank".
             await PreviewView.EnsureCoreWebView2Async();
-            if (d.IsJson)
+            if (d.IsJson || d.IsXml)
             {
                 // Print the whole tree, not just the open branches: expand first
                 // (the toolbar is hidden by the print CSS).
@@ -1020,7 +1041,7 @@ public sealed partial class MainWindow : Window
         FindBox.SelectAll();
     }
 
-    // Ctrl+F is contextual: in the JSON tree preview it focuses the tree search
+    // Ctrl+F is contextual: in a tree preview it focuses the tree search
     // (ESC clears that first, see EscapeAccel); otherwise the editor find bar.
     private async void FocusTreeSearch()
     {
@@ -1035,7 +1056,7 @@ public sealed partial class MainWindow : Window
     private void Find_Click(object s, RoutedEventArgs e)
     {
         var d = GetActiveDoc();
-        if (d is { IsJson: true, PreviewVisible: true }) { FocusTreeSearch(); return; }
+        if (d is { PreviewVisible: true } && (d.IsJson || d.IsXml)) { FocusTreeSearch(); return; }
         ShowFind();
     }
     private void FindClose_Click(object s, RoutedEventArgs e) => FindBar.Visibility = Visibility.Collapsed;

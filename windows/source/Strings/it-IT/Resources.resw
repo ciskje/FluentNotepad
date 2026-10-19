@@ -106,4 +106,10 @@
   <data name="JsonCopyValue"><value>Copia valore</value></data>
   <data name="JsonMatches"><value>{0} di {1}</value></data>
   <data name="JsonNoMatch"><value>Nessun risultato</value></data>
+  <data name="XmlFilter"><value>File XML</value></data>
+  <data name="XmlInvalidTitle"><value>XML non valido</value></data>
+  <data name="XmlInvalid"><value>XML non valido (riga {0}, colonna {1})</value></data>
+  <data name="XmlErrorHint"><value>Passa in Modifica (Esc) per correggere il file.</value></data>
+  <data name="XmlTooLarge"><value>File troppo grande per la vista ad albero: usa la modalità Modifica.</value></data>
+  <data name="XmlTruncated"><value>Albero troncato: troppi nodi, ne mostro una parte.</value></data>
 </root>
