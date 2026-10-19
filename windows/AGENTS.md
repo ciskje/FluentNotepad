@@ -17,6 +17,12 @@ dotnet publish source\FluentNotepad.WinUI.csproj -c Release -p:Platform=x64
 iscc installer\FluentNotepad.iss   # requires Inno Setup 6, output in installer\dist\
 ```
 
+- The csproj copies the app's own `FluentNotepad.pri` + `*.xbf` into the publish
+  dir automatically (`CopyAppPriToPublish`): `-p:Platform=x64` builds into
+  `bin\x64\...` while the pubxml publishes from `bin\...\publish`, and without
+  the app `.pri` the installed app fail-fasts at startup (`0xC000027B` in
+  `Microsoft.UI.Xaml.dll`). The 2.7.0 setup predates this fix.
+
 - `app/` (local publish output, never commit) and `installer/dist/`
   (not versioned, see `.gitignore`).
 - `dotnet build` from `windows/`; the default `RuntimeIdentifier` follows the host architecture.

@@ -21,6 +21,17 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <!-- Unpackaged WinUI: `dotnet publish -p:Platform=x64` builds into bin\x64\...
+       but the pubxml PublishDir is bin\...\publish, and the app's own .pri/.xbf
+       never cross over (the framework .pri files do). Without FluentNotepad.pri,
+       InitializeComponent fail-fasts at startup (0xC000027B in Microsoft.UI.Xaml.dll).
+       Copy them over after every publish. -->
+  <Target Name="CopyAppPriToPublish" AfterTargets="Publish">
+    <Copy SourceFiles="$(OutputPath)FluentNotepad.pri;$(OutputPath)App.xbf;$(OutputPath)MainWindow.xbf"
+          DestinationFolder="$(PublishDir)"
+          SkipUnchangedFiles="true" />
+  </Target>
+
   <ItemGroup>
     <Content Include="Assets\AppIcon.ico" CopyToOutputDirectory="PreserveNewest" />
     <!-- .resw also as plain files (for code-behind strings without MRT: ResourceLoader
