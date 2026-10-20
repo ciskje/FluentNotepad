@@ -13,7 +13,7 @@ func jumpToLine(_ store: Store, _ line: Int) {
     // just-placed caret, otherwise it blinks the old line (or aborts).
     doc.showPreview = false
     doc.revealRange = NSRange(location: lineStartOffsetIn(doc.text, line: line), length: 0)
-    flashCaretLine(store, preDelayMs: 500, blinkMs: 250)
+    flashCaretLine(store, preDelayMs: 1000, blinkMs: 250)
 }
 
 /// Jump straight to Edit and blink the caret line twice there (in place):
@@ -28,7 +28,7 @@ func jumpThenFlash(_ store: Store, _ line: Int) {
 /// Caret-line flash (two blinks) when entering Edit: selection-only, so it
 /// never touches the undo stack or text attributes. Any real edit, tab
 /// switch or back-to-preview aborts it via flashGen. No-op unless the tab is
-/// in Edit. Optional pre-delay + blink length: the click path waits 0.5 s,
+/// in Edit. Optional pre-delay + blink length: the click path waits 1 s,
 /// then blinks twice at 250 ms so the target line is easy to catch.
 func flashCaretLine(_ store: Store, preDelayMs: UInt64 = 0, blinkMs: UInt64 = 140_000_000) {
     store.flashGen += 1

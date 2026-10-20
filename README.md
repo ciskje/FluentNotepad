@@ -27,14 +27,14 @@ Or build it yourself: see `windows/AGENTS.md` (Build/run) and `macos/AGENTS.md` 
 
 ## Changelog
 
-Same version number = same features everywhere. Windows and macOS are at `2.10.4`.
+Same version number = same features everywhere. Windows is at `2.10.4`, macOS at `2.10.5` (same intents; macOS pauses 1 s instead of 0.5 s before the click-to-source caret blink).
 
+- **2.10.5** (macOS) — Click-to-source pause before the caret-line blink increased from 0.5 s to 1 s.
 - **2.10.4** (macOS) — Click-to-source jumps to Edit and blinks the caret line twice (0.5 s pause, 2x250 ms); About lists all supported formats; opening an already-open file selects its tab (full-path, case-insensitive match).
 - **2.10.4** (Windows) — Click-to-source jumps to Edit and blinks the caret line twice (0.5 s pause, 2x250 ms) instead of highlighting the preview row; editor wrap + font size now persist across launches; status bar shows the detected file encoding (UTF-8 / UTF-8 with BOM / UTF-16 LE/BE).
 
 - **2.10.3** (Windows) — Opening an already-open file selects its tab instead of duplicating it; click-to-source now blinks the row in tree/CSV previews before jumping to Edit; About dialog lists all supported formats.
 - **2.10.2** (Windows) — Closing the last tab no longer leaves the previous editor on screen.
-- **2.10.1** (macOS) — File associations for the new formats too (exported UTIs: `.yaml`/`.yml`, `.toml`, `.ini`/`.cfg`/`.inf`/`.properties`, `.jsonc`, `.config`; open by double-click); YAML, TOML and INI tree previews plus CSV grid preview (search, copy, click-to-line; edit-mode highlight for the tree formats); XML tree preview (attributes as `@name` rows, XPath copy paths, XML comments, invalid-XML error, XML highlight, Open/Save panel types); ⌘S saves the active tab; drag-reorderable tabs; print notice for non-preview tabs (expand-before-print for trees); footnotes/definition lists in Markdown preview; caret-line flash entering Edit; click-to-source blinks the row in preview before jumping.
 - **2.10.1** (Windows) — Setup offers optional associations for the new formats too (`.yaml`/`.yml`, `.toml`, `.ini`/`.cfg`/`.inf`/`.properties`, `.csv`/`.tsv`; all unchecked by default).
 Last 5 entries; full history in [Releases](../../releases) and the Done section
 of [TODO.md](TODO.md) (archived at each release).
