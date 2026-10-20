@@ -29,59 +29,46 @@ final class Doc: Identifiable, @unchecked Sendable {
 
     var dirty: Bool { text != savedText }
 
-    var isMarkdown: Bool {
+    /// Preview/highlight family, detected once from the file name.
+    enum Kind: Equatable { case text, markdown, json, xml, yaml, toml, ini, csv }
+
+    // One table drives extension detection for every predicate. Markdown first:
+    // it also wins for .md. Extensionless dotfiles (.env, .env.local) are INI.
+    private static let kindExts: [(Kind, [String])] = [
+        (.markdown, [".md", ".markdown"]),
+        (.json, [".json", ".jsonc"]),
+        (.xml, [".xml", ".config"]),
+        (.yaml, [".yaml", ".yml"]),
+        (.toml, [".toml"]),
+        (.ini, [".ini", ".cfg", ".inf", ".properties"]),
+        (.csv, [".csv", ".tsv"]),
+    ]
+
+    var kind: Kind {
         // Unsaved tabs count as Markdown: preview toggle, highlighting and
         // .md save default work before the first save (real .txt keeps none).
-        guard let p = path else { return true }
-        let l = p.lowercased()
-        return l.hasSuffix(".md") || l.hasSuffix(".markdown")
-    }
-
-    var isJSON: Bool {
-        guard let p = path else { return false }
-        let l = p.lowercased()
-        return l.hasSuffix(".json") || l.hasSuffix(".jsonc")
-    }
-
-    var isXML: Bool {
-        guard let p = path else { return false }
-        let l = p.lowercased()
-        return l.hasSuffix(".xml") || l.hasSuffix(".config")
-    }
-
-    var isYaml: Bool {
-        guard let p = path else { return false }
-        let l = p.lowercased()
-        return l.hasSuffix(".yaml") || l.hasSuffix(".yml")
-    }
-
-    var isToml: Bool {
-        guard let p = path else { return false }
-        return p.lowercased().hasSuffix(".toml")
-    }
-
-    var isIni: Bool {
-        guard let p = path else { return false }
-        let l = p.lowercased()
-        if l.hasSuffix(".ini") || l.hasSuffix(".cfg") || l.hasSuffix(".inf")
-            || l.hasSuffix(".properties") { return true }
-        // Extensionless dotfiles like .env / .env.local (checked by file name).
+        guard let p = path else { return .markdown }
         let name = URL(fileURLWithPath: p).lastPathComponent.lowercased()
-        return name == ".env" || name.hasPrefix(".env.")
+        for (k, exts) in Doc.kindExts where exts.contains(where: { name.hasSuffix($0) }) {
+            return k
+        }
+        return name == ".env" || name.hasPrefix(".env.") ? .ini : .text
     }
 
-    var isCSV: Bool {
-        guard let p = path else { return false }
-        let l = p.lowercased()
-        return l.hasSuffix(".csv") || l.hasSuffix(".tsv")
-    }
+    var isMarkdown: Bool { kind == .markdown }
+    var isJSON: Bool { kind == .json }
+    var isXML: Bool { kind == .xml }
+    var isYaml: Bool { kind == .yaml }
+    var isToml: Bool { kind == .toml }
+    var isIni: Bool { kind == .ini }
+    var isCSV: Bool { kind == .csv }
 
     /// Tree previews share the collapsible schema (JSON pointer + $. paths);
     /// CSV has its own grid page. Markdown stands alone.
-    var isTree: Bool { isJSON || isXML || isYaml || isToml || isIni }
+    var isTree: Bool { kind == .json || kind == .xml || kind == .yaml || kind == .toml || kind == .ini }
 
     /// Anything with a graphical preview (Markdown + tree/grid previews).
-    var canPreview: Bool { isMarkdown || isTree || isCSV }
+    var canPreview: Bool { kind != .text }
 
     var fileName: String { path.map { URL(fileURLWithPath: $0).lastPathComponent } ?? L("untitled") }
 

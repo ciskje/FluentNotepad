@@ -1,6 +1,6 @@
-using System.Net;
 using System.Text.Json;
 using System.Xml;
+using static FluentNotepad.PreviewTree;
 
 namespace FluentNotepad;
 
@@ -15,55 +15,27 @@ namespace FluentNotepad;
 /// </summary>
 public static class XmlPreviewHtml
 {
-    public const int MaxChars = 10_000_000;
-    public const int MaxNodes = 300_000;
-    public const int MaxDepth = 200;
-    public const int MaxKidsAfterTrunc = 1000;
-
     public static string Build(string text, bool dark, double fontSize, string? title, ISet<string>? open)
     {
-        var pal = new MarkdownShared.Palette(dark);
-        string head = "<!DOCTYPE html><html><head><meta charset='utf-8'>" +
-            "<meta name='color-scheme' content='" + (dark ? "dark" : "light") + "'>" +
-            "<title>" + WebUtility.HtmlEncode(title ?? "XML") + "</title>" +
-            "<style>" + PreviewTree.Css(pal, fontSize) + "</style></head><body>";
         if (text.Length > MaxChars)
-        {
-            return head + "<div class=err><div class=et>" + Esc(MainWindow.Str("XmlTooLarge")) +
-                "</div></div></body></html>";
-        }
+            return PageHead(dark, fontSize, title ?? "XML") + TooLarge(MainWindow.Str("XmlTooLarge"));
         try
         {
             var root = Parse(text, out bool truncated);
-            string page = head + Toolbar() +
-                (truncated ? "<div id=trunc>" + Esc(MainWindow.Str("XmlTruncated")) + "</div>" : "") +
-                "<div id=tree></div>" +
-                "<script>var root=__D0__;var opns=__O0__;var STR=__S0__;var __XML__=__X0__;\n" + PreviewTree.Js() + "</script></body></html>";
-            return page
-                .Replace("__D0__", JsonSerializer.Serialize(root))
-                .Replace("__O0__", JsonSerializer.Serialize(open ?? Enumerable.Empty<string>()))
-                .Replace("__S0__", JsonSerializer.Serialize(PreviewTree.Strings()))
-                .Replace("__X0__", "true");
+            return TreePage(dark, fontSize, title ?? "XML",
+                truncated ? MainWindow.Str("XmlTruncated") : null,
+                JsonSerializer.Serialize(root),
+                JsonSerializer.Serialize(open ?? Enumerable.Empty<string>()),
+                xml: true);
         }
         catch (XmlException ex)
         {
-            return head + ErrorBody(text, ex) + "</body></html>";
+            return ErrorPage(dark, fontSize, title ?? "XML",
+                MainWindow.Str("XmlInvalidTitle"),
+                string.Format(MainWindow.Str("XmlInvalid"), ex.LineNumber, ex.LinePosition),
+                ex.Message, text, MainWindow.Str("XmlErrorHint"));
         }
     }
-
-    private static string Esc(string s) => WebUtility.HtmlEncode(s);
-
-    private static string Toolbar() =>
-        "<div class=tools><button id=bExp>" + Esc(MainWindow.Str("JsonExpandAll")) + "</button>" +
-        "<button id=bCol>" + Esc(MainWindow.Str("JsonCollapseAll")) + "</button>" +
-        "<input id=q placeholder=\"" + Esc(MainWindow.Str("JsonSearch")) + "\"><span id=cnt></span></div>";
-
-    private static string ErrorBody(string text, XmlException ex) =>
-        "<div class=err><div class=et>" + Esc(MainWindow.Str("XmlInvalidTitle")) + "</div>" +
-        "<div class=em>" + Esc(string.Format(MainWindow.Str("XmlInvalid"), ex.LineNumber, ex.LinePosition)) + "</div>" +
-        "<div class=ed>" + Esc(ex.Message) + "</div>" +
-        "<pre>" + Esc(text.Length > 100_000 ? text[..100_000] + "\n…" : text) + "</pre>" +
-        "<div class=eh>" + Esc(MainWindow.Str("XmlErrorHint")) + "</div></div>";
 
     // MARK: - Parse (streaming XmlReader, positions from IXmlLineInfo)
 

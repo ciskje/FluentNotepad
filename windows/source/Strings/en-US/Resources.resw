@@ -43,9 +43,9 @@
   <data name="FmtNumbers.ToolTipService.ToolTip"><value>Numbered list (1. )</value></data>
   <data name="FmtCode.ToolTipService.ToolTip"><value>Code (`text`)</value></data>
   <!-- Edit/Preview toggle -->
-  <data name="EditModeBtn.Content"><value>Edit</value></data>
+  <data name="EditModeBtn.AutomationProperties.Name"><value>Edit</value></data>
   <data name="EditModeBtn.ToolTipService.ToolTip"><value>Edit mode</value></data>
-  <data name="PreviewModeBtn.Content"><value>Preview</value></data>
+  <data name="PreviewModeBtn.AutomationProperties.Name"><value>Preview</value></data>
   <data name="PreviewModeBtn.ToolTipService.ToolTip"><value>Preview (Ctrl+Shift+V)</value></data>
   <!-- Right buttons -->
   <data name="SaveBtn.ToolTipService.ToolTip"><value>Save (Ctrl+S)</value></data>

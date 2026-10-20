@@ -8,7 +8,6 @@ import Foundation
 /// line. Port of Windows' CsvPreviewHtml.cs (2.10.0): same parser, same grid
 /// widget (the header row renders as the table head here, per the intent).
 enum CsvGrid {
-    static let maxChars = 10_000_000
     static let maxRows = 5000
 
     typealias ParseError = PreviewTree.ParseError
@@ -36,9 +35,9 @@ enum CsvGrid {
             + "<title>" + PreviewTree.esc(title ?? "CSV") + "</title>"
             + "<style>" + PreviewTree.css(pal, Int(fontSize)) + gridCss(pal, fontSize)
             + "</style></head><body>"
-        if text.count > maxChars {
-            return head + "<div class=err><div class=et>" + PreviewTree.esc(L("csvTooLarge"))
-                + "</div></div></body></html>"
+        if text.count > PreviewTree.maxChars {
+            return PreviewTree.tooLargePage(dark: dark, fontSize: fontSize, title: title ?? "CSV",
+                message: L("csvTooLarge"), extraCss: gridCss(pal, fontSize))
         }
         do {
             let (table, truncated, totalRows) = try parse(text)

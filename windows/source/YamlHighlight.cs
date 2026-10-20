@@ -1,4 +1,3 @@
-using Microsoft.UI.Text;
 using Microsoft.UI.Xaml.Controls;
 using Windows.UI;
 
@@ -13,49 +12,15 @@ namespace FluentNotepad;
 /// </summary>
 public static class YamlHighlight
 {
-    public const int MaxChars = 300_000;
-
-    private readonly struct Paint
-    {
-        public readonly MarkdownShared.Rgb Fg;
-        public readonly bool Italic;
-
-        public Paint(MarkdownShared.Rgb fg, bool italic = false)
-        {
-            Fg = fg; Italic = italic;
-        }
-    }
-
     public static void Apply(RichEditBox editor, bool dark, float fontSize,
-        Color baseFg, Color baseBg)
+        Color baseFg, Color baseBg) =>
+        TextPainter.Apply(editor, dark, fontSize, baseFg, baseBg, Paint);
+
+    private static void Paint(string parse, MarkdownShared.Palette pal,
+        List<TextPainter.Span> ops)
     {
-        var doc = editor.Document;
-        doc.GetText(TextGetOptions.None, out string raw);
-        string text = (raw.Length > 0 && raw[^1] == '\r') ? raw[..^1] : raw;
-        string parse = text.Replace('\r', '\n');
         int n = parse.Length;
-
-        doc.BatchDisplayUpdates();
-        try
-        {
-            if (n > 0)
-            {
-                var all = doc.GetRange(0, n);
-                var f = all.CharacterFormat;
-                f.ForegroundColor = baseFg;
-                f.BackgroundColor = baseBg;
-                f.Bold = FormatEffect.Off;
-                f.Italic = FormatEffect.Off;
-                f.Strikethrough = FormatEffect.Off;
-                f.Underline = UnderlineType.None;
-                f.Size = fontSize;
-                all.CharacterFormat = f;
-            }
-            if (n == 0 || n > MaxChars) return;
-
-            var pal = new MarkdownShared.Palette(dark);
-            var ops = new List<(int Start, int Length, Paint Paint)>();
-            int depth = 0;
+        int depth = 0;
             int blockIndent = -1;
             int i = 0;
             while (i < n)
@@ -75,7 +40,7 @@ public static class YamlHighlight
                         {
                             int e = parse.IndexOf('\n', i);
                             if (e < 0) e = n;
-                            if (e > i) ops.Add((i, e - i, new Paint(pal.JsonString)));
+                            if (e > i) ops.Add(new TextPainter.Span(i, e - i, pal.JsonString));
                             i = e;
                             continue;
                         }
@@ -99,7 +64,7 @@ public static class YamlHighlight
                         }
                         i++;
                     }
-                    if (i > s) ops.Add((s, i - s, new Paint(pal.JsonString)));
+                    if (i > s) ops.Add(new TextPainter.Span(s, i - s, pal.JsonString));
                     continue;
                 }
                 if (c == '"')
@@ -112,14 +77,14 @@ public static class YamlHighlight
                         if (parse[i] == '"') { i++; break; }
                         i++;
                     }
-                    if (i > s) ops.Add((s, i - s, new Paint(pal.JsonString)));
+                    if (i > s) ops.Add(new TextPainter.Span(s, i - s, pal.JsonString));
                     continue;
                 }
                 if (c == '#' && (lineStart || (i > 0 && (parse[i - 1] == ' ' || parse[i - 1] == '\t'))))
                 {
                     int s = i;
                     while (i < n && parse[i] != '\n') i++;
-                    ops.Add((s, i - s, new Paint(pal.JsonComment, italic: true)));
+                    ops.Add(new TextPainter.Span(s, i - s, pal.JsonComment, Italic: true));
                     continue;
                 }
                 if (c == '[' || c == '{') { depth++; i++; continue; }
@@ -129,7 +94,7 @@ public static class YamlHighlight
                     int s = i;
                     i++;
                     while (i < n && (char.IsLetterOrDigit(parse[i]) || parse[i] == '_' || parse[i] == '-' || parse[i] == '.' || parse[i] == '/')) i++;
-                    if (i > s) ops.Add((s, i - s, new Paint(pal.Dim)));
+                    if (i > s) ops.Add(new TextPainter.Span(s, i - s, pal.Dim));
                     continue;
                 }
                 bool atKey = lineStart && depth == 0;
@@ -141,13 +106,13 @@ public static class YamlHighlight
                         int q = p + 1;
                         if (q < n && (parse[q] == ' ' || parse[q] == '\t'))
                         {
-                            ops.Add((p, 1, new Paint(pal.Dim)));
+                            ops.Add(new TextPainter.Span(p, 1, pal.Dim));
                             p = q + 1;
                             while (p < n && (parse[p] == ' ' || parse[p] == '\t')) p++;
                         }
                         else if (q >= n || parse[q] == '\n' || parse[q] == '\r')
                         {
-                            ops.Add((p, 1, new Paint(pal.Dim)));
+                            ops.Add(new TextPainter.Span(p, 1, pal.Dim));
                             i = q;
                             continue;
                         }
@@ -168,7 +133,7 @@ public static class YamlHighlight
                             string key = parse.Substring(ks, kt - ks);
                             if (key.Length > 0 && key != "?" && !key.StartsWith("? ", StringComparison.Ordinal))
                             {
-                                ops.Add((ks, kt - ks, new Paint(pal.JsonKey)));
+                                ops.Add(new TextPainter.Span(ks, kt - ks, pal.JsonKey));
                                 // Block scalar header? arm the content painter.
                                 string after = parse[(ke + 1)..(parse.IndexOf('\n', ke + 1) is int eol && eol >= 0 ? eol : n)];
                                 if (IsBlockHeader(after)) blockIndent = indent;
@@ -182,22 +147,6 @@ public static class YamlHighlight
                 }
                 i++;
             }
-            foreach (var (s, l, p) in ops)
-            {
-                if (s < 0 || l <= 0 || s + l > n) continue;
-                var r = doc.GetRange(s, s + l);
-                var f = r.CharacterFormat;
-                f.ForegroundColor = p.Fg.Color;
-                f.BackgroundColor = baseBg;
-                f.Bold = FormatEffect.Off;
-                f.Italic = p.Italic ? FormatEffect.On : FormatEffect.Off;
-                f.Strikethrough = FormatEffect.Off;
-                f.Underline = UnderlineType.None;
-                f.Size = fontSize;
-                r.CharacterFormat = f;
-            }
-        }
-        finally { doc.ApplyDisplayUpdates(); }
     }
 
     private static bool IsBlockHeader(string s)
@@ -216,7 +165,7 @@ public static class YamlHighlight
         return true;
     }
 
-    private static void PaintScalarValue(string text, int i, int n, MarkdownShared.Palette pal, List<(int Start, int Length, Paint Paint)> ops)
+    private static void PaintScalarValue(string text, int i, int n, MarkdownShared.Palette pal, List<TextPainter.Span> ops)
     {
         int s = i;
         while (s < n && (text[s] == ' ' || text[s] == '\t')) s++;
@@ -230,15 +179,15 @@ public static class YamlHighlight
         string low = v.ToLowerInvariant();
         if (low is "true" or "false" or "yes" or "no" or "on" or "off")
         {
-            ops.Add((s, e - s, new Paint(pal.JsonBool)));
+            ops.Add(new TextPainter.Span(s, e - s, pal.JsonBool));
             return;
         }
         if (low is "null" or "~" || low == "nul")
         {
-            ops.Add((s, e - s, new Paint(pal.JsonNull, italic: true)));
+            ops.Add(new TextPainter.Span(s, e - s, pal.JsonNull, Italic: true));
             return;
         }
-        if (IsNum(v)) ops.Add((s, e - s, new Paint(pal.JsonNumber)));
+        if (IsNum(v)) ops.Add(new TextPainter.Span(s, e - s, pal.JsonNumber));
     }
 
     private static bool IsNum(string v)

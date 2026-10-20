@@ -15,6 +15,25 @@ enum PreviewTree {
         var message: String
     }
 
+    // Caps shared by every preview builder (same values as Windows).
+    static let maxChars = 10_000_000
+    static let maxNodes = 300_000
+    static let maxDepth = 200
+    static let maxKidsAfterTrunc = 1000
+
+    /// Full-size-limit page, shared by every preview builder. The CSV grid
+    /// passes its own CSS through `extraCss`.
+    static func tooLargePage(dark: Bool, fontSize: Double, title: String?, message: String,
+        extraCss: String = "") -> String
+    {
+        let pal = Palette(dark: dark)
+        return "<!DOCTYPE html><html><head><meta charset='utf-8'>"
+            + "<meta name='color-scheme' content='" + (dark ? "dark" : "light") + "'>"
+            + "<title>" + esc(title ?? "Preview") + "</title>"
+            + "<style>" + css(pal, Int(fontSize)) + extraCss + "</style></head><body>"
+            + "<div class=err><div class=et>" + esc(message) + "</div></div></body></html>"
+    }
+
     /// Full tree-preview page (JSON/XML/YAML/TOML/INI): toolbar, truncation
     /// banner, tree host, payload script. User content arrives via the
     /// replacement VALUES, which the template tokens never rescan.

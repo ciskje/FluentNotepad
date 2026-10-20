@@ -1,11 +1,13 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace FluentNotepad;
 
 /// <summary>
-/// Shared collapsible-tree preview: CSS palette + JS widget used by the JSON
-/// and XML previews. The page embeds data nodes; all value text goes through
-/// textContent/esc, never raw innerHTML from values.
+/// Shared collapsible-tree preview: page shell, CSS palette and JS widget used
+/// by every tree preview (JSON, XML, YAML, TOML, INI) and the CSV grid. The page
+/// embeds data nodes; all value text goes through textContent/esc, never raw
+/// innerHTML from values.
 /// </summary>
 public static class PreviewTree
 {
@@ -47,10 +49,48 @@ public static class PreviewTree
         public int Column { get; } = column;
     }
 
-    /// <summary>
-    /// Generic invalid-document page (new tree previews share it; the JSON
-    /// and XML builders predate it and keep their own identical markup).
-    /// </summary>
+    // Caps shared by every preview builder (same values as the Mac).
+    public const int MaxChars = 10_000_000;
+    public const int MaxNodes = 300_000;
+    public const int MaxDepth = 200;
+    public const int MaxKidsAfterTrunc = 1000;
+
+    public static string Esc(string s) => System.Net.WebUtility.HtmlEncode(s);
+
+    /// <summary>Page shell: doctype, color scheme, title, palette CSS.</summary>
+    public static string PageHead(bool dark, double fontSize, string title, string extraCss = "") =>
+        "<!DOCTYPE html><html><head><meta charset='utf-8'>" +
+        "<meta name='color-scheme' content='" + (dark ? "dark" : "light") + "'>" +
+        "<title>" + Esc(title) + "</title>" +
+        "<style>" + Css(new MarkdownShared.Palette(dark), fontSize) + extraCss + "</style></head><body>";
+
+    /// <summary>Standard tree toolbar (expand/collapse/search).</summary>
+    public static string Toolbar() =>
+        "<div class=tools><button id=bExp>" + Esc(MainWindow.Str("JsonExpandAll")) + "</button>" +
+        "<button id=bCol>" + Esc(MainWindow.Str("JsonCollapseAll")) + "</button>" +
+        "<input id=q placeholder=\"" + Esc(MainWindow.Str("JsonSearch")) + "\"><span id=cnt></span></div>";
+
+    public static string TruncBanner(string message) =>
+        "<div id=trunc>" + Esc(message) + "</div>";
+
+    public static string TooLarge(string message) =>
+        "<div class=err><div class=et>" + Esc(message) + "</div></div></body></html>";
+
+    /// <summary>Full tree page: toolbar, truncation banner, tree host, payload.</summary>
+    public static string TreePage(bool dark, double fontSize, string title, string? truncMessage,
+        string rootJson, string openJson, bool xml)
+    {
+        string page = PageHead(dark, fontSize, title) + Toolbar() +
+            (truncMessage == null ? "" : TruncBanner(truncMessage)) +
+            "<div id=tree></div>" +
+            "<script>var root=__D0__;var opns=__O0__;var STR=__S0__;var __XML__=" + (xml ? "true" : "false") + ";\n" + Js() + "</script></body></html>";
+        return page
+            .Replace("__D0__", rootJson)
+            .Replace("__O0__", openJson)
+            .Replace("__S0__", JsonSerializer.Serialize(Strings()));
+    }
+
+    /// <summary>Generic invalid-document page for every preview builder.</summary>
     public static string ErrorPage(bool dark, double fontSize, string? title,
         string heading, string invalidLine, string details, string source, string hint)
     {
@@ -58,13 +98,13 @@ public static class PreviewTree
         string src = source.Length > 100_000 ? source[..100_000] + "\n…" : source;
         return "<!DOCTYPE html><html><head><meta charset='utf-8'>" +
             "<meta name='color-scheme' content='" + (dark ? "dark" : "light") + "'>" +
-            "<title>" + System.Net.WebUtility.HtmlEncode(title ?? "Preview") + "</title>" +
+            "<title>" + Esc(title ?? "Preview") + "</title>" +
             "<style>" + Css(pal, fontSize) + "</style></head><body>" +
-            "<div class=err><div class=et>" + System.Net.WebUtility.HtmlEncode(heading) + "</div>" +
-            "<div class=em>" + System.Net.WebUtility.HtmlEncode(invalidLine) + "</div>" +
-            "<div class=ed>" + System.Net.WebUtility.HtmlEncode(details) + "</div>" +
-            "<pre>" + System.Net.WebUtility.HtmlEncode(src) + "</pre>" +
-            "<div class=eh>" + System.Net.WebUtility.HtmlEncode(hint) + "</div></div></body></html>";
+            "<div class=err><div class=et>" + Esc(heading) + "</div>" +
+            "<div class=em>" + Esc(invalidLine) + "</div>" +
+            "<div class=ed>" + Esc(details) + "</div>" +
+            "<pre>" + Esc(src) + "</pre>" +
+            "<div class=eh>" + Esc(hint) + "</div></div></body></html>";
     }
     // MARK: - CSS
 
@@ -119,26 +159,36 @@ public static class PreviewTree
 
     // MARK: - JS (tree widget; all value text via textContent/esc, never raw innerHTML)
 
-    public static string Js() => """
+    /// <summary>JS helpers shared by the tree widget and the CSV grid.</summary>
+    public static string JsHelpers() => """
+        function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+        function post(o){try{if(window.chrome&&window.chrome.webview)window.chrome.webview.postMessage(JSON.stringify(o));}catch(e){}}
+        function E(t,c){var e=document.createElement(t);if(c)e.className=c;return e;}
+        function disp(s,max){s=String(s);return s.length>max?s.slice(0,max)+'…':s;}
+        function markIn(el,q){
+        if(el._o===undefined)el._o=el.textContent;
+        var t=el._o,low=t.toLowerCase(),h='',i=0,k;
+        while((k=low.indexOf(q,i))>=0){h+=esc(t.slice(i,k))+'<mark>'+esc(t.slice(k,k+q.length))+'</mark>';i=k+q.length;}
+        el.innerHTML=h+esc(t.slice(i));
+        }
+        """;
+
+    public static string Js() => JsHelpers() + """
         (function(){
         "use strict";
         var uidc=0,byUid={},byPtr={},matches=[],cur=-1,qraw='';
         var open={};(opns||[]).forEach(function(p){open[p]=1;});
         var host=document.getElementById('tree'),input=document.getElementById('q'),cnt=document.getElementById('cnt');
         var icoV='<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><rect x="4.5" y="4.5" width="6" height="6" rx="1" fill="none" stroke="currentColor"/><path d="M7.5 4.5v-2a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v4a1 1 0 0 0 1 1h2" fill="none" stroke="currentColor"/></svg>';
-        function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-        function post(o){try{if(window.chrome&&window.chrome.webview)window.chrome.webview.postMessage(JSON.stringify(o));}catch(e){}}
         function postState(){try{var a=[];for(var k in open)if(open[k])a.push(k);post({op:'state',open:a,q:qraw});}catch(e){}}
         function segEsc(s){return s.replace(/~/g,'~0').replace(/\//g,'~1');}
         function segUn(s){return s.replace(/~1/g,'/').replace(/~0/g,'~');}
-        function E(t,c){var e=document.createElement(t);if(c)e.className=c;return e;}
         function isC(n){return (n.t==='o'||n.t==='a')&&n.c&&n.c.length>0;}
         function childPtr(p,isArr,key,idx){return p+'/'+(isArr?idx:segEsc(key));}
         function childJ(j,isArr,key,idx){if(typeof __XML__!=='undefined'&&__XML__)return j+'/'+key+(idx>1?'['+idx+']':'');if(isArr)return j+'['+idx+']';if(/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(key))return j+'.'+key;return j+'['+JSON.stringify(key)+']';}
         function sumHtml(n){var c=n.c?n.c.length:0;if(n.t==='o')return '<span class=sum>'+(c?'{ '+c+' }':'{ }')+'</span>';return '<span class=sum>'+(c?'[ '+c+' ]':'[ ]')+'</span>';}
-        function disp(s){s=String(s);return s.length>500?s.slice(0,500)+'…':s;}
         function leafHtml(n){
-        if(n.t==='s')return '<span class="vv vs">'+esc('"'+disp(n.v)+'"')+'</span>';
+        if(n.t==='s')return '<span class="vv vs">'+esc('"'+disp(n.v,500)+'"')+'</span>';
         if(n.t==='n')return '<span class="vv vn">'+esc(n.v)+'</span>';
         if(n.t==='b')return '<span class="vv vb">'+esc(n.v)+'</span>';
         return '<span class=vl>null</span>';
@@ -146,7 +196,7 @@ public static class PreviewTree
         function buildNd(n,p,j,key,isIdx,isRoot){
         var u='u'+(++uidc);n._u=u;
         var nd=E('div','nd');nd.setAttribute('data-p',p);
-        if(n.m)for(var mi=0;mi<n.m.length;mi++){var cm0=E('div','cm');cm0.textContent=disp(n.m[mi]);nd.appendChild(cm0);}
+        if(n.m)for(var mi=0;mi<n.m.length;mi++){var cm0=E('div','cm');cm0.textContent=disp(n.m[mi],500);nd.appendChild(cm0);}
         var row=E('div','row');row.setAttribute('data-u',u);row.setAttribute('data-l',n.l);row.tabIndex=0;
         var h=isC(n)?'<span class=chev></span>':'<span class=nochev></span>';
         if(isRoot)h+='<span class=rp>$</span> ';
@@ -156,7 +206,7 @@ public static class PreviewTree
         h+='<button class=ic title="'+esc(STR.cp)+'" data-w=p tabindex="-1">$</button>';
         h+='<button class=ic title="'+esc(STR.cv)+'" data-w=v tabindex="-1">'+icoV+'</button>';
         row.innerHTML=h;nd.appendChild(row);nd.appendChild(E('div','kids'));
-        if(n.e)for(var ei=0;ei<n.e.length;ei++){var cm1=E('div','cm');cm1.textContent=disp(n.e[ei]);nd.appendChild(cm1);}
+        if(n.e)for(var ei=0;ei<n.e.length;ei++){var cm1=E('div','cm');cm1.textContent=disp(n.e[ei],500);nd.appendChild(cm1);}
         byUid[u]={n:n,el:nd,p:p,j:j};(byPtr[p]||(byPtr[p]=[])).push(u);
         return nd;
         }
@@ -254,12 +304,6 @@ public static class PreviewTree
         row.classList.add('hit');
         var ts=rec.el.querySelectorAll(':scope > .row .k,:scope > .row .vv,:scope > .cm');
         for(var i=0;i<ts.length;i++)markIn(ts[i],q);
-        }
-        function markIn(el,q){
-        if(el._o===undefined)el._o=el.textContent;
-        var t=el._o,low=t.toLowerCase(),h='',i=0,k;
-        while((k=low.indexOf(q,i))>=0){h+=esc(t.slice(i,k))+'<mark>'+esc(t.slice(k,k+q.length))+'</mark>';i=k+q.length;}
-        el.innerHTML=h+esc(t.slice(i));
         }
         function clearMarks(){
         host.querySelectorAll('.hit').forEach(function(r){r.classList.remove('hit');});

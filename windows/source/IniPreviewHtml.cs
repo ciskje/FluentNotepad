@@ -1,5 +1,5 @@
-using System.Net;
 using System.Text.Json;
+using static FluentNotepad.PreviewTree;
 
 namespace FluentNotepad;
 
@@ -12,49 +12,27 @@ namespace FluentNotepad;
 /// </summary>
 public static class IniPreviewHtml
 {
-    public const int MaxChars = 10_000_000;
-    public const int MaxNodes = 300_000;
-
     public static string Build(string text, bool dark, double fontSize, string? title, ISet<string>? open)
     {
-        var pal = new MarkdownShared.Palette(dark);
-        string head = "<!DOCTYPE html><html><head><meta charset='utf-8'>" +
-            "<meta name='color-scheme' content='" + (dark ? "dark" : "light") + "'>" +
-            "<title>" + WebUtility.HtmlEncode(title ?? "INI") + "</title>" +
-            "<style>" + PreviewTree.Css(pal, fontSize) + "</style></head><body>";
         if (text.Length > MaxChars)
-        {
-            return head + "<div class=err><div class=et>" + Esc(MainWindow.Str("IniTooLarge")) +
-                "</div></div></body></html>";
-        }
+            return PageHead(dark, fontSize, title ?? "INI") + TooLarge(MainWindow.Str("IniTooLarge"));
         try
         {
             var root = Parse(text, out bool truncated);
-            string page = head + Toolbar() +
-                (truncated ? "<div id=trunc>" + Esc(MainWindow.Str("IniTruncated")) + "</div>" : "") +
-                "<div id=tree></div>" +
-                "<script>var root=__D0__;var opns=__O0__;var STR=__S0__;var __XML__=__X0__;\n" + PreviewTree.Js() + "</script></body></html>";
-            return page
-                .Replace("__D0__", JsonSerializer.Serialize(root))
-                .Replace("__O0__", JsonSerializer.Serialize(open ?? Enumerable.Empty<string>()))
-                .Replace("__S0__", JsonSerializer.Serialize(PreviewTree.Strings()))
-                .Replace("__X0__", "false");
+            return TreePage(dark, fontSize, title ?? "INI",
+                truncated ? MainWindow.Str("IniTruncated") : null,
+                JsonSerializer.Serialize(root),
+                JsonSerializer.Serialize(open ?? Enumerable.Empty<string>()),
+                xml: false);
         }
         catch (PreviewTree.TreeParseException ex)
         {
-            return PreviewTree.ErrorPage(dark, fontSize, title,
+            return ErrorPage(dark, fontSize, title ?? "INI",
                 MainWindow.Str("IniInvalidTitle"),
                 string.Format(MainWindow.Str("IniInvalid"), ex.Line, ex.Column),
                 ex.Message, text, MainWindow.Str("IniErrorHint"));
         }
     }
-
-    private static string Esc(string s) => WebUtility.HtmlEncode(s);
-
-    private static string Toolbar() =>
-        "<div class=tools><button id=bExp>" + Esc(MainWindow.Str("JsonExpandAll")) + "</button>" +
-        "<button id=bCol>" + Esc(MainWindow.Str("JsonCollapseAll")) + "</button>" +
-        "<input id=q placeholder=\"" + Esc(MainWindow.Str("JsonSearch")) + "\"><span id=cnt></span></div>";
 
     // MARK: - Parse (line-based, 1-based lines)
 

@@ -9,25 +9,15 @@ import Foundation
 /// (`<<`) stay plain keys; complex (`?` ...) keys and tabs in indentation
 /// are rejected with a line number. Copy paths use the $.a.b[2] form.
 enum YamlTree {
-    static let maxChars = 10_000_000
-    static let maxNodes = 300_000
-    static let maxDepth = 200
-    static let maxKidsAfterTrunc = 1000
-
     typealias Node = JsonTree.Node
     typealias ParseError = PreviewTree.ParseError
 
     // MARK: - Build
 
     static func build(_ text: String, dark: Bool, fontSize: Double, title: String?, open: Set<String>) -> String {
-        if text.count > maxChars {
-            let pal = PreviewTree.Palette(dark: dark)
-            return "<!DOCTYPE html><html><head><meta charset='utf-8'>"
-                + "<meta name='color-scheme' content='" + (dark ? "dark" : "light") + "'>"
-                + "<title>" + PreviewTree.esc(title ?? "YAML") + "</title>"
-                + "<style>" + PreviewTree.css(pal, Int(fontSize)) + "</style></head><body>"
-                + "<div class=err><div class=et>" + PreviewTree.esc(L("yamlTooLarge"))
-                + "</div></div></body></html>"
+        if text.count > PreviewTree.maxChars {
+            return PreviewTree.tooLargePage(dark: dark, fontSize: fontSize, title: title ?? "YAML",
+                message: L("yamlTooLarge"))
         }
         do {
             let (root, truncated) = try parse(text)
@@ -103,7 +93,7 @@ enum YamlTree {
             last = n
             lastLine = line
             count += 1
-            if count > YamlTree.maxNodes {
+            if count > PreviewTree.maxNodes {
                 trunc = true
                 pending = []
                 last = nil
@@ -185,7 +175,7 @@ enum YamlTree {
         // MARK: - Blocks
 
         func parseBlock(parentIndent: Int, depth: Int = 0) throws -> Node {
-            if depth > YamlTree.maxDepth { throw ParseError(line: line, column: 1, message: "Too deeply nested.") }
+            if depth > PreviewTree.maxDepth { throw ParseError(line: line, column: 1, message: "Too deeply nested.") }
             try skipBlank()
             if eof { throw fail("Unexpected end of document.") }
             let first = cur
@@ -847,7 +837,7 @@ enum YamlTree {
                     let child = try scalarNode(raw: it, line: line)
                     node.c!.append(child)
                     ate(child, line)
-                    if trunc, node.c!.count >= YamlTree.maxKidsAfterTrunc {
+                    if trunc, node.c!.count >= PreviewTree.maxKidsAfterTrunc {
                         pending = []
                         last = nil
                         return node
@@ -876,7 +866,7 @@ enum YamlTree {
                     }
                     node.c!.append(val)
                     ate(val, line)
-                    if trunc, node.c!.count >= YamlTree.maxKidsAfterTrunc {
+                    if trunc, node.c!.count >= PreviewTree.maxKidsAfterTrunc {
                         pending = []
                         last = nil
                         return node

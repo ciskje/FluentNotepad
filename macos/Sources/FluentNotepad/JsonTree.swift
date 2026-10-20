@@ -8,11 +8,6 @@ import Foundation
 /// CSS/JS, same caps (10 MB / 300k nodes / depth 200). Comments (`//`, `/**/`)
 /// and trailing commas are accepted, so .jsonc needs no browser-side parsing.
 enum JsonTree {
-    static let maxChars = 10_000_000
-    static let maxNodes = 300_000
-    static let maxDepth = 200
-    static let maxKidsAfterTrunc = 1000
-
     // MARK: - Node (same schema as Windows' PreviewTree.TreeNode)
 
     final class Node: Codable {
@@ -51,14 +46,9 @@ enum JsonTree {
     // MARK: - Build
 
     static func build(_ text: String, dark: Bool, fontSize: Double, title: String?, open: Set<String>) -> String {
-        if text.count > maxChars {
-            let pal = PreviewTree.Palette(dark: dark)
-            return "<!DOCTYPE html><html><head><meta charset='utf-8'>"
-                + "<meta name='color-scheme' content='" + (dark ? "dark" : "light") + "'>"
-                + "<title>" + PreviewTree.esc(title ?? "JSON") + "</title>"
-                + "<style>" + PreviewTree.css(pal, Int(fontSize)) + "</style></head><body>"
-                + "<div class=err><div class=et>" + PreviewTree.esc(L("jsonTooLarge"))
-                + "</div></div></body></html>"
+        if text.count > PreviewTree.maxChars {
+            return PreviewTree.tooLargePage(dark: dark, fontSize: fontSize, title: title ?? "JSON",
+                message: L("jsonTooLarge"))
         }
         do {
             let (root, truncated) = try parse(text)
@@ -179,7 +169,7 @@ enum JsonTree {
             last = nil
             count += 1
             ws()
-            if count > JsonTree.maxNodes || depth > JsonTree.maxDepth {
+            if count > PreviewTree.maxNodes || depth > PreviewTree.maxDepth {
                 // Cap hit: swallow the whole value, leave one widow marker.
                 trunc = true
                 pending = []
@@ -234,7 +224,7 @@ enum JsonTree {
                 child.k = key
                 node.c!.append(child)
                 ate(child)
-                if trunc, node.c!.count >= JsonTree.maxKidsAfterTrunc {
+                if trunc, node.c!.count >= PreviewTree.maxKidsAfterTrunc {
                     pending = []; last = nil
                     try skipRest(end: "}")
                     return node
@@ -274,7 +264,7 @@ enum JsonTree {
                 let child = try readValue(depth: depth + 1)
                 node.c!.append(child)
                 ate(child)
-                if trunc, node.c!.count >= JsonTree.maxKidsAfterTrunc {
+                if trunc, node.c!.count >= PreviewTree.maxKidsAfterTrunc {
                     pending = []; last = nil
                     try skipRest(end: "]")
                     return node

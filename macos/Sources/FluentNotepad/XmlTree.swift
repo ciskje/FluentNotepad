@@ -9,25 +9,15 @@ import Foundation
 /// scanner (no XMLParser: full control over comments/PIs/CDATA/DOCTYPE,
 /// truncation and JSONC-style caps).
 enum XmlTree {
-    static let maxChars = 10_000_000
-    static let maxNodes = 300_000
-    static let maxDepth = 200
-    static let maxKidsAfterTrunc = 1000
-
     typealias Node = JsonTree.Node
     typealias ParseError = JsonTree.ParseError
 
     // MARK: - Build
 
     static func build(_ text: String, dark: Bool, fontSize: Double, title: String?, open: Set<String>) -> String {
-        if text.count > maxChars {
-            let pal = PreviewTree.Palette(dark: dark)
-            return "<!DOCTYPE html><html><head><meta charset='utf-8'>"
-                + "<meta name='color-scheme' content='" + (dark ? "dark" : "light") + "'>"
-                + "<title>" + PreviewTree.esc(title ?? "XML") + "</title>"
-                + "<style>" + PreviewTree.css(pal, Int(fontSize)) + "</style></head><body>"
-                + "<div class=err><div class=et>" + PreviewTree.esc(L("xmlTooLarge"))
-                + "</div></div></body></html>"
+        if text.count > PreviewTree.maxChars {
+            return PreviewTree.tooLargePage(dark: dark, fontSize: fontSize, title: title ?? "XML",
+                message: L("xmlTooLarge"))
         }
         do {
             let (root, truncated) = try parse(text)
@@ -328,7 +318,7 @@ enum XmlTree {
         func elementBody(name: String, attrs: [(String, String)], empty: Bool, l: Int, depth: Int) throws -> Node {
             last = nil
             count += 1
-            if count > XmlTree.maxNodes || depth > XmlTree.maxDepth {
+            if count > PreviewTree.maxNodes || depth > PreviewTree.maxDepth {
                 trunc = true
                 pending = []
                 last = nil
@@ -379,7 +369,7 @@ enum XmlTree {
                     node.c!.append(tn)
                     ate(tn)
                 }
-                if trunc, node.c!.count >= XmlTree.maxKidsAfterTrunc {
+                if trunc, node.c!.count >= PreviewTree.maxKidsAfterTrunc {
                     pending = []
                     last = nil
                     try skipRest()

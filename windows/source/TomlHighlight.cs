@@ -1,4 +1,3 @@
-using Microsoft.UI.Text;
 using Microsoft.UI.Xaml.Controls;
 using Windows.UI;
 
@@ -13,49 +12,14 @@ namespace FluentNotepad;
 /// </summary>
 public static class TomlHighlight
 {
-    public const int MaxChars = 300_000;
-
-    private readonly struct Paint
-    {
-        public readonly MarkdownShared.Rgb Fg;
-        public readonly bool Italic;
-
-        public Paint(MarkdownShared.Rgb fg, bool italic = false)
-        {
-            Fg = fg; Italic = italic;
-        }
-    }
-
     public static void Apply(RichEditBox editor, bool dark, float fontSize,
-        Color baseFg, Color baseBg)
+        Color baseFg, Color baseBg) =>
+        TextPainter.Apply(editor, dark, fontSize, baseFg, baseBg, Paint);
+
+    private static void Paint(string parse, MarkdownShared.Palette pal,
+        List<TextPainter.Span> ops)
     {
-        var doc = editor.Document;
-        doc.GetText(TextGetOptions.None, out string raw);
-        string text = (raw.Length > 0 && raw[^1] == '\r') ? raw[..^1] : raw;
-        string parse = text.Replace('\r', '\n');
         int n = parse.Length;
-
-        doc.BatchDisplayUpdates();
-        try
-        {
-            if (n > 0)
-            {
-                var all = doc.GetRange(0, n);
-                var f = all.CharacterFormat;
-                f.ForegroundColor = baseFg;
-                f.BackgroundColor = baseBg;
-                f.Bold = FormatEffect.Off;
-                f.Italic = FormatEffect.Off;
-                f.Strikethrough = FormatEffect.Off;
-                f.Underline = UnderlineType.None;
-                f.Size = fontSize;
-                all.CharacterFormat = f;
-            }
-            if (n == 0 || n > MaxChars) return;
-
-            var pal = new MarkdownShared.Palette(dark);
-            var ops = new List<(int Start, int Length, Paint Paint)>();
-
             // Full-line table headers: [table] and [[array]] (always single-line).
             for (int ls = 0; ls < n;)
             {
@@ -69,7 +33,7 @@ public static class TomlHighlight
                     while (q > p && (parse[q] == ' ' || parse[q] == '\t' || parse[q] == '\r')) q--;
                     bool closed = q > p && parse[q] == ']';
                     if (closed && !parse.Substring(p, q - p + 1).Contains('#'))
-                        ops.Add((p, q - p + 1, new Paint(pal.JsonKey)));
+                        ops.Add(new TextPainter.Span(p, q - p + 1, pal.JsonKey));
                 }
                 ls = le + 1;
             }
@@ -82,14 +46,14 @@ public static class TomlHighlight
                 {
                     int s = i;
                     while (i < n && parse[i] != '\n') i++;
-                    ops.Add((s, i - s, new Paint(pal.JsonComment, italic: true)));
+                    ops.Add(new TextPainter.Span(s, i - s, pal.JsonComment, Italic: true));
                 }
                 else if (c == '"')
                 {
                     int s = i;
                     if (i + 2 < n && parse[i + 1] == '"' && parse[i + 2] == '"') i = ScanTriple(parse, i, '"');
                     else i = ScanString(parse, i, '"');
-                    if (i > s) ops.Add((s, i - s, new Paint(pal.JsonString)));
+                    if (i > s) ops.Add(new TextPainter.Span(s, i - s, pal.JsonString));
                 }
                 else if (c == '\'')
                 {
@@ -100,11 +64,11 @@ public static class TomlHighlight
                         i = end < 0 ? n : end + 3;
                     }
                     else i = ScanString(parse, i, '\'');
-                    if (i > s) ops.Add((s, i - s, new Paint(pal.JsonString)));
+                    if (i > s) ops.Add(new TextPainter.Span(s, i - s, pal.JsonString));
                 }
                 else if (c == '[' || c == ']' || c == '{' || c == '}')
                 {
-                    ops.Add((i, 1, new Paint(pal.JsonKey)));
+                    ops.Add(new TextPainter.Span(i, 1, pal.JsonKey));
                     i++;
                 }
                 else if (IsBareStart(c))
@@ -124,7 +88,7 @@ public static class TomlHighlight
                         }
                         if (j < n && parse[j] == '=')
                         {
-                            ops.Add((s, i - s, new Paint(pal.JsonKey)));
+                            ops.Add(new TextPainter.Span(s, i - s, pal.JsonKey));
                             i = j + 1; // consume '=' too: nothing to paint for it
                         }
                         break;
@@ -133,12 +97,12 @@ public static class TomlHighlight
                 else if (MatchWord(parse, i, "true") || MatchWord(parse, i, "false"))
                 {
                     int len = parse[i] == 't' ? 4 : 5;
-                    ops.Add((i, len, new Paint(pal.JsonBool)));
+                    ops.Add(new TextPainter.Span(i, len, pal.JsonBool));
                     i += len;
                 }
                 else if (MatchWord(parse, i, "null"))
                 {
-                    ops.Add((i, 4, new Paint(pal.JsonNull, italic: true)));
+                    ops.Add(new TextPainter.Span(i, 4, pal.JsonNull, Italic: true));
                     i += 4;
                 }
                 else if (char.IsDigit(c) || ((c == '+' || c == '-') && i + 1 < n && (char.IsDigit(parse[i + 1]) || parse[i + 1] == 'i' || parse[i + 1] == 'n')))
@@ -149,13 +113,13 @@ public static class TomlHighlight
                     while (i < n && (char.IsLetterOrDigit(parse[i]) || parse[i] == '_' || parse[i] == '.' || parse[i] == '+' || parse[i] == '-' || parse[i] == ':')) i++;
                     string tok = parse.Substring(s, i - s);
                     if (tok.Contains('-') || tok.Contains(':'))
-                        ops.Add((s, i - s, new Paint(pal.JsonString))); // datetime-ish
+                        ops.Add(new TextPainter.Span(s, i - s, pal.JsonString)); // datetime-ish
                     else if (i > ds)
-                        ops.Add((s, i - s, new Paint(pal.JsonNumber)));
+                        ops.Add(new TextPainter.Span(s, i - s, pal.JsonNumber));
                 }
                 else if (MatchWord(parse, i, "inf") || MatchWord(parse, i, "nan"))
                 {
-                    ops.Add((i, 3, new Paint(pal.JsonNumber)));
+                    ops.Add(new TextPainter.Span(i, 3, pal.JsonNumber));
                     i += 3;
                 }
                 else
@@ -163,22 +127,6 @@ public static class TomlHighlight
                     i++;
                 }
             }
-            foreach (var (s, l, p) in ops)
-            {
-                if (s < 0 || l <= 0 || s + l > n) continue;
-                var r = doc.GetRange(s, s + l);
-                var f = r.CharacterFormat;
-                f.ForegroundColor = p.Fg.Color;
-                f.BackgroundColor = baseBg;
-                f.Bold = FormatEffect.Off;
-                f.Italic = p.Italic ? FormatEffect.On : FormatEffect.Off;
-                f.Strikethrough = FormatEffect.Off;
-                f.Underline = UnderlineType.None;
-                f.Size = fontSize;
-                r.CharacterFormat = f;
-            }
-        }
-        finally { doc.ApplyDisplayUpdates(); }
     }
 
     private static int ScanString(string t, int i, char q)

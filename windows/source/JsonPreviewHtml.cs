@@ -1,7 +1,7 @@
 using System.Buffers;
-using System.Net;
 using System.Text;
 using System.Text.Json;
+using static FluentNotepad.PreviewTree;
 
 namespace FluentNotepad;
 
@@ -18,45 +18,30 @@ namespace FluentNotepad;
 /// </summary>
 public static class JsonPreviewHtml
 {
-    public const int MaxChars = 10_000_000;
-    public const int MaxNodes = 300_000;
-    public const int MaxDepth = 200;
-    public const int MaxKidsAfterTrunc = 1000;
-
     public static string Build(string text, bool dark, double fontSize, string? title, ISet<string>? open)
     {
-        var pal = new MarkdownShared.Palette(dark);
-        string head = "<!DOCTYPE html><html><head><meta charset='utf-8'>" +
-            "<meta name='color-scheme' content='" + (dark ? "dark" : "light") + "'>" +
-            "<title>" + WebUtility.HtmlEncode(title ?? "JSON") + "</title>" +
-            "<style>" + PreviewTree.Css(pal, fontSize) + "</style></head><body>";
         if (text.Length > MaxChars)
-        {
-            return head + "<div class=err><div class=et>" + Esc(MainWindow.Str("JsonTooLarge")) +
-                "</div></div></body></html>";
-        }
+            return PageHead(dark, fontSize, title ?? "JSON") + TooLarge(MainWindow.Str("JsonTooLarge"));
         try
         {
             var root = Parse(text, out bool truncated);
-            // Tokens (__D0__ etc.) exist only in this template: user content arrives
-            // via the replacement VALUES, which Replace never rescans.
-            string page = head + Toolbar() +
-                (truncated ? "<div id=trunc>" + Esc(MainWindow.Str("JsonTruncated")) + "</div>" : "") +
-                "<div id=tree></div>" +
-                "<script>var root=__D0__;var opns=__O0__;var STR=__S0__;var __XML__=__X0__;\n" + PreviewTree.Js() + "</script></body></html>";
-            return page
-                .Replace("__D0__", JsonSerializer.Serialize(root))
-                .Replace("__O0__", JsonSerializer.Serialize(open ?? Enumerable.Empty<string>()))
-                .Replace("__S0__", JsonSerializer.Serialize(PreviewTree.Strings()))
-                .Replace("__X0__", "false");
+            return TreePage(dark, fontSize, title ?? "JSON",
+                truncated ? MainWindow.Str("JsonTruncated") : null,
+                JsonSerializer.Serialize(root),
+                JsonSerializer.Serialize(open ?? Enumerable.Empty<string>()),
+                xml: false);
         }
         catch (JsonException ex)
         {
-            return head + ErrorBody(text, ex) + "</body></html>";
+            // JsonException positions are zero-based: the page shows 1-based.
+            long line = (ex.LineNumber ?? 0) + 1;
+            long col = (ex.BytePositionInLine ?? 0) + 1;
+            return ErrorPage(dark, fontSize, title ?? "JSON",
+                MainWindow.Str("JsonInvalidTitle"),
+                string.Format(MainWindow.Str("JsonInvalid"), line, col),
+                ex.Message, text, MainWindow.Str("JsonErrorHint"));
         }
     }
-
-    private static string Esc(string s) => WebUtility.HtmlEncode(s);
 
     // MARK: - Parse (single streaming pass, positions included)
 
@@ -259,25 +244,5 @@ public static class JsonPreviewHtml
             }
         }
     }
-
-    // MARK: - Error page
-
-    private static string ErrorBody(string text, JsonException ex)
-    {
-        // JsonException positions are zero-based: the page shows 1-based.
-        long line = (ex.LineNumber ?? 0) + 1;
-        long col = (ex.BytePositionInLine ?? 0) + 1;
-        string src = text.Length > 100_000 ? text[..100_000] + "\n…" : text;
-        return "<div class=err><div class=et>" + Esc(MainWindow.Str("JsonInvalidTitle")) + "</div>" +
-            "<div class=em>" + Esc(string.Format(MainWindow.Str("JsonInvalid"), line, col)) + "</div>" +
-            "<div class=ed>" + Esc(ex.Message) + "</div>" +
-            "<pre>" + Esc(src) + "</pre>" +
-            "<div class=eh>" + Esc(MainWindow.Str("JsonErrorHint")) + "</div></div>";
-    }
-
-    private static string Toolbar() =>
-        "<div class=tools><button id=bExp>" + Esc(MainWindow.Str("JsonExpandAll")) + "</button>" +
-        "<button id=bCol>" + Esc(MainWindow.Str("JsonCollapseAll")) + "</button>" +
-        "<input id=q placeholder=\"" + Esc(MainWindow.Str("JsonSearch")) + "\"><span id=cnt></span></div>";
 
 }

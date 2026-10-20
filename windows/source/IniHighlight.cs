@@ -1,4 +1,3 @@
-using Microsoft.UI.Text;
 using Microsoft.UI.Xaml.Controls;
 using Windows.UI;
 
@@ -11,49 +10,15 @@ namespace FluentNotepad;
 /// </summary>
 public static class IniHighlight
 {
-    public const int MaxChars = 300_000;
-
-    private readonly struct Paint
-    {
-        public readonly MarkdownShared.Rgb Fg;
-        public readonly bool Italic;
-
-        public Paint(MarkdownShared.Rgb fg, bool italic = false)
-        {
-            Fg = fg; Italic = italic;
-        }
-    }
-
     public static void Apply(RichEditBox editor, bool dark, float fontSize,
-        Color baseFg, Color baseBg)
+        Color baseFg, Color baseBg) =>
+        TextPainter.Apply(editor, dark, fontSize, baseFg, baseBg, Paint);
+
+    private static void Paint(string parse, MarkdownShared.Palette pal,
+        List<TextPainter.Span> ops)
     {
-        var doc = editor.Document;
-        doc.GetText(TextGetOptions.None, out string raw);
-        string text = (raw.Length > 0 && raw[^1] == '\r') ? raw[..^1] : raw;
-        string parse = text.Replace('\r', '\n');
         int n = parse.Length;
-
-        doc.BatchDisplayUpdates();
-        try
-        {
-            if (n > 0)
-            {
-                var all = doc.GetRange(0, n);
-                var f = all.CharacterFormat;
-                f.ForegroundColor = baseFg;
-                f.BackgroundColor = baseBg;
-                f.Bold = FormatEffect.Off;
-                f.Italic = FormatEffect.Off;
-                f.Strikethrough = FormatEffect.Off;
-                f.Underline = UnderlineType.None;
-                f.Size = fontSize;
-                all.CharacterFormat = f;
-            }
-            if (n == 0 || n > MaxChars) return;
-
-            var pal = new MarkdownShared.Palette(dark);
-            var ops = new List<(int Start, int Length, Paint Paint)>();
-            int ls = 0;
+        int ls = 0;
             while (ls < n)
             {
                 int le = parse.IndexOf('\n', ls);
@@ -62,19 +27,19 @@ public static class IniHighlight
                 while (p < le && (parse[p] == ' ' || parse[p] == '\t')) p++;
                 if (p < le && (parse[p] == ';' || parse[p] == '#'))
                 {
-                    ops.Add((p, le - p, new Paint(pal.JsonComment, italic: true)));
+                    ops.Add(new TextPainter.Span(p, le - p, pal.JsonComment, Italic: true));
                 }
                 else if (p < le && parse[p] == '[')
                 {
                     int close = parse.IndexOf(']', p, le - p);
                     if (close >= 0)
                     {
-                        ops.Add((p, close - p + 1, new Paint(pal.JsonKey)));
+                        ops.Add(new TextPainter.Span(p, close - p + 1, pal.JsonKey));
                         // Trailing comment after the section.
                         int q = close + 1;
                         while (q < le && (parse[q] == ' ' || parse[q] == '\t')) q++;
                         if (q < le && (parse[q] == ';' || parse[q] == '#'))
-                            ops.Add((q, le - q, new Paint(pal.JsonComment, italic: true)));
+                            ops.Add(new TextPainter.Span(q, le - q, pal.JsonComment, Italic: true));
                     }
                 }
                 else if (p < le)
@@ -100,13 +65,13 @@ public static class IniHighlight
                     {
                         int ke = sep;
                         while (ke > p && (parse[ke - 1] == ' ' || parse[ke - 1] == '\t')) ke--;
-                        ops.Add((p, ke - p, new Paint(pal.JsonKey)));
+                        ops.Add(new TextPainter.Span(p, ke - p, pal.JsonKey));
                         int v = sep + 1;
                         while (v < le && (parse[v] == ' ' || parse[v] == '\t')) v++;
                         if (v < le && (parse[v] == '"' || parse[v] == '\''))
                         {
                             int ve = QuotedEnd(parse, v, le);
-                            ops.Add((v, ve - v, new Paint(pal.JsonString)));
+                            ops.Add(new TextPainter.Span(v, ve - v, pal.JsonString));
                         }
                         else
                         {
@@ -127,28 +92,12 @@ public static class IniHighlight
                                 if (c == '"') { qd = true; continue; }
                                 if ((c == ';' || c == '#') && k > v && (parse[k - 1] == ' ' || parse[k - 1] == '\t')) { cp = k; break; }
                             }
-                            if (cp >= 0) ops.Add((cp, le - cp, new Paint(pal.JsonComment, italic: true)));
+                            if (cp >= 0) ops.Add(new TextPainter.Span(cp, le - cp, pal.JsonComment, Italic: true));
                         }
                     }
                 }
                 ls = le + 1;
             }
-            foreach (var (s, l, pp) in ops)
-            {
-                if (s < 0 || l <= 0 || s + l > n) continue;
-                var r = doc.GetRange(s, s + l);
-                var f = r.CharacterFormat;
-                f.ForegroundColor = pp.Fg.Color;
-                f.BackgroundColor = baseBg;
-                f.Bold = FormatEffect.Off;
-                f.Italic = pp.Italic ? FormatEffect.On : FormatEffect.Off;
-                f.Strikethrough = FormatEffect.Off;
-                f.Underline = UnderlineType.None;
-                f.Size = fontSize;
-                r.CharacterFormat = f;
-            }
-        }
-        finally { doc.ApplyDisplayUpdates(); }
     }
 
     private static int QuotedEnd(string s, int start, int end)

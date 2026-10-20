@@ -1,6 +1,6 @@
-using System.Net;
 using System.Text;
 using System.Text.Json;
+using static FluentNotepad.PreviewTree;
 
 namespace FluentNotepad;
 
@@ -13,24 +13,20 @@ namespace FluentNotepad;
 /// </summary>
 public static class CsvPreviewHtml
 {
-    public const int MaxChars = 10_000_000;
     public const int MaxRows = 5000;
 
     public static string Build(string text, bool dark, double fontSize, string? title)
     {
         var pal = new MarkdownShared.Palette(dark);
-        string head = "<!DOCTYPE html><html><head><meta charset='utf-8'>" +
-            "<meta name='color-scheme' content='" + (dark ? "dark" : "light") + "'>" +
-            "<title>" + WebUtility.HtmlEncode(title ?? "CSV") + "</title>" +
-            "<style>" + PreviewTree.Css(pal, fontSize) + GridCss(pal, fontSize) + "</style></head><body>";
+        string head = PageHead(dark, fontSize, title ?? "CSV", GridCss(pal, fontSize));
         if (text.Length > MaxChars)
-            return head + Err(MainWindow.Str("CsvTooLarge")) + "</body></html>";
+            return head + TooLarge(MainWindow.Str("CsvTooLarge"));
         try
         {
             var table = Parse(text, out bool truncated, out int totalRows);
             if (table.Count == 0) throw new PreviewTree.TreeParseException("No rows found.", 1, 1);
             string page = head + Toolbar() +
-                (truncated ? "<div id=trunc>" + Esc(string.Format(MainWindow.Str("CsvTruncated"), table.Count - 1, totalRows - 1)) + "</div>" : "") +
+                (truncated ? TruncBanner(string.Format(MainWindow.Str("CsvTruncated"), table.Count - 1, totalRows - 1)) : "") +
                 "<div id=grid></div>" +
                 "<script>var ROWS=__D0__;var RAWS=__R0__;var STR=__S0__;\n" + Js() + "</script></body></html>";
             var rowsJson = JsonSerializer.Serialize(table.ConvertAll(r => new { l = r.Line, c = r.Cells }));
@@ -42,17 +38,12 @@ public static class CsvPreviewHtml
         }
         catch (PreviewTree.TreeParseException ex)
         {
-            return PreviewTree.ErrorPage(dark, fontSize, title,
+            return ErrorPage(dark, fontSize, title ?? "CSV",
                 MainWindow.Str("CsvInvalidTitle"),
                 string.Format(MainWindow.Str("CsvInvalid"), ex.Line, ex.Column),
                 ex.Message, text, MainWindow.Str("CsvErrorHint"));
         }
     }
-
-    private static string Esc(string s) => WebUtility.HtmlEncode(s);
-
-    private static string Err(string msg) =>
-        "<div class=err><div class=et>" + Esc(msg) + "</div></div>";
 
     private static string Toolbar() =>
         "<div class=tools>" +
@@ -195,17 +186,13 @@ public static class CsvPreviewHtml
 
     // MARK: - JS (grid: search/count/cycle, copy row, click-to-line)
 
-    private static string Js() => """
+    private static string Js() => PreviewTree.JsHelpers() + """
         (function(){
         "use strict";
         var uidc=0,byUid={},matches=[],cur=-1,qraw='';
         var host=document.getElementById('grid'),input=document.getElementById('q'),cnt=document.getElementById('cnt');
         var icoV='<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><rect x="4.5" y="4.5" width="6" height="6" rx="1" fill="none" stroke="currentColor"/><path d="M7.5 4.5v-2a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v4a1 1 0 0 0 1 1h2" fill="none" stroke="currentColor"/></svg>';
-        function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-        function post(o){try{if(window.chrome&&window.chrome.webview)window.chrome.webview.postMessage(JSON.stringify(o));}catch(e){}}
         function postState(){try{post({op:'state',open:[],q:qraw});}catch(e){}}
-        function E(t,c){var e=document.createElement(t);if(c)e.className=c;return e;}
-        function disp(s){s=String(s);return s.length>300?s.slice(0,300)+'…':s;}
         function build(){
         host.innerHTML='';
         var t=E('table','tbl');
@@ -217,17 +204,11 @@ public static class CsvPreviewHtml
         for(var r=1;r<ROWS.length;r++){var row=ROWS[r],u='u'+(++uidc);
         var tr=E('tr');tr.setAttribute('data-u',u);tr.setAttribute('data-l',row.l);
         var rn=E('td','rn');rn.textContent=String(r);tr.appendChild(rn);
-        for(var c=0;c<ncols;c++){var td=E('td','c');td.textContent=disp(row.c[c]||'');tr.appendChild(td);}
+        for(var c=0;c<ncols;c++){var td=E('td','c');td.textContent=disp(row.c[c]||'',300);tr.appendChild(td);}
         var cp=E('td');cp.innerHTML='<button class=ic title="'+esc(STR.cv)+'" tabindex="-1">'+icoV+'</button>';
         tr.appendChild(cp);tb.appendChild(tr);
         byUid[u]={el:tr,idx:r};}
         t.appendChild(tb);host.appendChild(t);
-        }
-        function markIn(el,q){
-        if(el._o===undefined)el._o=el.textContent;
-        var t=el._o,low=t.toLowerCase(),h='',i=0,k;
-        while((k=low.indexOf(q,i))>=0){h+=esc(t.slice(i,k))+'<mark>'+esc(t.slice(k,k+q.length))+'</mark>';i=k+q.length;}
-        el.innerHTML=h+esc(t.slice(i));
         }
         function clearMarks(){
         host.querySelectorAll('.hit').forEach(function(r){r.classList.remove('hit');});
@@ -278,9 +259,6 @@ public static class CsvPreviewHtml
         e.preventDefault();
         var u=row.getAttribute('data-u');var rec=byUid[u];if(!rec)return;
         post({op:'line',line:ROWS[rec.idx].l});
-        });
-        document.addEventListener('keydown',function(e){
-        if(e.target===input&&e.key==='Enter'){e.preventDefault();step(e.shiftKey?-1:1);}
         });
         var sTimer=null;
         input.addEventListener('input',function(){clearTimeout(sTimer);sTimer=setTimeout(function(){doSearch(input.value);},120);});

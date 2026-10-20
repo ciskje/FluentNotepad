@@ -7,23 +7,15 @@ import Foundation
 /// IniHighlight.cs (2.10.0): `=`/`:` separators, `;`/`#` comments, `\` line
 /// continuations, duplicate sections merged. Copy paths use the `$.a.b` form.
 enum IniTree {
-    static let maxChars = 10_000_000
-    static let maxNodes = 300_000
-
     typealias Node = JsonTree.Node
     typealias ParseError = PreviewTree.ParseError
 
     // MARK: - Build
 
     static func build(_ text: String, dark: Bool, fontSize: Double, title: String?, open: Set<String>) -> String {
-        if text.count > maxChars {
-            let pal = PreviewTree.Palette(dark: dark)
-            return "<!DOCTYPE html><html><head><meta charset='utf-8'>"
-                + "<meta name='color-scheme' content='" + (dark ? "dark" : "light") + "'>"
-                + "<title>" + PreviewTree.esc(title ?? "INI") + "</title>"
-                + "<style>" + PreviewTree.css(pal, Int(fontSize)) + "</style></head><body>"
-                + "<div class=err><div class=et>" + PreviewTree.esc(L("iniTooLarge"))
-                + "</div></div></body></html>"
+        if text.count > PreviewTree.maxChars {
+            return PreviewTree.tooLargePage(dark: dark, fontSize: fontSize, title: title ?? "INI",
+                message: L("iniTooLarge"))
         }
         do {
             let (root, truncated) = try parse(text)
@@ -166,7 +158,7 @@ enum IniTree {
             cur.c!.append(node)
             ate(node, line)
             count += 1
-            if count > maxNodes {
+            if count > PreviewTree.maxNodes {
                 truncated = true
                 break
             }

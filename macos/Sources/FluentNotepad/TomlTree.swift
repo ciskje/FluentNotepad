@@ -7,25 +7,15 @@ import Foundation
 /// Windows' TomlPreviewHtml.cs + TomlHighlight.cs (2.10.0). Copy paths use
 /// the $.a.b[2] form; subtree copy rebuilds JSON.
 enum TomlTree {
-    static let maxChars = 10_000_000
-    static let maxNodes = 300_000
-    static let maxDepth = 200
-    static let maxKidsAfterTrunc = 1000
-
     typealias Node = JsonTree.Node
     typealias ParseError = PreviewTree.ParseError
 
     // MARK: - Build
 
     static func build(_ text: String, dark: Bool, fontSize: Double, title: String?, open: Set<String>) -> String {
-        if text.count > maxChars {
-            let pal = PreviewTree.Palette(dark: dark)
-            return "<!DOCTYPE html><html><head><meta charset='utf-8'>"
-                + "<meta name='color-scheme' content='" + (dark ? "dark" : "light") + "'>"
-                + "<title>" + PreviewTree.esc(title ?? "TOML") + "</title>"
-                + "<style>" + PreviewTree.css(pal, Int(fontSize)) + "</style></head><body>"
-                + "<div class=err><div class=et>" + PreviewTree.esc(L("tomlTooLarge"))
-                + "</div></div></body></html>"
+        if text.count > PreviewTree.maxChars {
+            return PreviewTree.tooLargePage(dark: dark, fontSize: fontSize, title: title ?? "TOML",
+                message: L("tomlTooLarge"))
         }
         do {
             let (root, truncated) = try parse(text)
@@ -363,7 +353,7 @@ enum TomlTree {
 
         func readValue(depth: Int) throws -> Node {
             count += 1
-            if count > TomlTree.maxNodes || depth > TomlTree.maxDepth {
+            if count > PreviewTree.maxNodes || depth > PreviewTree.maxDepth {
                 trunc = true
                 pending = []
                 last = nil
@@ -487,7 +477,7 @@ enum TomlTree {
                 let child = try readValue(depth: depth + 1)
                 node.c!.append(child)
                 ate(child)
-                if trunc, node.c!.count >= TomlTree.maxKidsAfterTrunc {
+                if trunc, node.c!.count >= PreviewTree.maxKidsAfterTrunc {
                     pending = []
                     last = nil
                     skipToClose(close: "]", open: "[")
@@ -517,7 +507,7 @@ enum TomlTree {
                 skipInline()
                 let val = try readValue(depth: depth + 1)
                 try assignInto(table: node, keys: keys, val: val)
-                if trunc, node.c!.count >= TomlTree.maxKidsAfterTrunc {
+                if trunc, node.c!.count >= PreviewTree.maxKidsAfterTrunc {
                     pending = []
                     last = nil
                     skipToClose(close: "}", open: "{")
