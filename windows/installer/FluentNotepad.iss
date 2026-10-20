@@ -10,7 +10,7 @@
 ; ============================================================
 
 #define MyAppName "FluentNotepad"
-#define MyAppVersion "2.10.7"
+#define MyAppVersion "2.10.8"
 #define MyAppExeName "FluentNotepad.exe"
 #define PublishDir "..\source\bin\Release\net8.0-windows10.0.26100.0\win-x64\publish"
 #define IconFile "..\source\Assets\AppIcon.ico"
