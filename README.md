@@ -20,15 +20,16 @@ Same intents on both platforms — see the parity checklist in [AGENTS.md](AGENT
 The repo contains sources only (builds and setups are **not** versioned). Same
 version number = same features on both platforms (see Changelogs below).
 
-- **Windows**: [Releases](../../releases) page → `FluentNotepad-Setup-2.10.4-win-x64.exe` (per-machine install in Program Files, optional file associations)
+- **Windows**: [Releases](../../releases) page → `FluentNotepad-Setup-2.10.7-win-x64.exe` (per-machine install in Program Files, optional file associations)
 - **macOS**: [Releases](../../releases) page → `FluentNotepad.dmg` from a `macos-vX.Y.Z` release → drag `FluentNotepad.app` into Applications. First launch: right-click → Open (ad-hoc signature).
 
 Or build it yourself: see `windows/AGENTS.md` (Build/run) and `macos/AGENTS.md` (Build/run).
 
 ## Changelog
 
-Same version number = same features everywhere. Windows is at `2.10.4`, macOS at `2.10.7` (same intents; macOS click-to-source uses a 0.5 s pause and a single blink — Windows alignment pending in TODO).
+Same version number = same features everywhere. Windows and macOS are at `2.10.7`.
 
+- **2.10.7** (Windows) — Click-to-source jumps to Edit and blinks the jumped-to line once (0.5 s pause, 1x250 ms); plain Edit entries keep the immediate 2x140 ms blink.
 - **2.10.7** (macOS) — Click-to-source pause back to 0.5 s with a single 250 ms blink (plain Edit entries keep 2x140 ms).
 - **2.10.6** (macOS) — Click-to-source flash drives the live editor synchronously (timers bracket real selection changes; the target line is computed up front, never from a stale caret); fixed the click blink length (was 250 ns, now 250 ms).
 - **2.10.5** (macOS) — Click-to-source pause before the caret-line blink increased from 0.5 s to 1 s.

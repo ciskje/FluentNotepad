@@ -16,9 +16,7 @@ Legend per row: `win:[x]` / `mac:[x]` = shipped on that platform.
 
 ## Pending
 
-- Single click-to-source blink on Windows (`generic`, win:[ ] mac:[x]): macOS 2.10.7 blinks the jumped-to line once (0.5 s pause, 1x250 ms); Windows still blinks twice. Mirror in `windows/source/MainWindow.xaml.cs`: `JumpToLine` (~line 637) needs one blink instead of two (e.g. a `blinks` parameter on `FlashCaretLine`, line 778, default 2, click path passes 1).
-
-(nothing else pending — history lives in tags and release notes)
+(nothing pending — history lives in tags and release notes)
 
 ## Done
 

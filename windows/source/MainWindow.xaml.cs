@@ -615,7 +615,7 @@ public sealed partial class MainWindow : Window
     }
 
     // Click-to-source, shared by both previews: leave preview, caret on the
-    // line, blink it twice in Edit. The caret is placed BEFORE flashing:
+    // line, blink it once in Edit. The caret is placed BEFORE flashing:
     // FlashCaretLine blinks whatever line the caret is on, and aborts if the
     // selection moves mid-blink.
     private void JumpToLine(DocumentInfo d, int line)
@@ -634,11 +634,11 @@ public sealed partial class MainWindow : Window
         var b = d.Editor;
         SetSelection(b, off, 0);
         b.Focus(FocusState.Programmatic);
-        FlashCaretLine(preDelayMs: 500, blinkMs: 250);
+        FlashCaretLine(preDelayMs: 500, blinkMs: 250, blinks: 1);
     }
 
     // Click-to-source for tree previews AND Markdown: jump straight to Edit
-    // and blink the caret line twice there (the row to look at).
+    // and blink the caret line once there (the row to look at).
     // Aborts the jump if the user moved on meanwhile.
     private void Preview_WebMessage(object? sender, Microsoft.Web.WebView2.Core.CoreWebView2WebMessageReceivedEventArgs e)
     {
@@ -694,7 +694,7 @@ public sealed partial class MainWindow : Window
         catch (Exception ex) { Debug.WriteLine($"Jump: {ex.Message}"); }
     }
 
-    // Jump straight to Edit and blink the caret line twice there (in place):
+    // Jump straight to Edit and blink the caret line once there (in place):
     // the jumped-to line is the one to look at, so the flash belongs to Edit,
     // not to the preview. Skips the jump if the user moved on meanwhile.
     private void JumpThenFlash(DocumentInfo d, int line)
@@ -767,15 +767,16 @@ public sealed partial class MainWindow : Window
         if (flash) FlashCaretLine();
     }
 
-    // Caret-line flash (two blinks) when entering Edit: selection-only, so it
+    // Caret-line flash when entering Edit: selection-only, so it
     // never touches the undo stack or RichEdit formatting (AV-safe, unlike a
     // paint). Any real edit, key press or tab switch aborts it via _flashGen.
-    // Click-to-source jumps here too, so the jumped-to line blinks in Edit.
-    // Optional pre-delay + blink length: the click path waits 2 s, then blinks
-    // twice at half a second so the target line is easy to catch.
+    // Plain Edit entries blink the caret line twice; click-to-source jumps
+    // here too, so the jumped-to line blinks once in Edit.
+    // Optional pre-delay + blink length + count: the click path waits 0.5 s,
+    // then blinks once at 250 ms so the target line is easy to catch.
     private int _flashGen;
 
-    private async void FlashCaretLine(int preDelayMs = 0, int blinkMs = 140)
+    private async void FlashCaretLine(int preDelayMs = 0, int blinkMs = 140, int blinks = 2)
     {
         var d = GetActiveDoc();
         var box = d?.Editor;
@@ -793,7 +794,7 @@ public sealed partial class MainWindow : Window
         if (!TextUtil.TryGetLineRange(text, os, out int ls, out int len)) return;
         try
         {
-            for (int k = 0; k < 2; k++)
+            for (int k = 0; k < Math.Max(blinks, 1); k++)
             {
                 if (gen != _flashGen || !ReferenceEquals(GetActiveDoc(), d)) return;
                 SetSelection(box, ls, len);

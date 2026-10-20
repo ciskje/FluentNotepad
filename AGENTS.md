@@ -27,8 +27,9 @@ Both builds implement the same intents; platform-native details may differ
 - Status bar (line/column, characters, file type, zoom, line ending, encoding)
 - Light/dark/system theme, interface in English and Italian
 - Click-to-source: click a rendered block to jump to its source line
-- Caret-line flash: entering Edit blinks the caret line twice in place,
-  including after a click-to-source jump (no highlight stays in the preview)
+- Caret-line flash: entering Edit blinks the caret line twice in place;
+  click-to-source jumps to Edit and blinks the jumped-to line once
+  (no highlight stays in the preview)
 - JSON tree preview for `.json`/`.jsonc` (auto-preview like Markdown):
   collapsible tree, expand/collapse all, search, copy path/value, invalid-JSON
   error with line/column, print expanded, JSON highlighting in edit mode
@@ -68,7 +69,7 @@ implemented those intents; if the other lags, its release waits.
 
 - Z = bugfix/tweak, Y = new feature/behavior, X = upheaval.
 - Docs/refactor/build never change the version.
-- Current: Windows `2.10.4`, macOS `2.10.7`; next shared version: TBD.
+- Current: Windows `2.10.7`, macOS `2.10.7`; next shared version: TBD.
 - Single source: `<Version>` in `windows/source/FluentNotepad.WinUI.csproj`
   (derives at build into `#define MyAppVersion` in
   `windows/installer/FluentNotepad.iss` and the setup name in `README.md`);
