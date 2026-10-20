@@ -15,7 +15,7 @@ func jumpToLine(_ store: Store, _ line: Int) {
     // next render while the flash below drives the live view directly.
     doc.showPreview = false
     doc.revealRange = NSRange(location: off, length: 0)
-    flashLine(store, NSRange(location: ls, length: len), preDelayMs: 1000, blinkMs: 250_000_000)
+    flashLine(store, NSRange(location: ls, length: len), preDelayMs: 500, blinkMs: 250_000_000, blinks: 1)
 }
 
 /// Jump straight to Edit and blink the caret line twice there (in place):
@@ -27,18 +27,17 @@ func jumpThenFlash(_ store: Store, _ line: Int) {
     jumpToLine(store, line)
 }
 
-/// Caret-line flash (two blinks) when entering Edit: selection-only, so it
-/// never touches the undo stack or text attributes. Any real edit, tab
-/// switch or back-to-preview aborts it via flashGen. No-op unless the tab is
-/// in Edit. `range` is nil for plain Edit entries (blink the live caret
-/// line); the click path passes its known target range instead of trusting
-/// a caret that may not have arrived yet.
+/// Caret-line flash when entering Edit: selection-only, so it never touches
+/// the undo stack or text attributes. Any real edit, tab switch or
+/// back-to-preview aborts it via flashGen. No-op unless the tab is in Edit.
+/// `range` is nil for plain Edit entries (blink the live caret line twice);
+/// the click path passes its known target range and blinks once.
 ///
 /// Timing is anchored to applied changes: the pre-delay starts only after
 /// validation, the editor view is awaited (bounded) before the first blink,
 /// and every sleep brackets a synchronous view selection — never a render
 /// round-trip — so on/off times are actually respected.
-func flashLine(_ store: Store, _ range: NSRange?, preDelayMs: UInt64 = 0, blinkMs: UInt64 = 140_000_000) {
+func flashLine(_ store: Store, _ range: NSRange?, preDelayMs: UInt64 = 0, blinkMs: UInt64 = 140_000_000, blinks: Int = 2) {
     store.flashGen += 1
     let gen = store.flashGen
     guard let doc = store.selected, !doc.showPreview, !doc.text.isEmpty else { return }
@@ -63,7 +62,7 @@ func flashLine(_ store: Store, _ range: NSRange?, preDelayMs: UInt64 = 0, blinkM
         else { return }
         let line = NSRange(location: ls, length: len)
         guard let orig = store.editorRef.selection else { return }
-        for _ in 0..<2 {
+        for _ in 0..<max(blinks, 1) {
             guard gen == store.flashGen, let dd = store.selected,
                 dd.id == doc.id, !dd.showPreview
             else { return }
