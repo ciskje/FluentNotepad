@@ -215,7 +215,7 @@ public static class CsvPreviewHtml
         var hc2=E('th');hr.appendChild(hc2);thead.appendChild(hr);t.appendChild(thead);
         var tb=E('tbody');
         for(var r=1;r<ROWS.length;r++){var row=ROWS[r],u='u'+(++uidc);
-        var tr=E('tr');tr.setAttribute('data-u',u);
+        var tr=E('tr');tr.setAttribute('data-u',u);tr.setAttribute('data-l',row.l);
         var rn=E('td','rn');rn.textContent=String(r);tr.appendChild(rn);
         for(var c=0;c<ncols;c++){var td=E('td','c');td.textContent=disp(row.c[c]||'');tr.appendChild(td);}
         var cp=E('td');cp.innerHTML='<button class=ic title="'+esc(STR.cv)+'" tabindex="-1">'+icoV+'</button>';

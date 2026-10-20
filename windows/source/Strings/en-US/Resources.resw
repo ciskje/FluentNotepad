@@ -76,7 +76,7 @@
   <data name="SetInfo.Text"><value>About</value></data>
   <!-- Code -->
   <data name="Untitled"><value>Untitled</value></data>
-  <data name="VersionInfo"><value>FluentNotepad {0} — Markdown, JSON and XML preview.</value></data>
+  <data name="VersionInfo"><value>FluentNotepad {0} — Markdown, JSON, XML, YAML, TOML, INI previews and CSV grid.</value></data>
   <data name="SaveContent"><value>Save changes to {0}?</value></data>
   <data name="SavePrimary"><value>Save</value></data>
   <data name="SaveSecondary"><value>Don't save</value></data>

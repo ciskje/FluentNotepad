@@ -38,6 +38,7 @@ Both builds implement the same intents; platform-native details may differ
 - YAML/TOML/INI tree previews (same collapsible schema, `$.` copy paths)
 - CSV grid preview (sniffed delimiter, header row, search, copy raw line)
 - In-app keyboard-shortcuts reference (Help menu, both languages)
+- Opening an already-open file selects its tab instead of duplicating it
 
 ## Change workflow
 
@@ -67,7 +68,7 @@ implemented those intents; if the other lags, its release waits.
 
 - Z = bugfix/tweak, Y = new feature/behavior, X = upheaval.
 - Docs/refactor/build never change the version.
-- Current: Windows `2.10.1`, macOS `2.10.1`; next shared version: TBD.
+- Current: Windows `2.10.3`, macOS `2.10.1`; next shared version: TBD.
 - Single source: `<Version>` in `windows/source/FluentNotepad.WinUI.csproj`
   (derives at build into `#define MyAppVersion` in
   `windows/installer/FluentNotepad.iss` and the setup name in `README.md`);

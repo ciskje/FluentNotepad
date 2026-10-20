@@ -1000,6 +1000,24 @@ public sealed partial class MainWindow : Window
 
     private void OpenFile(string path, string content)
     {
+        // Already open: select its tab instead of duplicating (like Store.open on macOS).
+        string full;
+        try { full = Path.GetFullPath(path); }
+        catch { full = path; }
+        foreach (var item in Tabs.TabItems)
+        {
+            if (item is TabViewItem t && t.Tag is DocumentInfo e && e.Path != null)
+            {
+                string ep;
+                try { ep = Path.GetFullPath(e.Path); }
+                catch { ep = e.Path; }
+                if (string.Equals(ep, full, StringComparison.OrdinalIgnoreCase))
+                {
+                    Tabs.SelectedItem = t;
+                    return;
+                }
+            }
+        }
         if (Tabs.SelectedItem is TabViewItem cur && cur.Tag is DocumentInfo cd &&
             GetEditorText(cd.Editor) == "" && cd.Path == null && !cd.Dirty)
             Tabs.TabItems.Remove(cur);

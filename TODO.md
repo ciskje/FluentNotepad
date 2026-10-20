@@ -16,8 +16,8 @@ Legend per row: `win:[x]` / `mac:[x]` = shipped on that platform.
 
 ## Pending
 
-- Open-file dedup on Windows (`generic`, win:[ ] mac:[x]): opening an
-  already-open file selects its tab instead of duplicating it (macOS does).
+- update about (`generic`, win:[x] mac:[ ]): new .ext are supported
+- flash line in modify mode when you click in preview (`generic`, win:[x] mac:[ ]): currently doesn't work
 
 ## Done
 

@@ -147,7 +147,7 @@ public static class PreviewTree
         var u='u'+(++uidc);n._u=u;
         var nd=E('div','nd');nd.setAttribute('data-p',p);
         if(n.m)for(var mi=0;mi<n.m.length;mi++){var cm0=E('div','cm');cm0.textContent=disp(n.m[mi]);nd.appendChild(cm0);}
-        var row=E('div','row');row.setAttribute('data-u',u);row.tabIndex=0;
+        var row=E('div','row');row.setAttribute('data-u',u);row.setAttribute('data-l',n.l);row.tabIndex=0;
         var h=isC(n)?'<span class=chev></span>':'<span class=nochev></span>';
         if(isRoot)h+='<span class=rp>$</span> ';
         else if(key!==null&&key!==undefined)h+=isIdx?'<span class=ix>'+esc(key)+':</span> ':'<span class=k>'+esc('"'+key+'"')+'</span><span class=pu>:</span> ';
