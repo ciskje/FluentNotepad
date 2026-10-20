@@ -163,14 +163,8 @@ final class WebRef: @unchecked Sendable {
         op.run()
     }
 
-    /// Fire-and-forget JS (tree search clear on ESC, expand before print),
-    /// or with a completion handler (click-to-source blink result).
-    func runJS(_ script: String, completion: ((Any?) -> Void)? = nil) {
-        guard let view else { completion?(nil); return }
-        if let completion {
-            view.evaluateJavaScript(script) { result, _ in completion(result) }
-        } else {
-            view.evaluateJavaScript(script, completionHandler: nil)
-        }
+    /// Fire-and-forget JS (tree/grid search clear on ESC, expand before print).
+    func runJS(_ script: String) {
+        view?.evaluateJavaScript(script, completionHandler: nil)
     }
 }

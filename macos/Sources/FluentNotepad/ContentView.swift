@@ -46,7 +46,7 @@ struct ContentView: View {
             findShown.toggle()
         }
         .onReceive(NotificationCenter.default.publisher(for: .srcLineTapped)) { n in
-            if let line = n.userInfo?["line"] as? Int { flashThenJump(store, dark, line) }
+            if let line = n.userInfo?["line"] as? Int { jumpThenFlash(store, line) }
         }
         .onReceive(NotificationCenter.default.publisher(for: .escapeToggle)) { _ in
             // ESC flips Edit/Preview (both directions). The find field keeps
@@ -73,7 +73,7 @@ struct ContentView: View {
                 if doc.showPreview, doc.canPreview {
                     PreviewView(html: doc.renderedHTML, webRef: store.webRef,
                         onFileDrop: { store.open(url: $0) },
-                        onTreeLine: { flashThenJump(store, dark, $0) },
+                        onTreeLine: { jumpThenFlash(store, $0) },
                         onTreeCopy: {
                             NSPasteboard.general.clearContents()
                             NSPasteboard.general.setString($0, forType: .string)
@@ -240,109 +240,12 @@ struct ContentView: View {
             fontSize: store.effectiveFontSize, title: doc.fileName)
     }
 
-    private func showPreview(_ doc: Doc, _ show: Bool) {
+    private func showPreview(_ doc: Doc, _ show: Bool, flash: Bool = true) {
         guard doc.canPreview else { return }
         doc.showPreview = show
         if show { render(doc); return }
-        // Click-to-source already blinked in the preview: don't double up.
-        if store.suppressFlashOnce { store.suppressFlashOnce = false; return }
-        flashCaretLine(store)
+        if flash { flashCaretLine(store) }
     }
-
-    // MARK: - Click-to-source: preview click -> editor caret on that line
-
-// MARK: - Click-to-source + caret-line flash (Windows 2.9.4-2.9.6)
-
-/// Leave preview, caret on the line. No flash here: the click path already
-/// blinked in the preview (flashThenJump) and showPreview's hook flash is
-/// suppressed for it.
-private func jumpToLine(_ store: Store, _ line: Int) {
-    guard let doc = store.selected, doc.canPreview, !doc.text.isEmpty else { return }
-    leavePreviewForJump(store, doc)
-    doc.revealRange = NSRange(location: lineStartOffsetIn(doc.text, line: line), length: 0)
-}
-
-/// Leave preview for a click-to-source jump (never renders, never
-/// flashes: the row already blinked in the preview).
-private func leavePreviewForJump(_ store: Store, _ doc: Doc) {
-    guard doc.canPreview else { return }
-    doc.showPreview = false
-    if store.suppressFlashOnce { store.suppressFlashOnce = false; return }
-    flashCaretLine(store)
-}
-
-/// Blink the clicked row twice in the preview first (Web Animations API, no
-/// page changes needed: works for Markdown data-src-line and tree data-l
-/// rows), then jump to Edit. Skips the jump if the user moved on meanwhile.
-private func flashThenJump(_ store: Store, _ dark: Bool, _ line: Int) {
-    guard let doc = store.selected, doc.canPreview, !doc.text.isEmpty else { return }
-    let color = dark ? "#569CD6" : "#0F6CBD"
-    let js = "(function(){try{var el=document.querySelector('[data-src-line=\"\(line)\"],[data-l=\"\(line)\"]');"
-        + "if(!el)return false;el.style.outline='2px solid transparent';el.style.outlineOffset='-2px';"
-        + "var a=el.animate([{outlineColor:'rgba(0,0,0,0)'},{outlineColor:'\(color)'},{outlineColor:'rgba(0,0,0,0)'}],{duration:300,iterations:2});"
-        + "a.onfinish=function(){try{el.style.outline='';el.style.outlineOffset='';}catch(e){}};"
-        + "return true;}catch(e){return false;}})()"
-    store.webRef.runJS(js) { result in
-        let flashed = (result as? String) == "true"
-        Task { @MainActor [store] in
-            if flashed { try? await Task.sleep(nanoseconds: 700_000_000) }
-            guard let cur = store.selected, cur.id == doc.id, cur.showPreview else { return }
-            store.suppressFlashOnce = true // the edit-mode flash would double up
-            jumpToLine(store, line)
-        }
-    }
-}
-
-/// Caret-line flash (two blinks) when entering Edit: selection-only, so it
-/// never touches the undo stack or text attributes. Any real edit, key press
-/// or tab switch aborts it via flashGen. No-op unless the tab is in Edit.
-private func flashCaretLine(_ store: Store) {
-    store.flashGen += 1
-    let gen = store.flashGen
-    guard let doc = store.selected, !doc.showPreview, !doc.text.isEmpty else { return }
-    guard let (ls, len) = lineRangeIn(doc.text, caret: doc.caret) else { return }
-    let orig = NSRange(location: doc.caret, length: doc.selLen)
-    Task { @MainActor [store] in
-        for _ in 0..<2 {
-            try? await Task.sleep(nanoseconds: 140_000_000)
-            guard gen == store.flashGen, let d = store.selected,
-                d.id == doc.id, !d.showPreview
-            else { return }
-            d.revealRange = NSRange(location: ls, length: len)
-            try? await Task.sleep(nanoseconds: 140_000_000)
-            guard gen == store.flashGen, let d2 = store.selected,
-                d2.id == doc.id, !d2.showPreview
-            else { return }
-            if d2.caret != ls || d2.selLen != len { return } // user moved on; keep their selection
-            d2.revealRange = orig
-        }
-    }
-}
-
-/// Caret's line as (start, length) on \n text. Empty lines collapse to one
-/// char (the break, or the previous one at EOF) so a flash stays visible.
-/// Mirrors Windows' TextUtil.TryGetLineRange.
-private func lineRangeIn(_ text: String, caret: Int) -> (Int, Int)? {
-    if text.isEmpty { return nil }
-    let ns = text as NSString
-    var ls = min(max(caret, 0), ns.length)
-    while ls > 0, ns.character(at: ls - 1) != 10 { ls -= 1 }
-    var le = min(max(caret, 0), ns.length)
-    while le < ns.length, ns.character(at: le) != 10 { le += 1 }
-    var len = le - ls
-    if len <= 0 {
-        if ls + 1 <= ns.length { len = 1 } else if ls > 0 { ls -= 1; len = 1 } else { return nil }
-    }
-    return (ls, len)
-}
-
-/// UTF-16 offset of a 1-based line start, clamped.
-private func lineStartOffsetIn(_ text: String, line: Int) -> Int {
-    guard line > 1 else { return 0 }
-    let map = SyntaxHighlight.LineMap(text)
-    if line - 1 < map.starts.count { return map.starts[line - 1] }
-    return (text as NSString).length
-}
 
     // MARK: - Formatting (operates on the cached selection: toolbar clicks move focus)
 

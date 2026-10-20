@@ -16,8 +16,7 @@ Legend per row: `win:[x]` / `mac:[x]` = shipped on that platform.
 
 ## Pending
 
-- update about (`generic`, win:[x] mac:[ ]): new .ext are supported
-- flash line in Edit mode on preview click (`generic`, win:[x] mac:[ ]): jump to Edit with caret on the source line, wait 0.5 s, then blink the caret line twice at 250 ms (selection-only, no undo/format side effects); abort on any edit, tab switch or back-to-preview; other Edit entries keep the immediate 2x140 ms blink
+(nothing pending — history lives in tags and release notes)
 
 ## Done
 

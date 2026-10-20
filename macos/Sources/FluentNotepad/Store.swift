@@ -73,11 +73,9 @@ final class Store: @unchecked Sendable {
 
     var effectiveFontSize: Double { fontSize * zoom }
 
-    /// Caret-line flash generation (any real edit aborts it) + one-shot
-    /// suppress after click-to-source (it already blinked in the preview).
-    /// Mirrors Windows' _flashGen/_suppressFlashOnce.
+    /// Caret-line flash generation (any real edit aborts it).
+    /// Mirrors Windows' _flashGen.
     var flashGen = 0
-    var suppressFlashOnce = false
 
     /// This window's live preview handle (print needs the WKWebView).
     let webRef = WebRef()
@@ -101,9 +99,14 @@ final class Store: @unchecked Sendable {
     }
 
     func open(url: URL) {
-        let path = url.path
-        // Already open: just select it.
-        if let existing = docs.first(where: { $0.path == path }) {
+        // Already open: just select it (full path, case-insensitive —
+        // like Windows' OpenFile dedup).
+        let full = url.standardized.path
+        if let existing = docs.first(where: {
+            guard let p = $0.path else { return false }
+            return URL(fileURLWithPath: p).standardized.path.compare(
+                full, options: .caseInsensitive) == .orderedSame
+        }) {
             selected = existing
             return
         }
@@ -114,7 +117,7 @@ final class Store: @unchecked Sendable {
         {
             docs.remove(at: i)
         }
-        newTab(path: path, content: content)
+        newTab(path: url.path, content: content)
     }
 
     func requestClose(_ doc: Doc) {

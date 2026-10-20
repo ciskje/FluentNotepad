@@ -27,8 +27,9 @@ Or build it yourself: see `windows/AGENTS.md` (Build/run) and `macos/AGENTS.md` 
 
 ## Changelog
 
-Same version number = same features everywhere. Windows is at `2.10.4`, macOS at `2.10.1` (fully aligned otherwise).
+Same version number = same features everywhere. Windows and macOS are at `2.10.4`.
 
+- **2.10.4** (macOS) — Click-to-source jumps to Edit and blinks the caret line twice (0.5 s pause, 2x250 ms); About lists all supported formats; opening an already-open file selects its tab (full-path, case-insensitive match).
 - **2.10.4** (Windows) — Click-to-source jumps to Edit and blinks the caret line twice (0.5 s pause, 2x250 ms) instead of highlighting the preview row; editor wrap + font size now persist across launches; status bar shows the detected file encoding (UTF-8 / UTF-8 with BOM / UTF-16 LE/BE).
 
 - **2.10.3** (Windows) — Opening an already-open file selects its tab instead of duplicating it; click-to-source now blinks the row in tree/CSV previews before jumping to Edit; About dialog lists all supported formats.
