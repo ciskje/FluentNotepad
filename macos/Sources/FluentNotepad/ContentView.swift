@@ -40,7 +40,7 @@ struct ContentView: View {
         .onChange(of: store.effectiveFontSize) { renderSelected() }
         .onChange(of: doc?.id) {
             renderSelected()
-            if let d = store.selected, !d.showPreview { flashCaretLine(store) }
+            if let d = store.selected, !d.showPreview { flashLine(store, nil) }
         }
         .onReceive(NotificationCenter.default.publisher(for: .toggleFind)) { _ in
             findShown.toggle()
@@ -85,7 +85,7 @@ struct ContentView: View {
                         .onAppear { render(doc) }
                 } else {
                     EditorView(doc: doc, fontSize: store.effectiveFontSize, wrap: store.wrap, dark: dark,
-                        onFileDrop: { store.open(url: $0) })
+                        editorRef: store.editorRef, onFileDrop: { store.open(url: $0) })
                 }
             }
             if findShown {
@@ -244,7 +244,7 @@ struct ContentView: View {
         guard doc.canPreview else { return }
         doc.showPreview = show
         if show { render(doc); return }
-        if flash { flashCaretLine(store) }
+        if flash { flashLine(store, nil) }
     }
 
     // MARK: - Formatting (operates on the cached selection: toolbar clicks move focus)

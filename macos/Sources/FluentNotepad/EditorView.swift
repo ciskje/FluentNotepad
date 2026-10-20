@@ -1,6 +1,33 @@
 import AppKit
 import SwiftUI
 
+/// Weak handle to the live editor, so click-to-source/flash drive the
+/// NSTextView synchronously (like WebRef for WKWebView): sleeps bracket real
+/// selection changes instead of SwiftUI render round-trips, and the flashed
+/// line is read from the view (always current), never from a stale model.
+final class EditorRef: @unchecked Sendable {
+    weak var view: NSTextView?
+
+    var selection: NSRange? {
+        guard let tv = view else { return nil }
+        return tv.selectedRange()
+    }
+
+    /// Immediate select + scroll (+ optional system flash). Main thread only.
+    @discardableResult
+    func select(_ r: NSRange, flash: Bool) -> Bool {
+        guard let tv = view, tv.window != nil else { return false }
+        let len = (tv.string as NSString).length
+        let loc = min(Swift.max(r.location, 0), len)
+        let rr = NSRange(location: loc, length: min(Swift.max(r.length, 0), len - loc))
+        tv.setSelectedRange(rr)
+        tv.scrollRangeToVisible(rr)
+        if flash { tv.showFindIndicator(for: rr) }
+        tv.window?.makeFirstResponder(tv)
+        return true
+    }
+}
+
 /// NSTextView that opens dropped files as tabs (see below).
 final class EditorTextView: NSTextView {
     /// File drops open as tabs right here (claim them: relying on the drop
@@ -31,6 +58,7 @@ struct EditorView: NSViewRepresentable {
     var fontSize: Double
     var wrap: Bool
     var dark: Bool
+    var editorRef: EditorRef
     var onFileDrop: ((URL) -> Void)?
 
     static func baseFont(size: Double) -> NSFont {
@@ -86,6 +114,7 @@ struct EditorView: NSViewRepresentable {
         scroll.documentView = tv
         context.coordinator.view = tv
         context.coordinator.scroll = scroll
+        editorRef.view = tv
         tv.string = doc.text
         style(tv, scroll)
         Self.refreshHighlight(tv, fontSize: fontSize, dark: dark, coord: context.coordinator)
@@ -95,6 +124,7 @@ struct EditorView: NSViewRepresentable {
     func updateNSView(_ scroll: NSScrollView, context: Context) {
         guard let tv = scroll.documentView as? NSTextView else { return }
         let c = context.coordinator
+        editorRef.view = tv
         tv.textStorage?.delegate = c
         if c.lastFontSize != fontSize {
             c.lastFontSize = fontSize

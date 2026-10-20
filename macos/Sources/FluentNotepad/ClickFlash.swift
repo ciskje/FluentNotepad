@@ -1,19 +1,21 @@
 import AppKit
 import Foundation
 
-// MARK: - Click-to-source + caret-line flash (Windows 2.10.4)
+// MARK: - Click-to-source + caret-line flash (Windows 2.10.4, macOS 2.10.6)
 
 /// Click-to-source, shared by all previews: leave preview, caret on the
-/// line, blink it twice in Edit. The caret is placed BEFORE flashing:
-/// flashCaretLine blinks whatever line the caret is on, and aborts if the
-/// selection moves mid-blink.
+/// line, blink it twice in Edit. The target range is computed synchronously
+/// from the text and flashed on the live view, so no stale caret is ever
+/// blinked while the reveal is still being applied.
 func jumpToLine(_ store: Store, _ line: Int) {
     guard let doc = store.selected, doc.canPreview, !doc.text.isEmpty else { return }
-    // Hide preview without flashing: the flash below must run on the
-    // just-placed caret, otherwise it blinks the old line (or aborts).
+    let off = lineStartOffsetIn(doc.text, line: line)
+    guard let (ls, len) = lineRangeIn(doc.text, caret: off) else { return }
+    // Hide preview without flashing; the reveal places the caret on the
+    // next render while the flash below drives the live view directly.
     doc.showPreview = false
-    doc.revealRange = NSRange(location: lineStartOffsetIn(doc.text, line: line), length: 0)
-    flashCaretLine(store, preDelayMs: 1000, blinkMs: 250)
+    doc.revealRange = NSRange(location: off, length: 0)
+    flashLine(store, NSRange(location: ls, length: len), preDelayMs: 1000, blinkMs: 250_000_000)
 }
 
 /// Jump straight to Edit and blink the caret line twice there (in place):
@@ -28,33 +30,52 @@ func jumpThenFlash(_ store: Store, _ line: Int) {
 /// Caret-line flash (two blinks) when entering Edit: selection-only, so it
 /// never touches the undo stack or text attributes. Any real edit, tab
 /// switch or back-to-preview aborts it via flashGen. No-op unless the tab is
-/// in Edit. Optional pre-delay + blink length: the click path waits 1 s,
-/// then blinks twice at 250 ms so the target line is easy to catch.
-func flashCaretLine(_ store: Store, preDelayMs: UInt64 = 0, blinkMs: UInt64 = 140_000_000) {
+/// in Edit. `range` is nil for plain Edit entries (blink the live caret
+/// line); the click path passes its known target range instead of trusting
+/// a caret that may not have arrived yet.
+///
+/// Timing is anchored to applied changes: the pre-delay starts only after
+/// validation, the editor view is awaited (bounded) before the first blink,
+/// and every sleep brackets a synchronous view selection — never a render
+/// round-trip — so on/off times are actually respected.
+func flashLine(_ store: Store, _ range: NSRange?, preDelayMs: UInt64 = 0, blinkMs: UInt64 = 140_000_000) {
     store.flashGen += 1
     let gen = store.flashGen
     guard let doc = store.selected, !doc.showPreview, !doc.text.isEmpty else { return }
     Task { @MainActor [store] in
         if preDelayMs > 0 { try? await Task.sleep(nanoseconds: preDelayMs * 1_000_000) }
-        // The user may have moved on during the wait: revalidate everything
-        // and blink whatever line the caret is on now.
         guard gen == store.flashGen, let d = store.selected,
-            d.id == doc.id, !d.showPreview,
-            let (ls, len) = lineRangeIn(d.text, caret: d.caret)
+            d.id == doc.id, !d.showPreview
         else { return }
-        let orig = NSRange(location: d.caret, length: d.selLen)
-        for _ in 0..<2 {
-            try? await Task.sleep(nanoseconds: blinkMs)
+        // The editor view appears right after leaving preview; wait for it
+        // (bounded) before the first blink so the timer starts on the view.
+        var waited: UInt64 = 0
+        while store.editorRef.view == nil, waited < 1_000_000_000 {
+            try? await Task.sleep(nanoseconds: 50_000_000)
+            waited += 50_000_000
             guard gen == store.flashGen, let dd = store.selected,
                 dd.id == doc.id, !dd.showPreview
             else { return }
-            dd.revealRange = NSRange(location: ls, length: len)
+        }
+        guard let live = store.editorRef.selection,
+            let (ls, len) = range.map({ ($0.location, $0.length) })
+                ?? lineRangeIn(d.text, caret: live.location)
+        else { return }
+        let line = NSRange(location: ls, length: len)
+        guard let orig = store.editorRef.selection else { return }
+        for _ in 0..<2 {
+            guard gen == store.flashGen, let dd = store.selected,
+                dd.id == doc.id, !dd.showPreview
+            else { return }
+            store.editorRef.select(line, flash: true)
             try? await Task.sleep(nanoseconds: blinkMs)
             guard gen == store.flashGen, let dd2 = store.selected,
-                dd2.id == doc.id, !dd2.showPreview
-            else { return }
-            if dd2.caret != ls || dd2.selLen != len { return } // user moved on; keep their selection
-            dd2.revealRange = orig
+                dd2.id == doc.id, !dd2.showPreview,
+                let cur = store.editorRef.selection,
+                cur.location == line.location, cur.length == line.length
+            else { return } // user moved on; keep their selection
+            store.editorRef.select(orig, flash: false)
+            try? await Task.sleep(nanoseconds: blinkMs)
         }
     }
 }

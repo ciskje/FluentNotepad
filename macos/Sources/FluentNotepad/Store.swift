@@ -80,6 +80,9 @@ final class Store: @unchecked Sendable {
     /// This window's live preview handle (print needs the WKWebView).
     let webRef = WebRef()
 
+    /// This window's live editor handle (click flash drives it directly).
+    let editorRef = EditorRef()
+
     // MARK: - Tabs
 
     @discardableResult
