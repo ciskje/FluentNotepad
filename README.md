@@ -20,20 +20,21 @@ Same intents on both platforms — see the parity checklist in [AGENTS.md](AGENT
 The repo contains sources only (builds and setups are **not** versioned). Same
 version number = same features on both platforms (see Changelogs below).
 
-- **Windows**: [Releases](../../releases) page → `FluentNotepad-Setup-2.10.3-win-x64.exe` (per-machine install in Program Files, optional file associations)
+- **Windows**: [Releases](../../releases) page → `FluentNotepad-Setup-2.10.4-win-x64.exe` (per-machine install in Program Files, optional file associations)
 - **macOS**: [Releases](../../releases) page → `FluentNotepad.dmg` from a `macos-vX.Y.Z` release → drag `FluentNotepad.app` into Applications. First launch: right-click → Open (ad-hoc signature).
 
 Or build it yourself: see `windows/AGENTS.md` (Build/run) and `macos/AGENTS.md` (Build/run).
 
 ## Changelog
 
-Same version number = same features everywhere. Windows is at `2.10.3`, macOS at `2.10.1` (fully aligned otherwise).
+Same version number = same features everywhere. Windows is at `2.10.4`, macOS at `2.10.1` (fully aligned otherwise).
+
+- **2.10.4** (Windows) — Click-to-source jumps to Edit and blinks the caret line twice (0.5 s pause, 2x250 ms) instead of highlighting the preview row; editor wrap + font size now persist across launches; status bar shows the detected file encoding (UTF-8 / UTF-8 with BOM / UTF-16 LE/BE).
 
 - **2.10.3** (Windows) — Opening an already-open file selects its tab instead of duplicating it; click-to-source now blinks the row in tree/CSV previews before jumping to Edit; About dialog lists all supported formats.
 - **2.10.2** (Windows) — Closing the last tab no longer leaves the previous editor on screen.
 - **2.10.1** (macOS) — File associations for the new formats too (exported UTIs: `.yaml`/`.yml`, `.toml`, `.ini`/`.cfg`/`.inf`/`.properties`, `.jsonc`, `.config`; open by double-click); YAML, TOML and INI tree previews plus CSV grid preview (search, copy, click-to-line; edit-mode highlight for the tree formats); XML tree preview (attributes as `@name` rows, XPath copy paths, XML comments, invalid-XML error, XML highlight, Open/Save panel types); ⌘S saves the active tab; drag-reorderable tabs; print notice for non-preview tabs (expand-before-print for trees); footnotes/definition lists in Markdown preview; caret-line flash entering Edit; click-to-source blinks the row in preview before jumping.
 - **2.10.1** (Windows) — Setup offers optional associations for the new formats too (`.yaml`/`.yml`, `.toml`, `.ini`/`.cfg`/`.inf`/`.properties`, `.csv`/`.tsv`; all unchecked by default).
-- **2.10.0** (Windows) — YAML, TOML and INI tree previews plus CSV grid preview (search, copy, click-to-line; edit-mode highlight for the tree formats).
 Last 5 entries; full history in [Releases](../../releases) and the Done section
 of [TODO.md](TODO.md) (archived at each release).
 

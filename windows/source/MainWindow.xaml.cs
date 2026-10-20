@@ -80,6 +80,7 @@ public sealed partial class MainWindow : Window
         public string JsonQuery = "";
         public bool Dirty;
         public string LineEnding = "Windows (CRLF)";
+        public string Encoding = "UTF-8";
         // Edit-mode highlight cache (hash of the inputs, like FluentNotepadMac)
         // and text snapshot (RichEditBox fires TextChanged for formatting too).
         public string HighlightKey = "";
@@ -147,9 +148,12 @@ public sealed partial class MainWindow : Window
         Root.KeyboardAccelerators.Add(esc);
 
         // Saved theme (light/dark/system): follows Windows by default
-        string mode = LoadSettings().Theme;
-        ThemeCombo.SelectedIndex = mode == "light" ? 0 : mode == "dark" ? 1 : 2;
-        ApplyThemeSetting(mode);
+        var saved = LoadSettings();
+        ThemeCombo.SelectedIndex = saved.Theme == "light" ? 0 : saved.Theme == "dark" ? 1 : 2;
+        ApplyThemeSetting(saved.Theme);
+        // Saved editor prefs (like macOS UserDefaults): wrap + font size
+        WrapCheck.IsChecked = saved.Wrap;
+        FontSlider.Value = Math.Clamp(saved.FontSize, 12, 24);
         NewTab(null);
         _loading = false;
         GetActiveBox()?.Focus(FocusState.Programmatic);
@@ -285,11 +289,26 @@ public sealed partial class MainWindow : Window
     private static string DetectLineEnding(string text) =>
         text.Contains("\r\n") ? "Windows (CRLF)" : text.Contains('\n') ? "Unix (LF)" : "Windows (CRLF)";
 
+    // BOM sniff on open, like macOS (Doc.swift): UTF-8, UTF-8 with BOM, UTF-16 LE/BE.
+    // Save always writes UTF-8 without BOM, so this only describes the opened file.
+    private static string DetectEncoding(string path)
+    {
+        try
+        {
+            byte[] b = File.ReadAllBytes(path);
+            if (b.Length >= 3 && b[0] == 0xEF && b[1] == 0xBB && b[2] == 0xBF) return "UTF-8 with BOM";
+            if (b.Length >= 2 && b[0] == 0xFF && b[1] == 0xFE) return "UTF-16 LE";
+            if (b.Length >= 2 && b[0] == 0xFE && b[1] == 0xFF) return "UTF-16 BE";
+        }
+        catch (Exception ex) { Debug.WriteLine($"Enc: {ex.Message}"); }
+        return "UTF-8";
+    }
+
     private void RefreshFileLabels()
     {
         var d = GetActiveDoc();
         if (LineEndLabel != null) LineEndLabel.Text = d?.LineEnding ?? "Windows (CRLF)";
-        if (EncodingLabel != null) EncodingLabel.Text = "UTF-8"; // save always writes UTF-8 without BOM
+        if (EncodingLabel != null) EncodingLabel.Text = d?.Encoding ?? "UTF-8";
     }
 
     private void NewTab(string? path, string content = "")
@@ -299,7 +318,7 @@ public sealed partial class MainWindow : Window
             AcceptsReturn = true,
             TextWrapping = WrapCheck?.IsChecked == true ? TextWrapping.Wrap : TextWrapping.NoWrap,
             FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Cascadia Mono, Cascadia Code, Consolas"),
-            FontSize = 15 * _zoom,
+            FontSize = (FontSlider?.Value ?? 15) * _zoom,
             Padding = new Thickness(16),
             BorderThickness = new Thickness(0),
             Background = new SolidColorBrush(Colors.Transparent)
@@ -595,10 +614,12 @@ public sealed partial class MainWindow : Window
         catch (Exception ex) { Debug.WriteLine($"Copy: {ex.Message}"); }
     }
 
-    // Click-to-source, shared by both previews: leave preview, caret on the line.
+    // Click-to-source, shared by both previews: leave preview, caret on the
+    // line, blink it twice in Edit. The caret is placed BEFORE flashing:
+    // FlashCaretLine blinks whatever line the caret is on, and aborts if the
+    // selection moves mid-blink.
     private void JumpToLine(DocumentInfo d, int line)
     {
-        if (d.PreviewVisible) ShowPreview(d, false);
         string text = GetEditorText(d.Editor);
         int off = 0;
         for (int cur = 1; cur < line && off < text.Length; cur++)
@@ -607,17 +628,19 @@ public sealed partial class MainWindow : Window
             if (nl < 0) { off = text.Length; break; }
             off = nl + 1;
         }
+        // Hide preview without flashing: the flash below must run on the
+        // just-placed caret, otherwise it blinks the old line (or aborts).
+        if (d.PreviewVisible) ShowPreview(d, false, flash: false);
         var b = d.Editor;
         SetSelection(b, off, 0);
         b.Focus(FocusState.Programmatic);
-        // No FlashCaretLine here: the click path already blinked in the preview
-        // (FlashThenJumpAsync) and ShowPreview's hook flash is suppressed for it.
+        FlashCaretLine(preDelayMs: 500, blinkMs: 250);
     }
 
-    // Click-to-source for tree previews AND Markdown: blink the rendered row
-    // twice in the preview first (confirmation of what was clicked), then
-    // jump to Edit. Aborts the jump if the user moved on meanwhile.
-    private async void Preview_WebMessage(object? sender, Microsoft.Web.WebView2.Core.CoreWebView2WebMessageReceivedEventArgs e)
+    // Click-to-source for tree previews AND Markdown: jump straight to Edit
+    // and blink the caret line twice there (the row to look at).
+    // Aborts the jump if the user moved on meanwhile.
+    private void Preview_WebMessage(object? sender, Microsoft.Web.WebView2.Core.CoreWebView2WebMessageReceivedEventArgs e)
     {
         string msg;
         try { msg = e.TryGetWebMessageAsString(); }
@@ -640,7 +663,7 @@ public sealed partial class MainWindow : Window
                     {
                         if (isTree && d != null)
                         {
-                            try { await FlashThenJumpAsync(d, line); }
+                            try { JumpThenFlash(d, line); }
                             catch (Exception ex) { Debug.WriteLine($"Jump: {ex.Message}"); }
                         }
                     }
@@ -667,38 +690,18 @@ public sealed partial class MainWindow : Window
         if (!int.TryParse(t, out int mdLine) || mdLine < 1) return;
         var md = GetActiveDoc();
         if (md is not { IsMarkdown: true, PreviewVisible: true }) return;
-        try { await FlashThenJumpAsync(md, mdLine); }
+        try { JumpThenFlash(md, mdLine); }
         catch (Exception ex) { Debug.WriteLine($"Jump: {ex.Message}"); }
     }
 
-    // Blink the clicked row twice in the preview (Web Animations API, no page
-    // changes needed: works for Markdown data-src-line and tree data-l rows),
-    // then jump to Edit. Skips the jump if the user moved on meanwhile.
-    private async Task FlashThenJumpAsync(DocumentInfo d, int line)
+    // Jump straight to Edit and blink the caret line twice there (in place):
+    // the jumped-to line is the one to look at, so the flash belongs to Edit,
+    // not to the preview. Skips the jump if the user moved on meanwhile.
+    private void JumpThenFlash(DocumentInfo d, int line)
     {
-        bool flashed = false;
-        try
-        {
-            if (PreviewView.CoreWebView2 != null)
-            {
-                string color = _dark ? "#569CD6" : "#0F6CBD";
-                string js = "(function(){try{"
-                    + "var el=document.querySelector('[data-src-line=\"" + line + "\"],[data-l=\"" + line + "\"]');"
-                    + "if(!el)return false;"
-                    + "el.style.outline='2px solid transparent';el.style.outlineOffset='-2px';"
-                    + "var a=el.animate([{outlineColor:'rgba(0,0,0,0)'},{outlineColor:'" + color + "'},{outlineColor:'rgba(0,0,0,0)'}],{duration:300,iterations:2});"
-                    + "a.onfinish=function(){try{el.style.outline='';el.style.outlineOffset='';}catch(e){}};"
-                    + "return true;}catch(e){return false;}})()";
-                string r = await PreviewView.CoreWebView2.ExecuteScriptAsync(js);
-                flashed = r != null && r.Trim() == "\"true\"";
-            }
-        }
-        catch (Exception ex) { Debug.WriteLine($"FlashRow: {ex.Message}"); }
-        if (flashed) await Task.Delay(700);
         var cur = GetActiveDoc();
         if (!ReferenceEquals(cur, d) || !d.PreviewVisible) return; // user moved on
-        _suppressFlashOnce = true; // the edit-mode flash would double up
-        JumpToLine(d, line);
+        JumpToLine(d, line); // ShowPreview flips to Edit and flashes the line
     }
 
     // A file dropped onto the preview makes WebView2 navigate to it (like Edge),
@@ -753,7 +756,7 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private void ShowPreview(DocumentInfo d, bool show)
+    private void ShowPreview(DocumentInfo d, bool show, bool flash = true)
     {
         if (!d.CanPreview()) return;
         d.PreviewVisible = show;
@@ -761,24 +764,28 @@ public sealed partial class MainWindow : Window
         ShowActiveContent();
         RefreshMdUi();
         if (show) return;
-        // Click-to-source already blinked in the preview: don't double up.
-        if (_suppressFlashOnce) { _suppressFlashOnce = false; return; }
-        FlashCaretLine();
+        if (flash) FlashCaretLine();
     }
 
     // Caret-line flash (two blinks) when entering Edit: selection-only, so it
     // never touches the undo stack or RichEdit formatting (AV-safe, unlike a
     // paint). Any real edit, key press or tab switch aborts it via _flashGen.
-    // Click-to-source sets _suppressFlashOnce (it blinked in the preview).
+    // Click-to-source jumps here too, so the jumped-to line blinks in Edit.
+    // Optional pre-delay + blink length: the click path waits 2 s, then blinks
+    // twice at half a second so the target line is easy to catch.
     private int _flashGen;
-    private bool _suppressFlashOnce;
 
-    private async void FlashCaretLine()
+    private async void FlashCaretLine(int preDelayMs = 0, int blinkMs = 140)
     {
         var d = GetActiveDoc();
         var box = d?.Editor;
         if (d == null || box == null || d.PreviewVisible || box.Parent == null) return;
         int gen = ++_flashGen;
+        if (preDelayMs > 0) await Task.Delay(preDelayMs);
+        // The user may have moved on during the wait: revalidate everything
+        // and blink whatever line the caret is on now.
+        if (gen != _flashGen || !ReferenceEquals(GetActiveDoc(), d)) return;
+        if (d.PreviewVisible || box.Parent == null) return;
         var (os, ol) = GetSelection(box);
         string text;
         try { text = GetEditorText(box); }
@@ -790,12 +797,12 @@ public sealed partial class MainWindow : Window
             {
                 if (gen != _flashGen || !ReferenceEquals(GetActiveDoc(), d)) return;
                 SetSelection(box, ls, len);
-                await Task.Delay(140);
+                await Task.Delay(blinkMs);
                 if (gen != _flashGen || !ReferenceEquals(GetActiveDoc(), d)) { SetSelection(box, os, ol); return; }
                 var (cs, cl) = GetSelection(box);
                 if (cs != ls || cl != len) return; // user moved on; keep their selection
                 SetSelection(box, os, ol);
-                await Task.Delay(140);
+                await Task.Delay(blinkMs);
             }
         }
         catch (Exception ex) { Debug.WriteLine($"Flash: {ex.Message}"); }
@@ -989,6 +996,7 @@ public sealed partial class MainWindow : Window
         doc.Dirty = false;
         string saved = ToSaveText(doc);
         doc.LineEnding = DetectLineEnding(saved);
+        doc.Encoding = "UTF-8"; // save always writes UTF-8 without BOM
         string cur = GetEditorText(doc.Editor);
         doc.TextLen = cur.Length;
         doc.TextHash = cur.GetHashCode();
@@ -1026,6 +1034,7 @@ public sealed partial class MainWindow : Window
         {
             d.Dirty = false;
             d.LineEnding = DetectLineEnding(content);
+            d.Encoding = DetectEncoding(path);
             RefreshHeader(d);
             RefreshFileLabels();
             // A previewable file opened from anywhere (association/command line,
@@ -1404,6 +1413,8 @@ public sealed partial class MainWindow : Window
     private sealed class AppSettings
     {
         public string Theme { get; set; } = "system";
+        public bool Wrap { get; set; } = true;
+        public double FontSize { get; set; } = 15;
         public int X { get; set; }
         public int Y { get; set; }
         public int Width { get; set; }
@@ -1538,7 +1549,14 @@ public sealed partial class MainWindow : Window
         await SettingsDialog.ShowAsync();
     }
 
-    private void Wrap_Changed(object s, RoutedEventArgs e) => ApplyWrap();
+    private void Wrap_Changed(object s, RoutedEventArgs e)
+    {
+        if (_loading) return;
+        ApplyWrap();
+        var ws = LoadSettings();
+        ws.Wrap = WrapCheck.IsChecked == true;
+        SaveSettings(ws);
+    }
     private void Wrap_Click(object s, RoutedEventArgs e) => WrapCheck.IsChecked = !(WrapCheck.IsChecked == true);
     private void ApplyWrap()
     {
@@ -1549,6 +1567,9 @@ public sealed partial class MainWindow : Window
     private void FontSlider_Changed(object s, RangeBaseValueChangedEventArgs e)
     {
         if (_loading) return;
+        var fs = LoadSettings();
+        fs.FontSize = FontSlider?.Value ?? 15;
+        SaveSettings(fs);
         SetZoom(_zoom, renderPreview: false);
         // The WebView2 preview is expensive: debounce instead of rendering on every drag tick
         var d = GetActiveDoc();
