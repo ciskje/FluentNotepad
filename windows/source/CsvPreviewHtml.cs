@@ -15,10 +15,10 @@ public static class CsvPreviewHtml
 {
     public const int MaxRows = 5000;
 
-    public static string Build(string text, bool dark, double fontSize, string? title)
+    public static string Build(string text, bool dark, double fontSize, string? title, bool wrap = true)
     {
         var pal = new MarkdownShared.Palette(dark);
-        string head = PageHead(dark, fontSize, title ?? "CSV", GridCss(pal, fontSize));
+        string head = PageHead(dark, fontSize, title ?? "CSV", GridCss(pal, fontSize, wrap), wrap);
         if (text.Length > MaxChars)
             return head + TooLarge(MainWindow.Str("CsvTooLarge"));
         try
@@ -41,7 +41,7 @@ public static class CsvPreviewHtml
             return ErrorPage(dark, fontSize, title ?? "CSV",
                 MainWindow.Str("CsvInvalidTitle"),
                 string.Format(MainWindow.Str("CsvInvalid"), ex.Line, ex.Column),
-                ex.Message, text, MainWindow.Str("CsvErrorHint"));
+                ex.Message, text, MainWindow.Str("CsvErrorHint"), wrap);
         }
     }
 
@@ -49,9 +49,11 @@ public static class CsvPreviewHtml
         "<div class=tools>" +
         "<input id=q placeholder=\"" + Esc(MainWindow.Str("JsonSearch")) + "\"><span id=cnt></span></div>";
 
-    private static string GridCss(MarkdownShared.Palette p, double fs) =>
-        ".tbl{border-collapse:collapse;margin:6px 0 14px;font-size:" + ((int)(fs * 0.95)) + "px;max-width:100%}" +
-        ".tbl th,.tbl td{border:1px solid " + p.CellBorder.Hex + ";padding:4px 10px;text-align:left;vertical-align:top;white-space:pre-wrap;word-break:break-word}" +
+    private static string GridCss(MarkdownShared.Palette p, double fs, bool wrap) =>
+        ".tbl{border-collapse:collapse;margin:6px 0 14px;font-size:" + ((int)(fs * 0.95)) + "px;" +
+        (wrap ? "max-width:100%" : "max-width:none") + "}" +
+        ".tbl th,.tbl td{border:1px solid " + p.CellBorder.Hex + ";padding:4px 10px;text-align:left;vertical-align:top;" +
+        (wrap ? "white-space:pre-wrap;word-break:break-word" : "white-space:pre;word-break:normal") + "}" +
         ".tbl th{background:" + p.CodeBg.Hex + ";color:" + p.Heading.Hex + ";font-weight:700;position:sticky;top:52px}" +
         ".tbl tbody tr:nth-child(even){background:" + p.Zebra.Hex + "}" +
         ".tbl tbody tr:hover{background:" + p.Panel.Hex + "}" +

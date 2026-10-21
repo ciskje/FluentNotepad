@@ -18,10 +18,10 @@ namespace FluentNotepad;
 /// </summary>
 public static class JsonPreviewHtml
 {
-    public static string Build(string text, bool dark, double fontSize, string? title, ISet<string>? open)
+    public static string Build(string text, bool dark, double fontSize, string? title, ISet<string>? open, bool wrap = true)
     {
         if (text.Length > MaxChars)
-            return PageHead(dark, fontSize, title ?? "JSON") + TooLarge(MainWindow.Str("JsonTooLarge"));
+            return PageHead(dark, fontSize, title ?? "JSON", "", wrap) + TooLarge(MainWindow.Str("JsonTooLarge"));
         try
         {
             var root = Parse(text, out bool truncated);
@@ -29,7 +29,7 @@ public static class JsonPreviewHtml
                 truncated ? MainWindow.Str("JsonTruncated") : null,
                 JsonSerializer.Serialize(root),
                 JsonSerializer.Serialize(open ?? Enumerable.Empty<string>()),
-                xml: false);
+                xml: false, wrap: wrap);
         }
         catch (JsonException ex)
         {
@@ -39,7 +39,7 @@ public static class JsonPreviewHtml
             return ErrorPage(dark, fontSize, title ?? "JSON",
                 MainWindow.Str("JsonInvalidTitle"),
                 string.Format(MainWindow.Str("JsonInvalid"), line, col),
-                ex.Message, text, MainWindow.Str("JsonErrorHint"));
+                ex.Message, text, MainWindow.Str("JsonErrorHint"), wrap);
         }
     }
 

@@ -253,6 +253,8 @@ public sealed partial class MainWindow : Window
         GetEditorText(doc.Editor).Replace("\n", doc.LineEnding.StartsWith("Unix") ? "\n" : "\r\n");
 
     private float EffectiveFontSize() => (float)((FontSlider?.Value ?? 15) * _zoom);
+    // Word wrap is an editor AND preview setting: the HTML builders take it too.
+    private bool WrapOn() => WrapCheck?.IsChecked == true;
     private Windows.UI.Color BaseTextColor() =>
         _dark ? Colors.White : Windows.UI.Color.FromArgb(255, 38, 38, 38);
     // Same tones as ApplyTheme: the highlight paints this (never transparent,
@@ -329,7 +331,7 @@ public sealed partial class MainWindow : Window
         var box = new RichEditBox
         {
             AcceptsReturn = true,
-            TextWrapping = WrapCheck?.IsChecked == true ? TextWrapping.Wrap : TextWrapping.NoWrap,
+            TextWrapping = WrapOn() ? TextWrapping.Wrap : TextWrapping.NoWrap,
             FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Cascadia Mono, Cascadia Code, Consolas"),
             FontSize = (FontSlider?.Value ?? 15) * _zoom,
             Padding = new Thickness(16),
@@ -576,12 +578,12 @@ public sealed partial class MainWindow : Window
                 string text = GetEditorText(doc.Editor);
                 string html = doc.Kind switch
                 {
-                    DocKind.Csv => CsvPreviewHtml.Build(text, _dark, size, DisplayName(doc)),
-                    DocKind.Json => JsonPreviewHtml.Build(text, _dark, size, DisplayName(doc), doc.JsonOpen),
-                    DocKind.Xml => XmlPreviewHtml.Build(text, _dark, size, DisplayName(doc), doc.JsonOpen),
-                    DocKind.Yaml => YamlPreviewHtml.Build(text, _dark, size, DisplayName(doc), doc.JsonOpen),
-                    DocKind.Toml => TomlPreviewHtml.Build(text, _dark, size, DisplayName(doc), doc.JsonOpen),
-                    _ => IniPreviewHtml.Build(text, _dark, size, DisplayName(doc), doc.JsonOpen),
+                    DocKind.Csv => CsvPreviewHtml.Build(text, _dark, size, DisplayName(doc), WrapOn()),
+                    DocKind.Json => JsonPreviewHtml.Build(text, _dark, size, DisplayName(doc), doc.JsonOpen, WrapOn()),
+                    DocKind.Xml => XmlPreviewHtml.Build(text, _dark, size, DisplayName(doc), doc.JsonOpen, WrapOn()),
+                    DocKind.Yaml => YamlPreviewHtml.Build(text, _dark, size, DisplayName(doc), doc.JsonOpen, WrapOn()),
+                    DocKind.Toml => TomlPreviewHtml.Build(text, _dark, size, DisplayName(doc), doc.JsonOpen, WrapOn()),
+                    _ => IniPreviewHtml.Build(text, _dark, size, DisplayName(doc), doc.JsonOpen, WrapOn()),
                 };
                 string file = TreePreviewPath();
                 File.WriteAllText(file, html);
@@ -592,7 +594,7 @@ public sealed partial class MainWindow : Window
             else
             {
                 string html = MarkdownHtml.Build(GetEditorText(doc.Editor), baseDir, _dark, size,
-                    DisplayName(doc));
+                    DisplayName(doc), WrapOn());
                 PreviewView.CoreWebView2.NavigateToString(html);
             }
             PreviewView.Visibility = Visibility.Visible;
@@ -1527,15 +1529,18 @@ public sealed partial class MainWindow : Window
         if (_loading) return;
         ApplyWrap();
         var ws = LoadSettings();
-        ws.Wrap = WrapCheck.IsChecked == true;
+        ws.Wrap = WrapOn();
         SaveSettings(ws);
+        // The preview HTML carries the wrap rule: re-render the visible preview.
+        var d = GetActiveDoc();
+        if (d is { PreviewVisible: true } && d.CanPreview()) RenderPreview(d);
     }
     private void Wrap_Click(object s, RoutedEventArgs e) => WrapCheck.IsChecked = !(WrapCheck.IsChecked == true);
     private void ApplyWrap()
     {
         foreach (var t in Tabs.TabItems.OfType<TabViewItem>())
             if ((t.Tag as DocumentInfo)?.Editor is RichEditBox b)
-                b.TextWrapping = WrapCheck?.IsChecked == true ? TextWrapping.Wrap : TextWrapping.NoWrap;
+                b.TextWrapping = WrapOn() ? TextWrapping.Wrap : TextWrapping.NoWrap;
     }
     private void FontSlider_Changed(object s, RangeBaseValueChangedEventArgs e)
     {

@@ -22,7 +22,7 @@ Both builds implement the same intents; platform-native details may differ
 - Formatting toolbar (heading, bold, italic, strikethrough, link, quote,
   bullet/numbered lists, code) operating on the remembered selection,
   plus a quick-save button (disabled unless the tab is dirty)
-- Find, zoom, word wrap, file drag & drop (including onto the preview)
+- Find, zoom, word wrap (editor **and** preview), file drag & drop (including onto the preview)
 - Print of the rendered Markdown preview in color
 - Status bar (line/column, characters, file type, zoom, line ending, encoding)
 - Light/dark/system theme, interface in English and Italian
@@ -69,7 +69,7 @@ implemented those intents; if the other lags, its release waits.
 
 - Z = bugfix/tweak, Y = new feature/behavior, X = upheaval.
 - Docs/refactor/build never change the version.
-- Current: Windows `2.10.8`, macOS `2.10.7`; next shared version: TBD.
+- Current: Windows `2.10.10`, macOS `2.10.7`; next shared version: TBD.
 - Single source: `<Version>` in `windows/source/FluentNotepad.WinUI.csproj`
   (derives at build into `#define MyAppVersion` in
   `windows/installer/FluentNotepad.iss` and the setup name in `README.md`);

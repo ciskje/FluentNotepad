@@ -15,10 +15,10 @@ namespace FluentNotepad;
 /// </summary>
 public static class XmlPreviewHtml
 {
-    public static string Build(string text, bool dark, double fontSize, string? title, ISet<string>? open)
+    public static string Build(string text, bool dark, double fontSize, string? title, ISet<string>? open, bool wrap = true)
     {
         if (text.Length > MaxChars)
-            return PageHead(dark, fontSize, title ?? "XML") + TooLarge(MainWindow.Str("XmlTooLarge"));
+            return PageHead(dark, fontSize, title ?? "XML", "", wrap) + TooLarge(MainWindow.Str("XmlTooLarge"));
         try
         {
             var root = Parse(text, out bool truncated);
@@ -26,14 +26,14 @@ public static class XmlPreviewHtml
                 truncated ? MainWindow.Str("XmlTruncated") : null,
                 JsonSerializer.Serialize(root),
                 JsonSerializer.Serialize(open ?? Enumerable.Empty<string>()),
-                xml: true);
+                xml: true, wrap: wrap);
         }
         catch (XmlException ex)
         {
             return ErrorPage(dark, fontSize, title ?? "XML",
                 MainWindow.Str("XmlInvalidTitle"),
                 string.Format(MainWindow.Str("XmlInvalid"), ex.LineNumber, ex.LinePosition),
-                ex.Message, text, MainWindow.Str("XmlErrorHint"));
+                ex.Message, text, MainWindow.Str("XmlErrorHint"), wrap);
         }
     }
 

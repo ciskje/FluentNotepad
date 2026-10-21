@@ -12,10 +12,10 @@ namespace FluentNotepad;
 /// </summary>
 public static class IniPreviewHtml
 {
-    public static string Build(string text, bool dark, double fontSize, string? title, ISet<string>? open)
+    public static string Build(string text, bool dark, double fontSize, string? title, ISet<string>? open, bool wrap = true)
     {
         if (text.Length > MaxChars)
-            return PageHead(dark, fontSize, title ?? "INI") + TooLarge(MainWindow.Str("IniTooLarge"));
+            return PageHead(dark, fontSize, title ?? "INI", "", wrap) + TooLarge(MainWindow.Str("IniTooLarge"));
         try
         {
             var root = Parse(text, out bool truncated);
@@ -23,14 +23,14 @@ public static class IniPreviewHtml
                 truncated ? MainWindow.Str("IniTruncated") : null,
                 JsonSerializer.Serialize(root),
                 JsonSerializer.Serialize(open ?? Enumerable.Empty<string>()),
-                xml: false);
+                xml: false, wrap: wrap);
         }
         catch (PreviewTree.TreeParseException ex)
         {
             return ErrorPage(dark, fontSize, title ?? "INI",
                 MainWindow.Str("IniInvalidTitle"),
                 string.Format(MainWindow.Str("IniInvalid"), ex.Line, ex.Column),
-                ex.Message, text, MainWindow.Str("IniErrorHint"));
+                ex.Message, text, MainWindow.Str("IniErrorHint"), wrap);
         }
     }
 

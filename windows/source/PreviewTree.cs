@@ -58,11 +58,11 @@ public static class PreviewTree
     public static string Esc(string s) => System.Net.WebUtility.HtmlEncode(s);
 
     /// <summary>Page shell: doctype, color scheme, title, palette CSS.</summary>
-    public static string PageHead(bool dark, double fontSize, string title, string extraCss = "") =>
+    public static string PageHead(bool dark, double fontSize, string title, string extraCss = "", bool wrap = true) =>
         "<!DOCTYPE html><html><head><meta charset='utf-8'>" +
         "<meta name='color-scheme' content='" + (dark ? "dark" : "light") + "'>" +
         "<title>" + Esc(title) + "</title>" +
-        "<style>" + Css(new MarkdownShared.Palette(dark), fontSize) + extraCss + "</style></head><body>";
+        "<style>" + Css(new MarkdownShared.Palette(dark), fontSize, wrap) + extraCss + "</style></head><body>";
 
     /// <summary>Standard tree toolbar (expand/collapse/search).</summary>
     public static string Toolbar() =>
@@ -78,9 +78,9 @@ public static class PreviewTree
 
     /// <summary>Full tree page: toolbar, truncation banner, tree host, payload.</summary>
     public static string TreePage(bool dark, double fontSize, string title, string? truncMessage,
-        string rootJson, string openJson, bool xml)
+        string rootJson, string openJson, bool xml, bool wrap = true)
     {
-        string page = PageHead(dark, fontSize, title) + Toolbar() +
+        string page = PageHead(dark, fontSize, title, "", wrap) + Toolbar() +
             (truncMessage == null ? "" : TruncBanner(truncMessage)) +
             "<div id=tree></div>" +
             "<script>var root=__D0__;var opns=__O0__;var STR=__S0__;var __XML__=" + (xml ? "true" : "false") + ";\n" + Js() + "</script></body></html>";
@@ -92,14 +92,14 @@ public static class PreviewTree
 
     /// <summary>Generic invalid-document page for every preview builder.</summary>
     public static string ErrorPage(bool dark, double fontSize, string? title,
-        string heading, string invalidLine, string details, string source, string hint)
+        string heading, string invalidLine, string details, string source, string hint, bool wrap = true)
     {
         var pal = new MarkdownShared.Palette(dark);
         string src = source.Length > 100_000 ? source[..100_000] + "\n…" : source;
         return "<!DOCTYPE html><html><head><meta charset='utf-8'>" +
             "<meta name='color-scheme' content='" + (dark ? "dark" : "light") + "'>" +
             "<title>" + Esc(title ?? "Preview") + "</title>" +
-            "<style>" + Css(pal, fontSize) + "</style></head><body>" +
+            "<style>" + Css(pal, fontSize, wrap) + "</style></head><body>" +
             "<div class=err><div class=et>" + Esc(heading) + "</div>" +
             "<div class=em>" + Esc(invalidLine) + "</div>" +
             "<div class=ed>" + Esc(details) + "</div>" +
@@ -108,7 +108,7 @@ public static class PreviewTree
     }
     // MARK: - CSS
 
-    public static string Css(MarkdownShared.Palette p, double fs) =>
+    public static string Css(MarkdownShared.Palette p, double fs, bool wrap = true) =>
         "body{font-family:'Cascadia Mono','Cascadia Code',Consolas,monospace;font-size:" + ((int)fs) + "px;" +
         "line-height:1.5;margin:0;padding:10px 16px 24px;word-wrap:break-word;background:" + p.Body.Hex + ";color:" + p.BodyText.Hex + "}" +
         ".tools{position:sticky;top:0;display:flex;gap:8px;align-items:center;padding:8px 0;background:" + p.Body.Hex + ";z-index:2}" +
@@ -155,7 +155,19 @@ public static class PreviewTree
         ".vs{color:#A31515!important}.vn{color:#098658!important}.vb{color:#0F6CBD!important}.vl{color:#808080!important}" +
         ".cm{color:#008000!important}" +
         "mark{background:#FFD866!important;color:#111!important}}" +
-        "";
+        WrapCss(wrap);
+
+    /// <summary>
+    /// "A capo automatico" applied to the preview too: on, tree rows and values
+    /// break at the container edge; off, nothing wraps and the page scrolls
+    /// horizontally (print always wraps, paper has no horizontal scroll).
+    /// </summary>
+    private static string WrapCss(bool wrap) =>
+        wrap
+        ? ".row{white-space:normal}.k,.vs,.vn,.vb,.vl{min-width:0;word-break:break-word}"
+        : "body{white-space:nowrap;word-wrap:normal}.cm{white-space:pre;word-break:normal}" +
+          "@media print{body{white-space:normal;word-wrap:break-word}.row{white-space:normal}" +
+          ".cm{white-space:pre-wrap}.vs,.vn,.vb,.vl{word-break:break-word}}";
 
     // MARK: - JS (tree widget; all value text via textContent/esc, never raw innerHTML)
 

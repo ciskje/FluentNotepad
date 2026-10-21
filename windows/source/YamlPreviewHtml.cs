@@ -16,10 +16,10 @@ namespace FluentNotepad;
 /// </summary>
 public static class YamlPreviewHtml
 {
-    public static string Build(string text, bool dark, double fontSize, string? title, ISet<string>? open)
+    public static string Build(string text, bool dark, double fontSize, string? title, ISet<string>? open, bool wrap = true)
     {
         if (text.Length > MaxChars)
-            return PageHead(dark, fontSize, title ?? "YAML") + TooLarge(MainWindow.Str("YamlTooLarge"));
+            return PageHead(dark, fontSize, title ?? "YAML", "", wrap) + TooLarge(MainWindow.Str("YamlTooLarge"));
         try
         {
             var root = Parse(text, out bool truncated);
@@ -27,14 +27,14 @@ public static class YamlPreviewHtml
                 truncated ? MainWindow.Str("YamlTruncated") : null,
                 JsonSerializer.Serialize(root),
                 JsonSerializer.Serialize(open ?? Enumerable.Empty<string>()),
-                xml: false);
+                xml: false, wrap: wrap);
         }
         catch (PreviewTree.TreeParseException ex)
         {
             return ErrorPage(dark, fontSize, title ?? "YAML",
                 MainWindow.Str("YamlInvalidTitle"),
                 string.Format(MainWindow.Str("YamlInvalid"), ex.Line, ex.Column),
-                ex.Message, text, MainWindow.Str("YamlErrorHint"));
+                ex.Message, text, MainWindow.Str("YamlErrorHint"), wrap);
         }
     }
 

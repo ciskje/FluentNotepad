@@ -81,13 +81,17 @@ public static class MarkdownHtml
             HtmlAttributesExtensions.GetAttributes(block).AddProperty("data-src-line", (block.Line + 1).ToString());
     }
 
-    public static string Build(string markdown, string? baseDir, bool dark, double fontSize, string? title = null)
+    public static string Build(string markdown, string? baseDir, bool dark, double fontSize, string? title = null, bool wrap = true)
     {
         string body = string.IsNullOrWhiteSpace(markdown)
             ? "<p class='empty-hint'>" + MainWindow.Str("EmptyHint") + "</p>"
             : SrcLineRenderer.Render(markdown, _pipeline);
         body = ProcessImages(body, baseDir);
-        string css = dark ? DarkCss(fontSize) : LightCss(fontSize);
+        // Same "A capo automatico" as the editor: off = no line breaking in the
+        // preview either, the page scrolls horizontally. Print always wraps.
+        string css = (dark ? DarkCss(fontSize) : LightCss(fontSize)) +
+            (wrap ? "" : "body{white-space:nowrap;word-wrap:normal}" +
+                "@media print{body{white-space:normal;word-wrap:break-word}}");
         // <title>: the browser print dialog prints headers (title + URL) by default.
         // NavigateToString has no URL, so without a title the header reads "about:blank".
         string head = "<!DOCTYPE html><html><head><meta charset='utf-8'>" +
