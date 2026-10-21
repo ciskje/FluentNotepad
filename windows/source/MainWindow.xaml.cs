@@ -515,6 +515,13 @@ public sealed partial class MainWindow : Window
     {
         if (!doc.CanPreview() || !doc.PreviewVisible) return;
         PreviewError.Visibility = Visibility.Collapsed;
+        // The control must be Visible before EnsureCoreWebView2Async: on a
+        // Collapsed control Ensure returns without a CoreWebView2 and the
+        // Navigate below fails with E_ILLEGAL_METHOD_CALL. A previous failure
+        // collapses the view, so re-show it here (all direct RenderPreview
+        // callers go through this, not just ShowPreview).
+        if (PreviewView.Visibility != Visibility.Visible)
+            PreviewView.Visibility = Visibility.Visible;
         SetBusy(true);
         for (int attempt = 0; attempt < 3; attempt++)
         {
@@ -533,9 +540,11 @@ public sealed partial class MainWindow : Window
         await _webLock.WaitAsync();
         try
         {
-            if (!_webReady)
+            if (!_webReady || PreviewView.CoreWebView2 == null)
             {
                 await PreviewView.EnsureCoreWebView2Async();
+                if (PreviewView.CoreWebView2 == null)
+                    throw new InvalidOperationException("WebView2 still initializing.");
                 _webReady = true;
                 // Re-hook on every new instance: after a reset (_webReady=false) the old
                 // CoreWebView2 is dead and its NavigationCompleted would never fire again,
@@ -584,7 +593,7 @@ public sealed partial class MainWindow : Window
             {
                 string html = MarkdownHtml.Build(GetEditorText(doc.Editor), baseDir, _dark, size,
                     DisplayName(doc));
-                PreviewView.NavigateToString(html);
+                PreviewView.CoreWebView2.NavigateToString(html);
             }
             PreviewView.Visibility = Visibility.Visible;
             return true;
@@ -595,7 +604,7 @@ public sealed partial class MainWindow : Window
 
     private void PreviewRetry_Click(object s, RoutedEventArgs e)
     {
-        if (GetActiveDoc() is { } d) RenderPreview(d);
+        if (GetActiveDoc() is { } d) ShowPreview(d, true);
     }
 
     // The temp file backing the tree previews (see windows/AGENTS.md): shared
@@ -765,11 +774,16 @@ public sealed partial class MainWindow : Window
     {
         if (!d.CanPreview()) return;
         d.PreviewVisible = show;
-        if (show) RenderPreview(d);
+        // Host first, then render: the WinUI WebView2 creates its CoreWebView2 only
+        // once the control is visible/loaded. Rendering before ShowActiveContent
+        // (double-click from Explorer: the window is still being activated) called
+        // EnsureCoreWebView2Async on a collapsed control, which returns without a
+        // CoreWebView2, and NavigateToString then failed with E_ILLEGAL_METHOD_CALL
+        // ("a valid CoreWebView2 is not present").
         ShowActiveContent();
         RefreshMdUi();
-        if (show) return;
-        if (flash) FlashCaretLine();
+        if (!show) { if (flash) FlashCaretLine(); return; }
+        RenderPreview(d);
     }
 
     // Caret-line flash when entering Edit: selection-only, so it
@@ -1120,20 +1134,29 @@ public sealed partial class MainWindow : Window
         {
             // The page title already carries DisplayName (see Build): the browser
             // print header shows it instead of "about:blank".
-            await PreviewView.EnsureCoreWebView2Async();
-            if (d.IsTree())
+            // Serialized with TryRenderAsync: a concurrent EnsureCoreWebView2Async
+            // (from the ShowPreview above) fails with E_ILLEGAL_METHOD_CALL.
+            await _webLock.WaitAsync();
+            try
             {
-                // Print the whole tree, not just the open branches: expand first
-                // (the toolbar is hidden by the print CSS).
-                try
+                await PreviewView.EnsureCoreWebView2Async();
+                if (PreviewView.CoreWebView2 == null)
+                    throw new InvalidOperationException("WebView2 still initializing.");
+                if (d.IsTree())
                 {
-                    await PreviewView.CoreWebView2.ExecuteScriptAsync("if(window.__fnExpandAll)window.__fnExpandAll();");
-                    await Task.Delay(200);
+                    // Print the whole tree, not just the open branches: expand first
+                    // (the toolbar is hidden by the print CSS).
+                    try
+                    {
+                        await PreviewView.CoreWebView2.ExecuteScriptAsync("if(window.__fnExpandAll)window.__fnExpandAll();");
+                        await Task.Delay(200);
+                    }
+                    catch (Exception ex) { Debug.WriteLine($"ExpandPrint: {ex.Message}"); }
                 }
-                catch (Exception ex) { Debug.WriteLine($"ExpandPrint: {ex.Message}"); }
+                PreviewView.CoreWebView2.ShowPrintUI(
+                    Microsoft.Web.WebView2.Core.CoreWebView2PrintDialogKind.Browser);
             }
-            PreviewView.CoreWebView2.ShowPrintUI(
-                Microsoft.Web.WebView2.Core.CoreWebView2PrintDialogKind.Browser);
+            finally { _webLock.Release(); }
         }
         catch (Exception ex)
         {
@@ -1145,6 +1168,8 @@ public sealed partial class MainWindow : Window
     private void Tabs_SelectionChanged(object s, SelectionChangedEventArgs e)
     {
         ShowActiveContent();
+        if (GetActiveDoc() is { PreviewVisible: true } sd && sd.CanPreview())
+            RenderPreview(sd);
         var ab = GetActiveBox();
         if (ab != null)
         {
