@@ -30,10 +30,18 @@ public static class XmlPreviewHtml
         }
         catch (XmlException ex)
         {
-            return ErrorPage(dark, fontSize, title ?? "XML",
-                MainWindow.Str("XmlInvalidTitle"),
-                string.Format(MainWindow.Str("XmlInvalid"), ex.LineNumber, ex.LinePosition),
-                ex.Message, text, MainWindow.Str("XmlErrorHint"), wrap);
+            return ErrorPage(dark, fontSize, new ErrorInfo
+            {
+                Title = title,
+                Format = "XML",
+                Heading = MainWindow.Str("XmlInvalidTitle"),
+                InvalidLine = string.Format(MainWindow.Str("XmlInvalid"), ex.LineNumber, ex.LinePosition),
+                Message = ex.Message,
+                Hint = MainWindow.Str("XmlErrorHint"),
+                Source = text,
+                Line = ex.LineNumber,
+                Column = ex.LinePosition,
+            }, wrap);
         }
     }
 

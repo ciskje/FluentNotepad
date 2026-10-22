@@ -20,14 +20,16 @@ Same intents on both platforms — see the parity checklist in [AGENTS.md](AGENT
 The repo contains sources only (builds and setups are **not** versioned). Same
 version number = same features on both platforms (see Changelogs below).
 
-- **Windows**: [Releases](../../releases) page → `FluentNotepad-Setup-2.10.10-win-x64.exe` (per-machine install in Program Files, optional file associations)
+- **Windows**: [Releases](../../releases) page → `FluentNotepad-Setup-2.10.11-win-x64.exe` (per-machine install in Program Files, optional file associations)
 - **macOS**: [Releases](../../releases) page → `FluentNotepad.dmg` from a `macos-vX.Y.Z` release → drag `FluentNotepad.app` into Applications. First launch: right-click → Open (ad-hoc signature).
 
 Or build it yourself: see `windows/AGENTS.md` (Build/run) and `macos/AGENTS.md` (Build/run).
 
 ## Changelog
 
-Windows is at `2.10.10`, macOS at `2.10.7` (2.10.8–2.10.10 are Windows-only; same intents).
+Windows is at `2.10.11`, macOS at `2.10.7` (2.10.8–2.10.11 are Windows-only; same intents).
+
+- **2.10.11** (Windows) — Word-wrap off now fully disables wrapping in every preview (Markdown, tree, grid) with horizontal scroll, and the View menu shows its checkmark; Edit/Preview icons are 2x in a rounded group; toolbar buttons are square with centered icons (disabled Save stays flat); invalid files show a rich error page (cause, position, fixes, actions); sample docs moved to `esempio/` with school data.
 
 - **2.10.10** (Windows) — Word wrap now applies to the preview as well: with "A capo automatico" off, paragraphs, tables and grid/tree values no longer break at the window edge (the preview scrolls horizontally); printing still wraps.
 - **2.10.8** (Windows) — Edit/Preview toolbar buttons are now icon-only: the active mode is accent blue, the inactive one is neutral like the other toolbar icons (no borders).

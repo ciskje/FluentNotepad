@@ -38,10 +38,18 @@ public static class CsvPreviewHtml
         }
         catch (PreviewTree.TreeParseException ex)
         {
-            return ErrorPage(dark, fontSize, title ?? "CSV",
-                MainWindow.Str("CsvInvalidTitle"),
-                string.Format(MainWindow.Str("CsvInvalid"), ex.Line, ex.Column),
-                ex.Message, text, MainWindow.Str("CsvErrorHint"), wrap);
+            return ErrorPage(dark, fontSize, new ErrorInfo
+            {
+                Title = title,
+                Format = "CSV",
+                Heading = MainWindow.Str("CsvInvalidTitle"),
+                InvalidLine = string.Format(MainWindow.Str("CsvInvalid"), ex.Line, ex.Column),
+                Message = ex.Message,
+                Hint = MainWindow.Str("CsvErrorHint"),
+                Source = text,
+                Line = ex.Line,
+                Column = ex.Column,
+            }, wrap);
         }
     }
 
@@ -64,6 +72,7 @@ public static class CsvPreviewHtml
         "@media print{body{background:#FFFFFF!important;color:#1E1E1E!important}" +
         ".tbl th{background:#F3F3F3!important;color:#0F6CBD!important}" +
         ".tbl th,.tbl td{border-color:#D4D4D4!important}" +
+        ".tbl th,.tbl td{white-space:pre-wrap}" +
         ".tbl tbody tr:nth-child(even){background:#FAFAFA!important}mark{background:#FFD866!important;color:#111!important}}";
 
     private sealed class Row

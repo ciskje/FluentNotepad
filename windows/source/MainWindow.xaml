@@ -140,7 +140,7 @@
                         </MenuFlyoutItem.KeyboardAccelerators>
                     </MenuFlyoutItem>
                     <MenuFlyoutSeparator/>
-                    <MenuFlyoutItem x:Uid="ViewWrap" Text="A capo automatico" Click="Wrap_Click"/>
+                    <ToggleMenuFlyoutItem x:Uid="ViewWrap" x:Name="ViewWrapItem" Text="A capo automatico" Click="Wrap_Click" IsChecked="True"/>
                 </MenuBarItem>
                 <MenuBarItem x:Uid="MenuHelp" Title="?">
                     <MenuFlyoutItem x:Uid="HelpShortcuts" Text="Scorciatoie da tastiera" Click="Shortcuts_Click">
@@ -153,55 +153,55 @@
                 </MenuBarItem>
             </MenuBar>
 
-            <CommandBar Grid.Column="1" Background="Transparent" DefaultLabelPosition="Collapsed"
-                        OverflowButtonVisibility="Collapsed" HorizontalAlignment="Center"
-                        Height="36" Padding="0" VerticalAlignment="Center">
-                <AppBarButton x:Uid="FmtHeading" Content="H" FontFamily="Segoe UI" FontWeight="Bold" Width="36" Height="36" ToolTipService.ToolTip="Titolo (#)" Click="FormatHeading_Click"/>
-                <AppBarButton x:Uid="FmtBold" Content="B" FontFamily="Segoe UI" FontWeight="Bold" Width="36" Height="36" ToolTipService.ToolTip="Grassetto (**testo**)" Click="FormatBold_Click"/>
-                <AppBarButton x:Uid="FmtItalic" Content="I" FontFamily="Segoe UI" FontStyle="Italic" Width="36" Height="36" ToolTipService.ToolTip="Corsivo (*testo*)" Click="FormatItalic_Click"/>
-                <AppBarButton x:Uid="FmtStrike" Content="S" FontFamily="Segoe UI" Width="36" Height="36" ToolTipService.ToolTip="Barrato (~~testo~~)" Click="FormatStrike_Click"/>
-                <AppBarButton x:Uid="FmtLink" Width="36" Height="36" ToolTipService.ToolTip="Link [testo](url)" Click="FormatLink_Click">
-                    <AppBarButton.Icon>
-                        <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE71B;"/>
-                    </AppBarButton.Icon>
-                </AppBarButton>
-                <AppBarButton x:Uid="FmtQuote" Content="&#x275D;" FontFamily="Segoe UI" Width="36" Height="36" ToolTipService.ToolTip="Citazione (> )" Click="FormatQuote_Click"/>
-                <AppBarButton x:Uid="FmtBullets" Width="36" Height="36" ToolTipService.ToolTip="Elenco puntato (- )" Click="FormatBullets_Click">
-                    <AppBarButton.Icon>
-                        <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE8FD;"/>
-                    </AppBarButton.Icon>
-                </AppBarButton>
-                <AppBarButton x:Uid="FmtNumbers" Content="1." FontFamily="Segoe UI" Width="36" Height="36" ToolTipService.ToolTip="Elenco numerato (1. )" Click="FormatNumbers_Click"/>
-                <AppBarButton x:Uid="FmtCode" Content="{}{ }" FontFamily="Consolas" Width="36" Height="36" ToolTipService.ToolTip="Codice (`testo`)" Click="FormatCode_Click"/>
-            </CommandBar>
+            <!-- Plain Buttons (like the Edit/Preview group): AppBarButton's hover
+                 rect renders wider than its 36px slot and looks cut off -->
+            <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center"
+                        VerticalAlignment="Center" Height="36" Padding="0">
+                <Button x:Uid="FmtHeading" Content="H" FontFamily="Segoe UI" FontWeight="Bold" Width="36" Height="36" Padding="0" Background="Transparent" BorderThickness="0" VerticalAlignment="Center" HorizontalAlignment="Center" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTipService.ToolTip="Titolo (#)" Click="FormatHeading_Click"/>
+                <Button x:Uid="FmtBold" Content="B" FontFamily="Segoe UI" FontWeight="Bold" Width="36" Height="36" Padding="0" Background="Transparent" BorderThickness="0" VerticalAlignment="Center" HorizontalAlignment="Center" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTipService.ToolTip="Grassetto (**testo**)" Click="FormatBold_Click"/>
+                <Button x:Uid="FmtItalic" Content="I" FontFamily="Segoe UI" FontStyle="Italic" Width="36" Height="36" Padding="0" Background="Transparent" BorderThickness="0" VerticalAlignment="Center" HorizontalAlignment="Center" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTipService.ToolTip="Corsivo (*testo*)" Click="FormatItalic_Click"/>
+                <Button x:Uid="FmtStrike" Content="S" FontFamily="Segoe UI" Width="36" Height="36" Padding="0" Background="Transparent" BorderThickness="0" VerticalAlignment="Center" HorizontalAlignment="Center" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTipService.ToolTip="Barrato (~~testo~~)" Click="FormatStrike_Click"/>
+                <Button x:Uid="FmtLink" AutomationProperties.Name="Link [testo](url)" Width="36" Height="36" Padding="0" Background="Transparent" BorderThickness="0" VerticalAlignment="Center" HorizontalAlignment="Center" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTipService.ToolTip="Link [testo](url)" Click="FormatLink_Click">
+                    <FontIcon FontFamily="Segoe Fluent Icons" FontSize="15" Glyph="&#xE71B;"/>
+                </Button>
+                <Button x:Uid="FmtQuote" Content="&#x275D;" FontFamily="Segoe UI" Width="36" Height="36" Padding="0" Background="Transparent" BorderThickness="0" VerticalAlignment="Center" HorizontalAlignment="Center" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTipService.ToolTip="Citazione (> )" Click="FormatQuote_Click"/>
+                <Button x:Uid="FmtBullets" AutomationProperties.Name="Elenco puntato (- )" Width="36" Height="36" Padding="0" Background="Transparent" BorderThickness="0" VerticalAlignment="Center" HorizontalAlignment="Center" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTipService.ToolTip="Elenco puntato (- )" Click="FormatBullets_Click">
+                    <FontIcon FontFamily="Segoe Fluent Icons" FontSize="15" Glyph="&#xE8FD;"/>
+                </Button>
+                <Button x:Uid="FmtNumbers" Content="1." FontFamily="Segoe UI" Width="36" Height="36" Padding="0" Background="Transparent" BorderThickness="0" VerticalAlignment="Center" HorizontalAlignment="Center" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTipService.ToolTip="Elenco numerato (1. )" Click="FormatNumbers_Click"/>
+                <Button x:Uid="FmtCode" Content="{}{ }" FontFamily="Consolas" Width="36" Height="36" Padding="0" Background="Transparent" BorderThickness="0" VerticalAlignment="Center" HorizontalAlignment="Center" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTipService.ToolTip="Codice (`testo`)" Click="FormatCode_Click"/>
+            </StackPanel>
 
             <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                <Button x:Uid="EditModeBtn" x:Name="EditModeBtn" Visibility="Collapsed" Width="36" Height="36" Padding="0" Background="Transparent" BorderThickness="0" Click="EditMode_Click" ToolTipService.ToolTip="Modalità modifica">
-                    <PathIcon Width="15" Height="15" Foreground="{ThemeResource TextFillColorPrimaryBrush}" Data="M17.1813 2.92689C16.029 1.71505 14.1046 1.69077 12.9222 2.87317L3.54735 12.2475C3.21952 12.5754 2.99198 12.9899 2.89142 13.4424L2.0138 17.3923C1.97672 17.5592 2.02748 17.7335 2.14838 17.8544C2.26928 17.9753 2.44356 18.026 2.61044 17.9889L6.53683 17.1157C7.00426 17.0118 7.43237 16.7767 7.77096 16.4381L17.129 7.08003C18.27 5.939 18.2932 4.09631 17.1813 2.92689ZM13.6293 3.58029C14.4142 2.79538 15.6917 2.8115 16.4566 3.61596C17.1947 4.39225 17.1793 5.61548 16.4218 6.37293L15.7506 7.04418L12.958 4.25155L13.6293 3.58029ZM12.2508 4.95864L15.0435 7.7513L7.06385 15.731C6.8597 15.9352 6.60158 16.0769 6.31975 16.1396L3.16044 16.8421L3.86762 13.6593C3.92692 13.3924 4.0611 13.148 4.25444 12.9547L12.2508 4.95864Z"/>
+                <StackPanel.Resources>
+                    <!-- Disabled toolbar buttons stay flat (dimmed glyph only,
+                         like the old AppBarButtons): no filled hover-like rect -->
+                    <SolidColorBrush x:Key="ButtonBackgroundDisabled" Color="Transparent"/>
+                    <SolidColorBrush x:Key="ButtonBorderBrushDisabled" Color="Transparent"/>
+                </StackPanel.Resources>
+                <Border x:Name="EditPreviewGroup" Visibility="Collapsed" VerticalAlignment="Center"
+                        Style="{StaticResource OverlayCard}" CornerRadius="8" Padding="2" Margin="0,0,4,0">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Center">
+                <Button x:Uid="EditModeBtn" x:Name="EditModeBtn" Visibility="Collapsed" Width="36" Height="36" Padding="0" Background="Transparent" BorderThickness="0" VerticalAlignment="Center" HorizontalAlignment="Center" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Click="EditMode_Click" ToolTipService.ToolTip="Modalità modifica">
+                    <Path Width="30" Height="30" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" Fill="{ThemeResource TextFillColorPrimaryBrush}" Data="M17.1813 2.92689C16.029 1.71505 14.1046 1.69077 12.9222 2.87317L3.54735 12.2475C3.21952 12.5754 2.99198 12.9899 2.89142 13.4424L2.0138 17.3923C1.97672 17.5592 2.02748 17.7335 2.14838 17.8544C2.26928 17.9753 2.44356 18.026 2.61044 17.9889L6.53683 17.1157C7.00426 17.0118 7.43237 16.7767 7.77096 16.4381L17.129 7.08003C18.27 5.939 18.2932 4.09631 17.1813 2.92689ZM13.6293 3.58029C14.4142 2.79538 15.6917 2.8115 16.4566 3.61596C17.1947 4.39225 17.1793 5.61548 16.4218 6.37293L15.7506 7.04418L12.958 4.25155L13.6293 3.58029ZM12.2508 4.95864L15.0435 7.7513L7.06385 15.731C6.8597 15.9352 6.60158 16.0769 6.31975 16.1396L3.16044 16.8421L3.86762 13.6593C3.92692 13.3924 4.0611 13.148 4.25444 12.9547L12.2508 4.95864Z"/>
                 </Button>
-                <Button x:Uid="PreviewModeBtn" x:Name="PreviewModeBtn" Visibility="Collapsed" Width="36" Height="36" Padding="0" Background="Transparent" BorderThickness="0" Click="PreviewMode_Click" ToolTipService.ToolTip="Anteprima Markdown (Ctrl+Maiusc+V)">
-                    <PathIcon Width="15" Height="15" Foreground="{ThemeResource TextFillColorPrimaryBrush}" Data="M3.25909 11.6021C3.94254 8.32689 6.79437 6 10 6C13.2057 6 16.0574 8.32688 16.7409 11.6021C16.7974 11.8725 17.0622 12.0459 17.3325 11.9895C17.6029 11.933 17.7763 11.6682 17.7199 11.3979C16.9425 7.67312 13.6934 5 10 5C6.3066 5 3.05742 7.67311 2.28017 11.3979C2.22377 11.6682 2.39718 11.933 2.6675 11.9895C2.93782 12.0459 3.20268 11.8725 3.25909 11.6021ZM10 8C8.067 8 6.5 9.567 6.5 11.5C6.5 13.433 8.067 15 10 15C11.933 15 13.5 13.433 13.5 11.5C13.5 9.567 11.933 8 10 8ZM7.5 11.5C7.5 10.1193 8.61929 9 10 9C11.3807 9 12.5 10.1193 12.5 11.5C12.5 12.8807 11.3807 14 10 14C8.61929 14 7.5 12.8807 7.5 11.5Z"/>
+                <Button x:Uid="PreviewModeBtn" x:Name="PreviewModeBtn" Visibility="Collapsed" Width="36" Height="36" Padding="0" Background="Transparent" BorderThickness="0" VerticalAlignment="Center" HorizontalAlignment="Center" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Click="PreviewMode_Click" ToolTipService.ToolTip="Anteprima Markdown (Ctrl+Maiusc+V)">
+                    <Path Width="30" Height="30" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" Fill="{ThemeResource TextFillColorPrimaryBrush}" Data="M3.25909 11.6021C3.94254 8.32689 6.79437 6 10 6C13.2057 6 16.0574 8.32688 16.7409 11.6021C16.7974 11.8725 17.0622 12.0459 17.3325 11.9895C17.6029 11.933 17.7763 11.6682 17.7199 11.3979C16.9425 7.67312 13.6934 5 10 5C6.3066 5 3.05742 7.67311 2.28017 11.3979C2.22377 11.6682 2.39718 11.933 2.6675 11.9895C2.93782 12.0459 3.20268 11.8725 3.25909 11.6021ZM10 8C8.067 8 6.5 9.567 6.5 11.5C6.5 13.433 8.067 15 10 15C11.933 15 13.5 13.433 13.5 11.5C13.5 9.567 11.933 8 10 8ZM7.5 11.5C7.5 10.1193 8.61929 9 10 9C11.3807 9 12.5 10.1193 12.5 11.5C12.5 12.8807 11.3807 14 10 14C8.61929 14 7.5 12.8807 7.5 11.5Z"/>
                 </Button>
-                <AppBarButton x:Uid="SaveBtn" x:Name="SaveBtn" ToolTipService.ToolTip="Salva (Ctrl+S)" Click="Save_Click" Width="36" Height="36" IsEnabled="False">
-                    <AppBarButton.Icon>
-                        <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE74E;"/>
-                    </AppBarButton.Icon>
-                </AppBarButton>
-                <AppBarButton x:Uid="SearchBtn" ToolTipService.ToolTip="Cerca (Ctrl+F)" Click="Find_Click" Width="36" Height="36">
-                    <AppBarButton.Icon>
-                        <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE721;"/>
-                    </AppBarButton.Icon>
-                </AppBarButton>
-                <AppBarButton x:Uid="ThemeBtn" x:Name="ThemeButton" ToolTipService.ToolTip="Tema chiaro/scuro" Click="ThemeButton_Click" Width="36" Height="36">
-                    <AppBarButton.Icon>
-                        <FontIcon x:Name="ThemeIcon" FontFamily="Segoe Fluent Icons" Glyph="&#xE708;"/>
-                    </AppBarButton.Icon>
-                </AppBarButton>
-                <AppBarButton x:Uid="SettingsBtn" ToolTipService.ToolTip="Impostazioni" Click="Settings_Click" Width="36" Height="36">
-                    <AppBarButton.Icon>
-                        <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE713;"/>
-                    </AppBarButton.Icon>
-                </AppBarButton>
+                    </StackPanel>
+                </Border>
+                <Button x:Uid="SaveBtn" x:Name="SaveBtn" AutomationProperties.Name="Salva (Ctrl+S)" ToolTipService.ToolTip="Salva (Ctrl+S)" Click="Save_Click" Width="36" Height="36" Padding="0" Background="Transparent" BorderThickness="0" VerticalAlignment="Center" HorizontalAlignment="Center" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" IsEnabled="False">
+                    <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE74E;"/>
+                </Button>
+                <Button x:Uid="SearchBtn" AutomationProperties.Name="Cerca (Ctrl+F)" ToolTipService.ToolTip="Cerca (Ctrl+F)" Click="Find_Click" Width="36" Height="36" Padding="0" Background="Transparent" BorderThickness="0" VerticalAlignment="Center" HorizontalAlignment="Center" HorizontalContentAlignment="Center" VerticalContentAlignment="Center">
+                    <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE721;"/>
+                </Button>
+                <Button x:Uid="ThemeBtn" x:Name="ThemeButton" AutomationProperties.Name="Tema chiaro/scuro" ToolTipService.ToolTip="Tema chiaro/scuro" Click="ThemeButton_Click" Width="36" Height="36" Padding="0" Background="Transparent" BorderThickness="0" VerticalAlignment="Center" HorizontalAlignment="Center" HorizontalContentAlignment="Center" VerticalContentAlignment="Center">
+                    <FontIcon x:Name="ThemeIcon" FontFamily="Segoe Fluent Icons" Glyph="&#xE708;"/>
+                </Button>
+                <Button x:Uid="SettingsBtn" AutomationProperties.Name="Impostazioni" ToolTipService.ToolTip="Impostazioni" Click="Settings_Click" Width="36" Height="36" Padding="0" Background="Transparent" BorderThickness="0" VerticalAlignment="Center" HorizontalAlignment="Center" HorizontalContentAlignment="Center" VerticalContentAlignment="Center">
+                    <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE713;"/>
+                </Button>
             </StackPanel>
         </Grid>
 

@@ -27,10 +27,18 @@ public static class IniPreviewHtml
         }
         catch (PreviewTree.TreeParseException ex)
         {
-            return ErrorPage(dark, fontSize, title ?? "INI",
-                MainWindow.Str("IniInvalidTitle"),
-                string.Format(MainWindow.Str("IniInvalid"), ex.Line, ex.Column),
-                ex.Message, text, MainWindow.Str("IniErrorHint"), wrap);
+            return ErrorPage(dark, fontSize, new ErrorInfo
+            {
+                Title = title,
+                Format = "INI",
+                Heading = MainWindow.Str("IniInvalidTitle"),
+                InvalidLine = string.Format(MainWindow.Str("IniInvalid"), ex.Line, ex.Column),
+                Message = ex.Message,
+                Hint = MainWindow.Str("IniErrorHint"),
+                Source = text,
+                Line = ex.Line,
+                Column = ex.Column,
+            }, wrap);
         }
     }
 

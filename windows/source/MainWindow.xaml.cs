@@ -202,6 +202,7 @@ public sealed partial class MainWindow : Window
         FontSlider.Value = Math.Clamp(saved.FontSize, 12, 24);
         NewTab(null);
         _loading = false;
+        ViewWrapItem.IsChecked = WrapOn();
         GetActiveBox()?.Focus(FocusState.Programmatic);
     }
 
@@ -687,6 +688,21 @@ public sealed partial class MainWindow : Window
                     {
                         CopyText(tx.GetString() ?? "");
                     }
+                    else if (o == "edit" && isTree && d != null)
+                    {
+                        try { ShowPreview(d, false); }
+                        catch (Exception ex) { Debug.WriteLine($"EditOp: {ex.Message}"); }
+                    }
+                    else if (o == "reload" && isTree && d != null)
+                    {
+                        try { RenderPreview(d); }
+                        catch (Exception ex) { Debug.WriteLine($"ReloadOp: {ex.Message}"); }
+                    }
+                    else if (o == "text" && isTree && d != null)
+                    {
+                        try { ShowPreview(d, false, flash: false); }
+                        catch (Exception ex) { Debug.WriteLine($"TextOp: {ex.Message}"); }
+                    }
                     else if (o == "state" && isTree && d != null)
                     {
                         if (root.TryGetProperty("open", out var arr) && arr.ValueKind == JsonValueKind.Array)
@@ -855,6 +871,7 @@ public sealed partial class MainWindow : Window
         bool isTree = (d?.IsTree() == true) || d?.Kind == DocKind.Csv;
         bool isPv = isMd || isTree;
         var pvVis = isPv ? Visibility.Visible : Visibility.Collapsed;
+        EditPreviewGroup.Visibility = pvVis;
         EditModeBtn.Visibility = pvVis;
         PreviewModeBtn.Visibility = pvVis;
         FileTypeLabel.Text = d == null ? Str("FileTypeLabel.Text") : KindLabel(d.Kind);
@@ -871,8 +888,10 @@ public sealed partial class MainWindow : Window
 
     private void StyleToggle(Button b, bool selected)
     {
-        if (b.Content is not PathIcon icon) return;
-        icon.Foreground = new SolidColorBrush(selected
+        // Toggle glyph is a Path (Stretch=Uniform scales the geometry to fill,
+        // unlike PathIcon which renders it at natural size, top-left).
+        if (b.Content is not Microsoft.UI.Xaml.Shapes.Path icon) return;
+        icon.Fill = new SolidColorBrush(selected
             ? (_dark ? Windows.UI.Color.FromArgb(255, 0x60, 0xCD, 0xFF)
                      : Windows.UI.Color.FromArgb(255, 0x00, 0x5F, 0xB8))
             : (_dark ? Colors.White
@@ -1528,6 +1547,7 @@ public sealed partial class MainWindow : Window
     {
         if (_loading) return;
         ApplyWrap();
+        ViewWrapItem.IsChecked = WrapOn();
         var ws = LoadSettings();
         ws.Wrap = WrapOn();
         SaveSettings(ws);
@@ -1535,7 +1555,12 @@ public sealed partial class MainWindow : Window
         var d = GetActiveDoc();
         if (d is { PreviewVisible: true } && d.CanPreview()) RenderPreview(d);
     }
-    private void Wrap_Click(object s, RoutedEventArgs e) => WrapCheck.IsChecked = !(WrapCheck.IsChecked == true);
+    // The menu item already flipped its own check: adopt it as the new state.
+    private void Wrap_Click(object s, RoutedEventArgs e)
+    {
+        if (s is ToggleMenuFlyoutItem t) WrapCheck.IsChecked = t.IsChecked;
+        else WrapCheck.IsChecked = !(WrapCheck.IsChecked == true);
+    }
     private void ApplyWrap()
     {
         foreach (var t in Tabs.TabItems.OfType<TabViewItem>())

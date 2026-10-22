@@ -137,4 +137,22 @@
   <data name="CsvErrorHint"><value>Switch to Edit (Esc) to fix the file.</value></data>
   <data name="CsvTooLarge"><value>File too large for the grid: use Edit mode.</value></data>
   <data name="CsvTruncated"><value>Grid truncated: showing first {0} of {1} rows.</value></data>
+  <!-- Rich invalid-document page (shared tree/CSV error template) -->
+  <data name="ErrCause"><value>Cause</value></data>
+  <data name="ErrHowToFix"><value>How to fix it</value></data>
+  <data name="ErrPosition"><value>Position</value></data>
+  <data name="ErrLineColumn"><value>Line {0}, column {1}</value></data>
+  <data name="ErrOpenEdit"><value>Open in editor</value></data>
+  <data name="ErrReload"><value>Reload preview</value></data>
+  <data name="ErrOpenText"><value>View source text</value></data>
+  <data name="ErrCopyDetails"><value>Copy details</value></data>
+  <data name="ErrShowSource"><value>Show source</value></data>
+  <data name="ErrFixJsonTrailing"><value>Remove the trailing comma</value></data>
+  <data name="ErrFixJsonc"><value>Comments need a .jsonc file (plain .json allows no comments)</value></data>
+  <data name="ErrFixJsonQuote"><value>Quote the property name</value></data>
+  <data name="ErrFixJsonBrace"><value>Close all open brackets</value></data>
+  <data name="ErrFixJsonDup"><value>Remove the duplicate key</value></data>
+  <data name="ErrFixJsonString"><value>Check string escaping (quotes and backslashes)</value></data>
+  <data name="ErrFixEdit"><value>Fix it in the editor, the preview updates automatically</value></data>
+  <data name="ErrFixBackup"><value>Keep a backup copy before bulk edits</value></data>
 </root>

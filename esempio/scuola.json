@@ -1,0 +1,39 @@
+{
+  "scuola": "Istituto Comprensivo Statale \"G. Rodari\"",
+  "indirizzo": {
+    "via": "Via delle Rose 12",
+    "citta": "Roma",
+    "cap": "00162",
+    "telefono": "06 44201234",
+    "email": "segreteria@icrodari.example.it"
+  },
+  "annoScolastico": "2026/2027",
+  "classi": [
+    {
+      "nome": "1A",
+      "aula": "12",
+      "tempoPieno": true,
+      "alunni": [
+        { "cognome": "Bianchi", "nome": "Alessandro", "dataNascita": "2019-03-14", "media": 8.5 },
+        { "cognome": "Verdi", "nome": "Giulia", "dataNascita": "2019-07-02", "media": 9 },
+        { "cognome": "Rossi", "nome": "Matteo", "dataNascita": "2019-11-28", "media": null }
+      ],
+      "docenti": ["Ins. Colombo", "Ins. Ferrari"]
+    },
+    {
+      "nome": "1B",
+      "aula": "14",
+      "tempoPieno": false,
+      "alunni": [
+        { "cognome": "Moretti", "nome": "Sofia", "dataNascita": "2019-05-19", "media": 7.75 },
+        { "cognome": "Romano", "nome": "Luca", "dataNascita": "2020-01-09", "media": 8 }
+      ],
+      "docenti": ["Ins. Colombo"]
+    }
+  ],
+  "mensa": { "attiva": true, "turni": 2, "dietaSpeciale": null },
+  "citazione": "La maestra disse \"leggete piano\" e sorrise",
+  "nota": "Riunione plenaria lunedì 26/10 — portare il registro; caffè offerto ☕",
+  "unicode": "città — è già ì ò ù — naïve — 日本語",
+  "vuoti": { "oggetto": {}, "lista": [] }
+}

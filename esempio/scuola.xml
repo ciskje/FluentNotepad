@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Scuola di esempio: attributi, testo, commenti, CDATA -->
+<scuola nome='Istituto Comprensivo "G. Rodari"' anno="2026/2027">
+  <contatti telefono="06 44201234" email="segreteria@icrodari.example.it">
+    <indirizzo>Via delle Rose 12, 00162 Roma</indirizzo>
+  </contatti>
+  <classe nome="1A" aula="12">
+    <alunno id="1">
+      <cognome>Bianchi</cognome>
+      <nome>Alessandro</nome>
+      <media>8.5</media>
+    </alunno>
+    <alunno id="2">
+      <cognome>Verdi</cognome>
+      <nome>Giulia</nome>
+      <!-- media non ancora assegnata -->
+      <media/>
+    </alunno>
+    <nota><![CDATA[Riunione 26/10: portare registro & verbali <urgente>]]></nota>
+    <avviso>Si ricorda a <b>tutti</b> la riunione di lunedì</avviso>
+  </classe>
+  <?registro verifica presenze?>
+</scuola>

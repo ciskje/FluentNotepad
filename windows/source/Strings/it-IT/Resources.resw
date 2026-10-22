@@ -137,4 +137,22 @@
   <data name="CsvErrorHint"><value>Passa in Modifica (Esc) per correggere il file.</value></data>
   <data name="CsvTooLarge"><value>File troppo grande per la tabella: usa la modalità Modifica.</value></data>
   <data name="CsvTruncated"><value>Tabella troncata: mostro le prime {0} righe di {1}.</value></data>
+  <!-- Rich invalid-document page (shared tree/CSV error template) -->
+  <data name="ErrCause"><value>Causa</value></data>
+  <data name="ErrHowToFix"><value>Come risolvere</value></data>
+  <data name="ErrPosition"><value>Posizione</value></data>
+  <data name="ErrLineColumn"><value>Riga {0}, colonna {1}</value></data>
+  <data name="ErrOpenEdit"><value>Apri nell'editor</value></data>
+  <data name="ErrReload"><value>Ricarica l'anteprima</value></data>
+  <data name="ErrOpenText"><value>Mostra il sorgente</value></data>
+  <data name="ErrCopyDetails"><value>Copia i dettagli</value></data>
+  <data name="ErrShowSource"><value>Mostra sorgente</value></data>
+  <data name="ErrFixJsonTrailing"><value>Rimuovi la virgola finale</value></data>
+  <data name="ErrFixJsonc"><value>I commenti richiedono un file .jsonc (il .json semplice non li ammette)</value></data>
+  <data name="ErrFixJsonQuote"><value>Metti il nome della proprietà tra virgolette</value></data>
+  <data name="ErrFixJsonBrace"><value>Chiudi tutte le parentesi aperte</value></data>
+  <data name="ErrFixJsonDup"><value>Rimuovi la chiave duplicata</value></data>
+  <data name="ErrFixJsonString"><value>Controlla gli escape nelle stringhe (virgolette e backslash)</value></data>
+  <data name="ErrFixEdit"><value>Correggi nell'editor, l'anteprima si aggiorna da sola</value></data>
+  <data name="ErrFixBackup"><value>Tieni una copia di backup prima delle modifiche in blocco</value></data>
 </root>

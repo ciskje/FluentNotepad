@@ -31,10 +31,18 @@ public static class YamlPreviewHtml
         }
         catch (PreviewTree.TreeParseException ex)
         {
-            return ErrorPage(dark, fontSize, title ?? "YAML",
-                MainWindow.Str("YamlInvalidTitle"),
-                string.Format(MainWindow.Str("YamlInvalid"), ex.Line, ex.Column),
-                ex.Message, text, MainWindow.Str("YamlErrorHint"), wrap);
+            return ErrorPage(dark, fontSize, new ErrorInfo
+            {
+                Title = title,
+                Format = "YAML",
+                Heading = MainWindow.Str("YamlInvalidTitle"),
+                InvalidLine = string.Format(MainWindow.Str("YamlInvalid"), ex.Line, ex.Column),
+                Message = ex.Message,
+                Hint = MainWindow.Str("YamlErrorHint"),
+                Source = text,
+                Line = ex.Line,
+                Column = ex.Column,
+            }, wrap);
         }
     }
 

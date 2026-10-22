@@ -89,9 +89,14 @@ public static class MarkdownHtml
         body = ProcessImages(body, baseDir);
         // Same "A capo automatico" as the editor: off = no line breaking in the
         // preview either, the page scrolls horizontally. Print always wraps.
+        // The element list restates nowrap explicitly: a directly-applied
+        // white-space rule would otherwise beat the inherited body value.
         string css = (dark ? DarkCss(fontSize) : LightCss(fontSize)) +
             (wrap ? "" : "body{white-space:nowrap;word-wrap:normal}" +
-                "@media print{body{white-space:normal;word-wrap:break-word}}");
+                "p,h1,h2,h3,h4,h5,h6,li,blockquote,th,td,a,strong,em,code{white-space:nowrap;word-break:normal}" +
+                "pre{white-space:pre;overflow:auto}" +
+                "@media print{body{white-space:normal;word-wrap:break-word}" +
+                "p,h1,h2,h3,h4,h5,h6,li,blockquote,th,td,a,strong,em,code,pre{white-space:normal;word-break:normal}}");
         // <title>: the browser print dialog prints headers (title + URL) by default.
         // NavigateToString has no URL, so without a title the header reads "about:blank".
         string head = "<!DOCTYPE html><html><head><meta charset='utf-8'>" +

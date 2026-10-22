@@ -28,10 +28,18 @@ public static class TomlPreviewHtml
         }
         catch (PreviewTree.TreeParseException ex)
         {
-            return ErrorPage(dark, fontSize, title ?? "TOML",
-                MainWindow.Str("TomlInvalidTitle"),
-                string.Format(MainWindow.Str("TomlInvalid"), ex.Line, ex.Column),
-                ex.Message, text, MainWindow.Str("TomlErrorHint"), wrap);
+            return ErrorPage(dark, fontSize, new ErrorInfo
+            {
+                Title = title,
+                Format = "TOML",
+                Heading = MainWindow.Str("TomlInvalidTitle"),
+                InvalidLine = string.Format(MainWindow.Str("TomlInvalid"), ex.Line, ex.Column),
+                Message = ex.Message,
+                Hint = MainWindow.Str("TomlErrorHint"),
+                Source = text,
+                Line = ex.Line,
+                Column = ex.Column,
+            }, wrap);
         }
     }
 

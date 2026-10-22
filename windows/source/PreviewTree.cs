@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -90,22 +91,117 @@ public static class PreviewTree
             .Replace("__S0__", JsonSerializer.Serialize(Strings()));
     }
 
-    /// <summary>Generic invalid-document page for every preview builder.</summary>
-    public static string ErrorPage(bool dark, double fontSize, string? title,
-        string heading, string invalidLine, string details, string source, string hint, bool wrap = true)
+    /// <summary>
+    /// Everything the invalid-document page needs: what failed, where, why,
+    /// how to fix it and which actions the page offers. Builders fill this in
+    /// so every format (JSON, XML, YAML, TOML, INI, CSV) gets the same
+    /// meaningful screen instead of a bare "invalid" line.
+    /// </summary>
+    public sealed class ErrorInfo
+    {
+        public string? Title { get; init; }            // file/tab name
+        public string Format { get; init; } = "";      // JSON, XML, ...
+        public string Heading { get; init; } = "";     // "JSON non valido"
+        public string InvalidLine { get; init; } = ""; // "JSON non valido (riga 3, colonna 7)"
+        public string Message { get; init; } = "";     // parser message (cause)
+        public string Hint { get; init; } = "";        // short footer note
+        public string Source { get; init; } = "";
+        public int? Line { get; init; }
+        public int? Column { get; init; }
+        public IReadOnlyList<string> Fixes { get; init; } = Array.Empty<string>();
+    }
+
+    /// <summary>Invalid-document page shared by every preview builder.</summary>
+    public static string ErrorPage(bool dark, double fontSize, ErrorInfo e, bool wrap = true)
     {
         var pal = new MarkdownShared.Palette(dark);
-        string src = source.Length > 100_000 ? source[..100_000] + "\n…" : source;
+        string src = e.Source.Length > 100_000 ? e.Source[..100_000] + "\n…" : e.Source;
+        string details = string.Join("\n", new[]
+        {
+            e.Heading,
+            e.Title ?? "",
+            e.InvalidLine,
+            MainWindow.Str("ErrCause") + ": " + e.Message,
+        });
+        string fixes = e.Fixes.Count == 0 ? "" :
+            "<div class=card><div class=lbl>" + Esc(MainWindow.Str("ErrHowToFix")) + "</div><ol class=fix>" +
+            string.Join("", e.Fixes.Select(f => "<li>" + Esc(f) + "</li>")) + "</ol></div>";
+        string frame = CodeFrame(e.Source, e.Line, e.Column);
+        string position = e.Line is int ln
+            ? "<div class=card><div class=lbl>" + Esc(MainWindow.Str("ErrPosition")) + "</div>" +
+              "<div class=msg>" + Esc(string.Format(MainWindow.Str("ErrLineColumn"), ln, e.Column ?? 1)) + "</div>" +
+              frame + "</div>"
+            : "";
+        string js = JsHelpers() + """
+            (function(){
+            "use strict";
+            var det=__D0__;
+            document.addEventListener('click',function(ev){
+              var b=ev.target&&ev.target.closest?ev.target.closest('[data-op]'):null;
+              if(!b)return;
+              ev.preventDefault();
+              var op=b.getAttribute('data-op');
+              if(op==='copy'){post({op:'copy',text:det});}
+              else{post({op:op});}
+            },false);
+            })();
+            """.Replace("__D0__", JsonSerializer.Serialize(details));
         return "<!DOCTYPE html><html><head><meta charset='utf-8'>" +
             "<meta name='color-scheme' content='" + (dark ? "dark" : "light") + "'>" +
-            "<title>" + Esc(title ?? "Preview") + "</title>" +
+            "<title>" + Esc(e.Title ?? e.Format) + "</title>" +
             "<style>" + Css(pal, fontSize, wrap) + "</style></head><body>" +
-            "<div class=err><div class=et>" + Esc(heading) + "</div>" +
-            "<div class=em>" + Esc(invalidLine) + "</div>" +
-            "<div class=ed>" + Esc(details) + "</div>" +
-            "<pre>" + Esc(src) + "</pre>" +
-            "<div class=eh>" + Esc(hint) + "</div></div></body></html>";
+            "<div class=err><div class=ehd><span class=badge>" + Esc(e.Format) + "</span>" +
+            "<span class=et>" + Esc(e.Heading) + "</span></div>" +
+            (string.IsNullOrEmpty(e.Title) ? "" : "<div class=efile>" + Esc(e.Title!) + "</div>") +
+            "<div class=em>" + Esc(e.InvalidLine) + "</div>" +
+            "<div class=card><div class=lbl>" + Esc(MainWindow.Str("ErrCause")) + "</div>" +
+            "<div class=msg>" + Esc(e.Message) + "</div></div>" +
+            position + fixes +
+            "<div class=acts>" +
+            "<button class=pri data-op=edit>" + Esc(MainWindow.Str("ErrOpenEdit")) + "</button>" +
+            "<button data-op=reload>" + Esc(MainWindow.Str("ErrReload")) + "</button>" +
+            "<button data-op=text>" + Esc(MainWindow.Str("ErrOpenText")) + "</button>" +
+            "<button data-op=copy>" + Esc(MainWindow.Str("ErrCopyDetails")) + "</button>" +
+            "</div>" +
+            (string.IsNullOrEmpty(e.Hint) ? "" : "<div class=eh>" + Esc(e.Hint) + "</div>") +
+            "<details class=srcsum><summary>" + Esc(MainWindow.Str("ErrShowSource")) + "</summary>" +
+            "<pre>" + Esc(src) + "</pre></details></div>" +
+            "<script>" + js + "</script></body></html>";
     }
+
+    /// <summary>
+    /// 2 lines of context around the error with a caret under the column.
+    /// Tabs are expanded to 4 spaces so the caret lines up in the browser.
+    /// </summary>
+    private static string CodeFrame(string source, int? line, int? column)
+    {
+        if (line is not int ln || ln < 1) return "";
+        string norm = source.Replace("\r\n", "\n").Replace('\r', '\n');
+        string[] lines = norm.Split('\n');
+        if (ln > lines.Length) return "";
+        int first = Math.Max(1, ln - 2), last = Math.Min(lines.Length, ln + 2);
+        int width = last.ToString().Length;
+        var sb = new StringBuilder();
+        for (int i = first; i <= last; i++)
+        {
+            string text = ExpandTabs(lines[i - 1]);
+            string gutter = i.ToString().PadLeft(width) + " | ";
+            sb.Append("<span class=ln>").Append(Esc(gutter)).Append("</span>");
+            sb.Append(i == ln
+                ? "<span class=bad>" + Esc(text) + "</span>"
+                : Esc(text));
+            sb.Append('\n');
+            if (i == ln && column is int col && col >= 1)
+            {
+                int caret = Math.Clamp(col - 1, 0, text.Length);
+                sb.Append("<span class=ln>").Append(Esc(new string(' ', width) + " | ")).Append("</span>");
+                sb.Append("<span class=caret>").Append(Esc(new string(' ', caret) + "^")).Append("</span>\n");
+            }
+        }
+        return "<pre class=frame>" + sb + "</pre>";
+    }
+
+    private static string ExpandTabs(string s) => s.Replace("\t", "    ");
     // MARK: - CSS
 
     public static string Css(MarkdownShared.Palette p, double fs, bool wrap = true) =>
@@ -142,12 +238,29 @@ public static class PreviewTree
         ".kids{margin-left:18px;display:none}" +
         ".nd.open>.kids{display:block}" +
         ".nd.open>.row .sum{display:none}" +
-        ".err{max-width:760px;margin:40px auto}" +
-        ".et{font-size:16px;font-weight:700;color:" + p.Heading.Hex + ";margin-bottom:8px}" +
-        ".em{margin-bottom:6px}" +
+        ".err{max-width:840px;margin:32px auto;padding:0 2px}" +
+        ".ehd{display:flex;align-items:center;gap:10px;flex-wrap:wrap}" +
+        ".badge{font-size:11px;font-weight:700;letter-spacing:.07em;padding:2px 9px;border-radius:999px;border:1px solid " + p.PanelBorder.Hex + ";background:" + p.Panel.Hex + ";color:" + p.Marker.Hex + "}" +
+        ".et{font-size:18px;font-weight:700;color:" + p.Heading.Hex + "}" +
+        ".efile{font-size:12px;color:" + p.Dim.Hex + ";margin:4px 0 10px}" +
+        ".em{margin-bottom:10px;color:" + p.BodyText.Hex + "}" +
         ".ed{font-size:13px;color:" + p.Dim.Hex + ";margin-bottom:12px}" +
-        ".err pre{padding:12px 14px;border-radius:8px;overflow:auto;border:1px solid " + p.PanelBorder.Hex + ";background:" + p.Panel.Hex + ";max-height:50vh}" +
+        ".card{margin:12px 0;padding:12px 14px;border:1px solid " + p.PanelBorder.Hex + ";border-radius:8px;background:" + p.Panel.Hex + "}" +
+        ".lbl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:" + p.Dim.Hex + ";margin-bottom:6px}" +
+        ".msg{white-space:pre-wrap}" +
+        ".fix{margin:0;padding-left:22px}.fix li{margin:3px 0}" +
+        ".err pre{padding:12px 14px;border-radius:8px;overflow:auto;border:1px solid " + p.PanelBorder.Hex + ";background:" + p.Body.Hex + ";max-height:50vh}" +
+        ".err pre.frame{max-height:220px;margin:8px 0 0}" +
+        ".frame .ln{color:" + p.Dim.Hex + "}" +
+        ".frame .bad{background:rgba(209,52,56,.18);border-radius:2px}" +
+        ".frame .caret{color:" + p.JsonString.Hex + ";font-weight:700}" +
+        ".acts{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0 6px}" +
+        ".acts button{font:inherit;font-size:13px;padding:6px 14px;border:1px solid " + p.PanelBorder.Hex + ";border-radius:5px;background:" + p.Panel.Hex + ";color:" + p.BodyText.Hex + ";cursor:pointer}" +
+        ".acts button:hover{border-color:" + p.Marker.Hex + "}" +
+        ".acts button.pri{background:" + p.Marker.Hex + ";border-color:" + p.Marker.Hex + ";color:#FFFFFF}" +
         ".eh{margin-top:10px;font-size:13px;color:" + p.Dim.Hex + "}" +
+        ".srcsum{margin-top:14px;font-size:13px;color:" + p.Dim.Hex + "}" +
+        ".srcsum summary{cursor:pointer}" +
         "@media print{.tools,.ic{display:none!important}*{print-color-adjust:exact!important;-webkit-print-color-adjust:exact!important}" +
         "body{background:#FFFFFF!important;color:#1E1E1E!important}" +
         ".row:hover{background:none!important}.kids{display:block!important}.nd.open>.row .sum{display:none!important}" +
@@ -165,9 +278,17 @@ public static class PreviewTree
     private static string WrapCss(bool wrap) =>
         wrap
         ? ".row{white-space:normal}.k,.vs,.vn,.vb,.vl{min-width:0;word-break:break-word}"
-        : "body{white-space:nowrap;word-wrap:normal}.cm{white-space:pre;word-break:normal}" +
+        : "body{white-space:nowrap;word-wrap:normal}" +
+          // Directly-applied rules beat the inherited body value, so every
+          // text-bearing span restates nowrap. Error chrome instead always
+          // wraps inside its cards (a spilling message looks broken);
+          // only source blocks (pre) scroll.
+          ".k,.vs,.vn,.vb,.vl,.pu,.ix,.sum{white-space:nowrap;word-break:normal}" +
+          ".cm{white-space:pre;word-break:normal}" +
+          ".et,.em,.efile,.msg,.lbl,.fix,.eh{white-space:normal;overflow-wrap:break-word}" +
           "@media print{body{white-space:normal;word-wrap:break-word}.row{white-space:normal}" +
-          ".cm{white-space:pre-wrap}.vs,.vn,.vb,.vl{word-break:break-word}}";
+          ".k,.vs,.vn,.vb,.vl,.pu,.ix,.sum{white-space:normal}" +
+          ".cm{white-space:pre-wrap}.vs,.vn,.vb,.vl{word-break:break-word}.msg{white-space:pre-wrap}}";
 
     // MARK: - JS (tree widget; all value text via textContent/esc, never raw innerHTML)
 

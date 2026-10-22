@@ -18,38 +18,87 @@ namespace FluentNotepad;
 /// </summary>
 public static class JsonPreviewHtml
 {
-    public static string Build(string text, bool dark, double fontSize, string? title, ISet<string>? open, bool wrap = true)
+    public static string Build(string text, bool dark, double fontSize, string? title,
+        ISet<string>? open, bool wrap = true, bool jsonc = false)
     {
         if (text.Length > MaxChars)
             return PageHead(dark, fontSize, title ?? "JSON", "", wrap) + TooLarge(MainWindow.Str("JsonTooLarge"));
         try
         {
-            var root = Parse(text, out bool truncated);
+            var root = Parse(text, out bool truncated, !jsonc);
             return TreePage(dark, fontSize, title ?? "JSON",
                 truncated ? MainWindow.Str("JsonTruncated") : null,
                 JsonSerializer.Serialize(root),
                 JsonSerializer.Serialize(open ?? Enumerable.Empty<string>()),
                 xml: false, wrap: wrap);
         }
+        catch (TreeParseException ex)
+        {
+            return ErrorPage(dark, fontSize, new ErrorInfo
+            {
+                Title = title,
+                Format = "JSON",
+                Heading = MainWindow.Str("JsonInvalidTitle"),
+                InvalidLine = string.Format(MainWindow.Str("JsonInvalid"), ex.Line, ex.Column),
+                Message = ex.Message,
+                Hint = MainWindow.Str("JsonErrorHint"),
+                Source = text,
+                Line = ex.Line,
+                Column = ex.Column,
+                Fixes = Fixes(ex.Message, jsonc),
+            }, wrap);
+        }
         catch (JsonException ex)
         {
             // JsonException positions are zero-based: the page shows 1-based.
             long line = (ex.LineNumber ?? 0) + 1;
             long col = (ex.BytePositionInLine ?? 0) + 1;
-            return ErrorPage(dark, fontSize, title ?? "JSON",
-                MainWindow.Str("JsonInvalidTitle"),
-                string.Format(MainWindow.Str("JsonInvalid"), line, col),
-                ex.Message, text, MainWindow.Str("JsonErrorHint"), wrap);
+            return ErrorPage(dark, fontSize, new ErrorInfo
+            {
+                Title = title,
+                Format = "JSON",
+                Heading = MainWindow.Str("JsonInvalidTitle"),
+                InvalidLine = string.Format(MainWindow.Str("JsonInvalid"), line, col),
+                Message = ex.Message,
+                Hint = MainWindow.Str("JsonErrorHint"),
+                Source = text,
+                Line = (int)line,
+                Column = (int)col,
+                Fixes = Fixes(ex.Message, jsonc),
+            }, wrap);
         }
+    }
+
+    // Concrete repair steps for the common JSON failures. The generic ones
+    // always apply; the format-specific ones are matched on the parser text.
+    private static List<string> Fixes(string message, bool jsonc)
+    {
+        var fixes = new List<string>();
+        string m = message.ToLowerInvariant();
+        if (m.Contains("trailing comma")) fixes.Add(MainWindow.Str("ErrFixJsonTrailing"));
+        if (m.Contains("comment")) fixes.Add(MainWindow.Str("ErrFixJsonc"));
+        if (m.Contains("property name") || m.Contains("expected a key"))
+            fixes.Add(MainWindow.Str("ErrFixJsonQuote"));
+        if (m.Contains("end of document") || m.Contains("unexpected end"))
+            fixes.Add(MainWindow.Str("ErrFixJsonBrace"));
+        if (m.Contains("duplicate key")) fixes.Add(MainWindow.Str("ErrFixJsonDup"));
+        if (m.Contains("escape") || m.Contains("string"))
+            fixes.Add(MainWindow.Str("ErrFixJsonString"));
+        if (!jsonc && !fixes.Contains(MainWindow.Str("ErrFixJsonc")))
+            fixes.Add(MainWindow.Str("ErrFixJsonc"));
+        fixes.Add(MainWindow.Str("ErrFixEdit"));
+        fixes.Add(MainWindow.Str("ErrFixBackup"));
+        return fixes;
     }
 
     // MARK: - Parse (single streaming pass, positions included)
 
-    private static PreviewTree.TreeNode Parse(string text, out bool truncated)
+    private static PreviewTree.TreeNode Parse(string text, out bool truncated, bool strict)
     {
         truncated = false;
-        if (string.IsNullOrWhiteSpace(text)) throw new JsonException("The JSON document is empty.");
-        var w = new Walker(text);
+        if (string.IsNullOrWhiteSpace(text))
+            throw new TreeParseException("The JSON document is empty.", 1, 1);
+        var w = new Walker(text, strict);
         // Leading comments belong to the root.
         while (true)
         {
@@ -87,15 +136,18 @@ public static class JsonPreviewHtml
         public PreviewTree.TreeNode? last;
         public int lastLine;
 
-        public Walker(string text)
+        public readonly bool strict;
+
+        public Walker(string text, bool strict)
         {
+            this.strict = strict;
             bytes = Encoding.UTF8.GetBytes(text);
             for (int i = 0; i < bytes.Length; i++)
                 if (bytes[i] == (byte)'\n') starts.Add(i + 1);
             r = new Utf8JsonReader(bytes, new JsonReaderOptions
             {
-                CommentHandling = JsonCommentHandling.Allow,
-                AllowTrailingCommas = true,
+                CommentHandling = strict ? JsonCommentHandling.Disallow : JsonCommentHandling.Allow,
+                AllowTrailingCommas = !strict,
             });
         }
 
