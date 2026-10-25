@@ -15,18 +15,17 @@ internal static class TextPainter
     // it helps (same cap as the Mac).
     internal const int MaxChars = 300_000;
 
-    internal readonly record struct Span(int Start, int Length, MarkdownShared.Rgb Fg, bool Italic = false);
+    internal readonly record struct Span(int Start, int Length, MarkdownShared.Rgb Fg, bool Italic = false,
+        bool Bold = false, bool Strike = false, bool Underline = false, MarkdownShared.Rgb? Bg = null);
 
     internal static void Apply(RichEditBox editor, bool dark, float fontSize,
         Color baseFg, Color baseBg,
         Action<string, MarkdownShared.Palette, List<Span>> scan)
     {
-        var doc = editor.Document;
-        doc.GetText(TextGetOptions.None, out string raw);
-        // Same TOM mapping as MarkdownHighlight: trim the story-final \r, \r->\n 1:1.
-        string text = (raw.Length > 0 && raw[^1] == '\r') ? raw[..^1] : raw;
-        string parse = text.Replace('\r', '\n');
+        // Same TOM mapping as the editor text everywhere else (MainWindow).
+        string parse = MainWindow.GetEditorText(editor);
         int n = parse.Length;
+        var doc = editor.Document;
 
         doc.BatchDisplayUpdates();
         try
@@ -54,11 +53,11 @@ internal static class TextPainter
                 var r = doc.GetRange(p.Start, p.Start + p.Length);
                 var f = r.CharacterFormat;
                 f.ForegroundColor = p.Fg.Color;
-                f.BackgroundColor = baseBg;
-                f.Bold = FormatEffect.Off;
+                f.BackgroundColor = p.Bg?.Color ?? baseBg;
+                f.Bold = p.Bold ? FormatEffect.On : FormatEffect.Off;
                 f.Italic = p.Italic ? FormatEffect.On : FormatEffect.Off;
-                f.Strikethrough = FormatEffect.Off;
-                f.Underline = UnderlineType.None;
+                f.Strikethrough = p.Strike ? FormatEffect.On : FormatEffect.Off;
+                f.Underline = p.Underline ? UnderlineType.Single : UnderlineType.None;
                 f.Size = fontSize;
                 r.CharacterFormat = f;
             }

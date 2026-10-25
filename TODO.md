@@ -25,6 +25,9 @@ Legend per row: `win:[x]` / `mac:[x]` = shipped on that platform.
   - win — root causes: directly-applied `white-space` (tree `.msg` base `pre-wrap`, Markdown elements) beat the inherited `body{nowrap}`; print left nowrap spans/cells (paper clipped). Fix hardened `MarkdownHtml` (element nowrap list + `pre` guard), `PreviewTree.WrapCss` (span list), `CsvPreviewHtml` print reset; re-render paths already live (`Wrap_Changed`, tab switch, Edit→Preview). Debug 0 errors, harness 19/19, live smoke: UIA-invoked "A capo automatico" re-rendered `tree-preview-<pid>.html` with nowrap markers + persisted `wrap:false`, screenshot shows the long JSON string scrolling horizontally
   - win — follow-up: error-page chrome (Causa etc.) spilled out of its cards in wrap-off → chrome now always wraps inside cards (`white-space:normal`), only `pre` source blocks scroll. Verified live on screenshot with wrap off
   - mac — same fix in `Markdown.swift`, `PreviewTree.swift`, `CsvGrid.swift` (+ tree builders) once the win path is proven
+- generic — JSONC comments/trailing commas must not error: `.jsonc` parses lenient (comments + trailing commas), plain `.json` stays strict — win:[x] mac:[ ]
+  - win — root cause: `TryRenderAsync` never passed `jsonc:true`, so `JsonPreviewHtml.Build` always ran strict (`CommentHandling.Disallow`) and every `//`/`/* */` in `.jsonc` fell into the invalid-JSON error page. Fix passes `doc.Path ends with .jsonc` (case-insensitive) as the `jsonc` flag in `MainWindow.xaml.cs`
+  - mac — `JsonTree.parse` is always lenient (comments + trailing commas even for `.json`); mirror the strict/lenient split there if the shared intent (strict `.json`, lenient `.jsonc`, `ErrFixJsonc` wording) is to hold on mac too
 
 ## Done
 

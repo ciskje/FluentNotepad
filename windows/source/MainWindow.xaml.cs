@@ -580,7 +580,8 @@ public sealed partial class MainWindow : Window
                 string html = doc.Kind switch
                 {
                     DocKind.Csv => CsvPreviewHtml.Build(text, _dark, size, DisplayName(doc), WrapOn()),
-                    DocKind.Json => JsonPreviewHtml.Build(text, _dark, size, DisplayName(doc), doc.JsonOpen, WrapOn()),
+                    DocKind.Json => JsonPreviewHtml.Build(text, _dark, size, DisplayName(doc), doc.JsonOpen, WrapOn(),
+                        doc.Path?.EndsWith(".jsonc", StringComparison.OrdinalIgnoreCase) == true),
                     DocKind.Xml => XmlPreviewHtml.Build(text, _dark, size, DisplayName(doc), doc.JsonOpen, WrapOn()),
                     DocKind.Yaml => YamlPreviewHtml.Build(text, _dark, size, DisplayName(doc), doc.JsonOpen, WrapOn()),
                     DocKind.Toml => TomlPreviewHtml.Build(text, _dark, size, DisplayName(doc), doc.JsonOpen, WrapOn()),
@@ -872,8 +873,6 @@ public sealed partial class MainWindow : Window
         bool isPv = isMd || isTree;
         var pvVis = isPv ? Visibility.Visible : Visibility.Collapsed;
         EditPreviewGroup.Visibility = pvVis;
-        EditModeBtn.Visibility = pvVis;
-        PreviewModeBtn.Visibility = pvVis;
         FileTypeLabel.Text = d == null ? Str("FileTypeLabel.Text") : KindLabel(d.Kind);
         if (isPv && d != null)
         {

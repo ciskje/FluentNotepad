@@ -86,8 +86,6 @@
 "followSystem" = "Follow system";
 "editor" = "Editor";
 "fontSize" = "Font size";
-"about" = "About";
-"aboutPreview" = "Markdown preview via WKWebView.";
 "shortcuts" = "Keyboard Shortcuts";
 "toggleEsc" = "Toggle Edit/Preview";
 "undo" = "Undo";

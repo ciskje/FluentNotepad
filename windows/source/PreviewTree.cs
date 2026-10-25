@@ -114,7 +114,6 @@ public static class PreviewTree
     /// <summary>Invalid-document page shared by every preview builder.</summary>
     public static string ErrorPage(bool dark, double fontSize, ErrorInfo e, bool wrap = true)
     {
-        var pal = new MarkdownShared.Palette(dark);
         string src = e.Source.Length > 100_000 ? e.Source[..100_000] + "\n…" : e.Source;
         string details = string.Join("\n", new[]
         {
@@ -146,10 +145,7 @@ public static class PreviewTree
             },false);
             })();
             """.Replace("__D0__", JsonSerializer.Serialize(details));
-        return "<!DOCTYPE html><html><head><meta charset='utf-8'>" +
-            "<meta name='color-scheme' content='" + (dark ? "dark" : "light") + "'>" +
-            "<title>" + Esc(e.Title ?? e.Format) + "</title>" +
-            "<style>" + Css(pal, fontSize, wrap) + "</style></head><body>" +
+        return PageHead(dark, fontSize, e.Title ?? e.Format, "", wrap) +
             "<div class=err><div class=ehd><span class=badge>" + Esc(e.Format) + "</span>" +
             "<span class=et>" + Esc(e.Heading) + "</span></div>" +
             (string.IsNullOrEmpty(e.Title) ? "" : "<div class=efile>" + Esc(e.Title!) + "</div>") +

@@ -22,8 +22,6 @@ namespace FluentNotepad;
 /// </summary>
 public static class MarkdownHighlight
 {
-    public const int MaxChars = 300_000;
-
     private static readonly MarkdownPipeline _pipeline = MarkdownShared.CreatePipeline();
 
     private readonly struct Paint
@@ -74,61 +72,19 @@ public static class MarkdownHighlight
     }
 
     public static void Apply(RichEditBox editor, bool isMarkdown, bool dark, float fontSize,
-        Color baseFg, Color baseBg)
-    {
-        var doc = editor.Document;
-        doc.GetText(TextGetOptions.None, out string raw);
-        // TOM appends a story-final \r and uses \r for breaks: trim exactly one
-        // (a real trailing newline keeps its own \r) and map \r->\n 1:1, so
-        // Markdig spans index the control content directly.
-        string text = (raw.Length > 0 && raw[^1] == '\r') ? raw[..^1] : raw;
-        string parse = text.Replace('\r', '\n');
-        int n = parse.Length;
-
-        doc.BatchDisplayUpdates();
-        try
+        Color baseFg, Color baseBg) =>
+        TextPainter.Apply(editor, dark, fontSize, baseFg, baseBg, (parse, pal, ops) =>
         {
-            if (n > 0)
-            {
-                var all = doc.GetRange(0, n);
-                var f = all.CharacterFormat;
-                f.ForegroundColor = baseFg;
-                // NOT transparent: RichEdit ignores the alpha and renders it
-                // black (black bars behind every line). Paint the editor
-                // background instead; theme changes repaint via RefreshHighlight.
-                f.BackgroundColor = baseBg;
-                f.Bold = FormatEffect.Off;
-                f.Italic = FormatEffect.Off;
-                f.Strikethrough = FormatEffect.Off;
-                f.Underline = UnderlineType.None;
-                f.Size = fontSize;
-                all.CharacterFormat = f;
-            }
-            if (!isMarkdown || n == 0 || n > MaxChars) return;
-
+            if (!isMarkdown) return;
             MarkdownDocument md;
             try { md = Markdig.Markdown.Parse(parse, _pipeline); }
             catch { return; }
-            var ctx = new Ctx(parse, new MarkdownShared.Palette(dark));
+            var ctx = new Ctx(parse, pal);
             foreach (var b in md) PaintBlock(b, ctx);
             PaintTables(ctx);
             foreach (var (s, l, p) in ctx.Ops)
-            {
-                if (s < 0 || l <= 0 || s + l > n) continue;
-                var r = doc.GetRange(s, s + l);
-                var f = r.CharacterFormat;
-                f.ForegroundColor = p.Fg.Color;
-                f.BackgroundColor = p.Bg?.Color ?? baseBg;
-                f.Bold = p.Bold ? FormatEffect.On : FormatEffect.Off;
-                f.Italic = p.Italic ? FormatEffect.On : FormatEffect.Off;
-                f.Strikethrough = p.Strike ? FormatEffect.On : FormatEffect.Off;
-                f.Underline = p.Underline ? UnderlineType.Single : UnderlineType.None;
-                f.Size = fontSize;
-                r.CharacterFormat = f;
-            }
-        }
-        finally { doc.ApplyDisplayUpdates(); }
-    }
+                ops.Add(new TextPainter.Span(s, l, p.Fg, p.Italic, p.Bold, p.Strike, p.Underline, p.Bg));
+        });
 
     private static bool TrySpan(SourceSpan span, int maxLen, out int start, out int length)
     {
