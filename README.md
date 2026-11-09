@@ -36,11 +36,8 @@ Windows is at `2.10.13`, macOS at `2.10.7` (2.10.8–2.10.13 are Windows-only; s
 - **2.10.11** (Windows) — Word-wrap off now fully disables wrapping in every preview (Markdown, tree, grid) with horizontal scroll, and the View menu shows its checkmark; Edit/Preview icons are 2x in a rounded group; toolbar buttons are square with centered icons (disabled Save stays flat); invalid files show a rich error page (cause, position, fixes, actions); sample docs moved to `esempio/` with school data.
 
 - **2.10.10** (Windows) — Word wrap now applies to the preview as well: with "A capo automatico" off, paragraphs, tables and grid/tree values no longer break at the window edge (the preview scrolls horizontally); printing still wraps.
-- **2.10.8** (Windows) — Edit/Preview toolbar buttons are now icon-only: the active mode is accent blue, the inactive one is neutral like the other toolbar icons (no borders).
-- **2.10.7** (Windows) — Click-to-source jumps to Edit and blinks the jumped-to line once (0.5 s pause, 1x250 ms); plain Edit entries keep the immediate 2x140 ms blink.
 - **2.10.7** (macOS) — Click-to-source pause back to 0.5 s with a single 250 ms blink (plain Edit entries keep 2x140 ms).
-Last 5 entries; full history in [Releases](../../releases) and the Done section
-of [TODO.md](TODO.md) (archived at each release).
+Last 5 entries; full history in [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 
