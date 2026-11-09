@@ -508,6 +508,11 @@ public static class PreviewTree
         window.__fnExpandAll=function(){expandAll(true);};
         window.__fnFocusSearch=function(){input.focus();input.select();};
         window.__fnClearSearch=function(){input.value='';doSearch('');};
+        // Ctrl+wheel (and pinch) and Ctrl+Plus/Minus with focus in the page would
+        // drive the native view-only zoom, which the HTML — and the print —
+        // never see: fold them into our zoom instead.
+        document.addEventListener('wheel',function(e){try{if(e.ctrlKey){e.preventDefault();post({op:'zoom',dir:e.deltaY>0?-1:1});}}catch(err){}},{passive:false});
+        document.addEventListener('keydown',function(e){try{if(e.ctrlKey&&!e.metaKey&&!e.altKey){var k=0,c=e.code;if(c==='Equal'||c==='NumpadAdd')k=1;else if(c==='Minus'||c==='NumpadSubtract')k=-1;if(k!==0){e.preventDefault();post({op:'zoom',dir:k});}}}catch(err){}},false);
         init();
         })();
         """;

@@ -568,6 +568,17 @@ public sealed partial class MainWindow : Window
                         "if(window.getSelection&&!window.getSelection().isCollapsed)return;" +
                         "var t=e.target,el=(t&&t.closest)?t.closest('[data-src-line]'):null;" +
                         "if(el){e.preventDefault();window.chrome.webview.postMessage(el.getAttribute('data-src-line'));}" +
+                        "}catch(err){}},false);" +
+                        // Ctrl+wheel (and pinch) and Ctrl+Plus/Minus with focus in the
+                        // page would drive the native view-only zoom, which the HTML
+                        // — and the print — never see: fold them into our zoom instead.
+                        "document.addEventListener('wheel',function(e){try{" +
+                        "if(e.ctrlKey){e.preventDefault();window.chrome.webview.postMessage(JSON.stringify({op:'zoom',dir:e.deltaY>0?-1:1}));}" +
+                        "}catch(err){}},{passive:false});" +
+                        "document.addEventListener('keydown',function(e){try{" +
+                        "if(e.ctrlKey&&!e.metaKey&&!e.altKey){var k=0,c=e.code;" +
+                        "if(c==='Equal'||c==='NumpadAdd')k=1;else if(c==='Minus'||c==='NumpadSubtract')k=-1;" +
+                        "if(k!==0){e.preventDefault();window.chrome.webview.postMessage(JSON.stringify({op:'zoom',dir:k}));}}" +
                         "}catch(err){}},false);");
                     core.WebMessageReceived += Preview_WebMessage;
                 }
@@ -676,7 +687,19 @@ public sealed partial class MainWindow : Window
                 {
                     var d = GetActiveDoc();
                     bool isTree = d is { PreviewVisible: true } && (d.IsTree() || d.Kind == DocKind.Csv);
-                    if (o == "line" && root.TryGetProperty("line", out var ln) &&
+                    // Ctrl+wheel/pinch with focus in the page (all previews): fold
+                    // into our zoom so the HTML — and the print — follow it.
+                    if (o == "zoom" && root.TryGetProperty("dir", out var zd) &&
+                        zd.ValueKind == JsonValueKind.Number &&
+                        zd.TryGetInt32(out int zdir) && zdir != 0)
+                    {
+                        if (d is { PreviewVisible: true } && d.CanPreview())
+                        {
+                            try { SetZoom(_zoom + (zdir > 0 ? 0.1 : -0.1)); }
+                            catch (Exception ex) { Debug.WriteLine($"ZoomMsg: {ex.Message}"); }
+                        }
+                    }
+                    else if (o == "line" && root.TryGetProperty("line", out var ln) &&
                         ln.TryGetInt32(out int line) && line >= 1)
                     {
                         if (isTree && d != null)
@@ -1144,22 +1167,49 @@ public sealed partial class MainWindow : Window
             await ShowNoteAsync(Str("PrintOnlyPreview"));
             return;
         }
-        if (!d.PreviewVisible) ShowPreview(d, true);
-        if (PreviewError.Visibility == Visibility.Visible)
+        // Print what you see: re-render at the current zoom/font/wrap first.
+        // Navigate/NavigateToString return before the page loads, so printing
+        // the settled page right after a zoom step (or from Edit, or during
+        // the 400 ms debounce) would print the previous HTML at its old size.
+        _previewTimer.Stop();
+        if (!d.PreviewVisible)
         {
-            await ShowNoteAsync(Str("PrintError") + _lastWebError);
-            return;
+            d.PreviewVisible = true;
+            ShowActiveContent();
+            RefreshMdUi();
         }
         try
         {
+            SetBusy(true);
+            if (PreviewView.CoreWebView2 == null)
+            {
+                try
+                {
+                    if (PreviewView.Visibility != Visibility.Visible)
+                        PreviewView.Visibility = Visibility.Visible;
+                    await PreviewView.EnsureCoreWebView2Async();
+                }
+                catch (Exception ex) { Debug.WriteLine($"Print ensure: {ex.Message}"); }
+                if (PreviewView.CoreWebView2 == null)
+                    throw new InvalidOperationException("WebView2 still initializing.");
+            }
+            // Subscribe before navigating so the wait below ends on our own
+            // navigation, not on an older one still completing.
+            var navDone = WaitForNavigationAsync(5000);
             // The page title already carries DisplayName (see Build): the browser
             // print header shows it instead of "about:blank".
-            // Serialized with TryRenderAsync: a concurrent EnsureCoreWebView2Async
-            // (from the ShowPreview above) fails with E_ILLEGAL_METHOD_CALL.
+            if (!await TryRenderAsync(d))
+                throw new InvalidOperationException(_lastWebError);
+            await navDone;
+            // The user may have moved on while rendering: never print a stale tab.
+            if (!ReferenceEquals(GetActiveDoc(), d) || !d.PreviewVisible) return;
+            if (PreviewError.Visibility == Visibility.Visible)
+                throw new InvalidOperationException(_lastWebError);
+            // Serialized with TryRenderAsync: a concurrent render's
+            // EnsureCoreWebView2Async fails with E_ILLEGAL_METHOD_CALL.
             await _webLock.WaitAsync();
             try
             {
-                await PreviewView.EnsureCoreWebView2Async();
                 if (PreviewView.CoreWebView2 == null)
                     throw new InvalidOperationException("WebView2 still initializing.");
                 if (d.IsTree())
@@ -1183,6 +1233,41 @@ public sealed partial class MainWindow : Window
             Debug.WriteLine($"Print: {ex.Message}");
             await ShowNoteAsync(Str("PrintError") + ex.Message);
         }
+        finally { SetBusy(false); }
+    }
+
+    // One-shot wait for the next WebView2 navigation to complete (used by Print:
+    // Navigate/NavigateToString return before the page loads). Never throws:
+    // false on timeout or when there is nothing to wait on.
+    private Task<bool> WaitForNavigationAsync(int timeoutMs)
+    {
+        try
+        {
+            var core = PreviewView.CoreWebView2;
+            if (core == null) return Task.FromResult(false);
+            var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            Windows.Foundation.TypedEventHandler<Microsoft.Web.WebView2.Core.CoreWebView2, Microsoft.Web.WebView2.Core.CoreWebView2NavigationCompletedEventArgs>? handler = null;
+            var timer = DispatcherQueue.CreateTimer();
+            handler = (_, args) =>
+            {
+                try { core.NavigationCompleted -= handler; } catch (Exception ex) { Debug.WriteLine($"PrintNav: {ex.Message}"); }
+                try { timer.Stop(); } catch (Exception ex) { Debug.WriteLine($"PrintNav: {ex.Message}"); }
+                bool ok = true;
+                try { ok = args.IsSuccess; } catch (Exception ex) { Debug.WriteLine($"PrintNav: {ex.Message}"); }
+                tcs.TrySetResult(ok);
+            };
+            core.NavigationCompleted += handler;
+            timer.Interval = TimeSpan.FromMilliseconds(Math.Max(timeoutMs, 500));
+            timer.Tick += (_, _) =>
+            {
+                timer.Stop();
+                try { core.NavigationCompleted -= handler; } catch (Exception ex) { Debug.WriteLine($"PrintNav: {ex.Message}"); }
+                tcs.TrySetResult(false);
+            };
+            timer.Start();
+            return tcs.Task;
+        }
+        catch (Exception ex) { Debug.WriteLine($"PrintNav: {ex.Message}"); return Task.FromResult(false); }
     }
 
     private void Tabs_SelectionChanged(object s, SelectionChangedEventArgs e)

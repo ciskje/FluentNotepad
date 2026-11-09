@@ -107,6 +107,18 @@ pixel-perfect (`App.NewWindow()`).
 - A `Window`'s default presenter is already `OverlappedPresenter`; check `IsMaximizable` before `Maximize()`.
 - Keyboard accelerators on a container (e.g. `Root.KeyboardAccelerators`) show the first one in a hover tooltip over the whole area: set `KeyboardAcceleratorPlacementMode.Hidden` on the scope, shortcuts stay active.
 - UI language: `PrimaryLanguageOverride = "it-IT"` for non-it/en tags; English only on English systems (`MainWindow` ctor + `Str()`).
+- Print must print the live zoom: `Print_Click` stops the debounce timer, re-renders
+  (`TryRenderAsync`, zoom is baked into the HTML font size) and awaits
+  `NavigationCompleted` (`WaitForNavigationAsync`) before `ShowPrintUI` —
+  `Navigate`/`NavigateToString` return before the page loads, so printing the
+  settled page prints the previous size.
+- Zoom gestures with focus in the preview (Ctrl+Plus/Minus, Ctrl+wheel, pinch) never
+  reach the XAML accelerators (WebView2 owns the HWND): Chromium would apply its native
+  view-only zoom, invisible to the HTML and the print. They are intercepted at page
+  level instead (wheel + keydown listeners in the Markdown document-start script,
+  `PreviewTree.Js`, `CsvPreviewHtml.Js`) posting `{op:zoom,dir}` to `Preview_WebMessage`
+  → `SetZoom`; `preventDefault` blocks the native zoom. The controller-only APIs
+  (`ZoomFactor`, `AcceleratorKeyPressed`) are NOT accessible from WinUI — don't use them.
 
 ## Headless GUI checks
 

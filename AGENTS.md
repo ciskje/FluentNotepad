@@ -23,7 +23,7 @@ Both builds implement the same intents; platform-native details may differ
   bullet/numbered lists, code) operating on the remembered selection,
   plus a quick-save button (disabled unless the tab is dirty)
 - Find, zoom, word wrap (editor **and** preview), file drag & drop (including onto the preview)
-- Print of the rendered Markdown preview in color
+- Print of the rendered Markdown preview in color, at the current zoom
 - Status bar (line/column, characters, file type, zoom, line ending, encoding)
 - Light/dark/system theme, interface in English and Italian
 - Click-to-source: click a rendered block to jump to its source line

@@ -20,14 +20,16 @@ Same intents on both platforms — see the parity checklist in [AGENTS.md](AGENT
 The repo contains sources only (builds and setups are **not** versioned). Same
 version number = same features on both platforms (see Changelogs below).
 
-- **Windows**: [Releases](../../releases) page → `FluentNotepad-Setup-2.10.12-win-x64.exe` (per-machine install in Program Files, optional file associations)
+- **Windows**: [Releases](../../releases) page → `FluentNotepad-Setup-2.10.13-win-x64.exe` (per-machine install in Program Files, optional file associations)
 - **macOS**: [Releases](../../releases) page → `FluentNotepad.dmg` from a `macos-vX.Y.Z` release → drag `FluentNotepad.app` into Applications. First launch: right-click → Open (ad-hoc signature).
 
 Or build it yourself: see `windows/AGENTS.md` (Build/run) and `macos/AGENTS.md` (Build/run).
 
 ## Changelog
 
-Windows is at `2.10.12`, macOS at `2.10.7` (2.10.8–2.10.12 are Windows-only; same intents).
+Windows is at `2.10.13`, macOS at `2.10.7` (2.10.8–2.10.13 are Windows-only; same intents).
+
+- **2.10.13** (Windows) — The print now follows the preview zoom: zooming from the preview (Ctrl+Plus/Minus, Ctrl+wheel, pinch) drives the app zoom instead of the view-only browser zoom, and printing re-renders at the current size before opening the dialog.
 
 - **2.10.12** (Windows) — `.jsonc` files with comments or trailing commas now show the tree preview instead of an invalid-JSON error; plain `.json` stays strict.
 
